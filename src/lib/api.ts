@@ -4,7 +4,7 @@ import axios from 'axios';
 // All frontend requests go to the Express backend.
 // WithCredentials ensures cookies (JWT) are sent with every request.
 const api = axios.create({
-  baseURL: 'http://localhost:5000/api',
+  baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api',
   withCredentials: true,
 });
 
