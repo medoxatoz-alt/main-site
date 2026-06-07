@@ -7,6 +7,7 @@ import api from '@/lib/api';
 import toast from 'react-hot-toast';
 import { Loader2, Store } from 'lucide-react';
 import AddProductModal from '@/components/AddProductModal';
+import EditProductModal from '@/components/EditProductModal';
 import ProductsTab from '@/sections/admin/ProductsTab';
 import OrdersTab from '@/sections/admin/OrdersTab';
 
@@ -28,6 +29,7 @@ export default function VendorDashboard() {
   const [isFetching, setIsFetching] = useState(false);
   const [fetchError, setFetchError] = useState(false);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [productToEdit, setProductToEdit] = useState<any | null>(null);
 
   // Guard
   useEffect(() => {
@@ -147,8 +149,15 @@ export default function VendorDashboard() {
             <ProductsTab
               products={products} isFetching={isFetching} fetchError={fetchError}
               onDelete={handleDeleteProduct} onAdd={() => setIsAddModalOpen(true)}
+              onEdit={(p) => setProductToEdit(p)}
             />
             <AddProductModal isOpen={isAddModalOpen} onClose={() => setIsAddModalOpen(false)} onSuccess={fetchData} />
+            <EditProductModal 
+              isOpen={!!productToEdit} 
+              product={productToEdit} 
+              onClose={() => setProductToEdit(null)} 
+              onSuccess={fetchData} 
+            />
           </>
         )}
         {activeTab === 'orders' && (

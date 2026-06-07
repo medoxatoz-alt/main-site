@@ -14,6 +14,7 @@ import VendorsTab from '@/sections/admin/VendorsTab';
 import ProductsTab from '@/sections/admin/ProductsTab';
 import OrdersTab from '@/sections/admin/OrdersTab';
 import AnalyticsTab from '@/sections/admin/AnalyticsTab';
+import EditProductModal from '@/components/EditProductModal';
 
 type Tab = 'vendors' | 'products' | 'orders' | 'all-orders' | 'rejected-orders' | 'payments' | 'analytics' | 'vendor-products';
 
@@ -64,6 +65,7 @@ export default function AdminDashboard() {
   const [isFetching, setIsFetching] = useState(false);
   const [fetchError, setFetchError] = useState(false);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [productToEdit, setProductToEdit] = useState<any | null>(null);
 
   useEffect(() => {
     if (!loading && (!user || user.role !== 'admin')) router.replace('/signin');
@@ -236,9 +238,16 @@ export default function AdminDashboard() {
                 <ProductsTab
                   products={products} isFetching={isFetching} fetchError={fetchError}
                   onDelete={handleDeleteProduct} onAdd={() => setIsAddModalOpen(true)}
+                  onEdit={(p) => setProductToEdit(p)}
                   showAddButton={activeTab === 'products'}
                 />
                 <AddProductModal isOpen={isAddModalOpen} onClose={() => setIsAddModalOpen(false)} onSuccess={fetchData} />
+                <EditProductModal 
+                  isOpen={!!productToEdit} 
+                  product={productToEdit} 
+                  onClose={() => setProductToEdit(null)} 
+                  onSuccess={fetchData} 
+                />
               </>
             )}
             {activeTab === 'orders' && (

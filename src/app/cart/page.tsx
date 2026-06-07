@@ -153,12 +153,25 @@ export default function Cart() {
     <main className="min-h-screen bg-[var(--bg-page)] pb-24">
       <Navbar />
 
+      {/* Dark Cart Header — matches navbar style */}
+      <div className="bg-[#0d1117] border-b-2 border-gold-primary shadow-lg">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center gap-3">
+          <div className="relative">
+            <svg className="w-7 h-7 text-white stroke-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="9" cy="21" r="1"></circle>
+              <circle cx="20" cy="21" r="1"></circle>
+              <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
+            </svg>
+            <span className="bg-gold-primary text-[#0d1117] font-extrabold text-[11px] h-[18px] min-w-[18px] rounded-full inline-flex items-center justify-center px-1 border-2 border-[#0d1117] absolute -top-2 -right-2 z-[2]">
+              {cartItems.length}
+            </span>
+          </div>
+          <h1 className="text-xl font-extrabold text-white tracking-tight">Cart</h1>
+        </div>
+      </div>
+
       {/* Main Container */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-10">
-        <h1 className="text-3xl font-extrabold text-gray-900 mb-8 tracking-tight flex items-center gap-3">
-          <span className="w-1.5 h-8 bg-gold-primary rounded-full"></span>
-          Shopping Cart
-        </h1>
 
         {cartItems.length === 0 ? (
           <div className="bg-white mt-5 rounded-2xl shadow-sm border border-gray-100 p-12 flex flex-col items-center justify-center text-center">
