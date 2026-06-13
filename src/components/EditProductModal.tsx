@@ -31,6 +31,18 @@ export default function EditProductModal({ isOpen, onClose, onSuccess, product }
   const [isSubmitting, setIsSubmitting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const parseImages = (imageProp: any): string[] => {
+    if (!imageProp) return [];
+    if (Array.isArray(imageProp)) return imageProp.flat().filter(img => typeof img === 'string' && img.trim() !== '');
+    if (typeof imageProp !== 'string') return [];
+    const trimmed = imageProp.trim();
+    if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
+      try { return JSON.parse(trimmed) as string[]; } catch { }
+    }
+    if (trimmed.includes(',')) return trimmed.split(',').map((img) => img.trim());
+    return [trimmed];
+  };
+
   useEffect(() => {
     if (isOpen && product) {
       setNewTitle(product.title || '');
@@ -42,12 +54,11 @@ export default function EditProductModal({ isOpen, onClose, onSuccess, product }
       setNewStock(product.stock !== undefined ? String(product.stock) : '10');
       setNewDescription(product.description || '');
 
-      let initialImages: string[] = [];
-      if (Array.isArray(product.images) && product.images.length > 0) {
-        initialImages = product.images;
-      } else if (product.image) {
-        initialImages = [product.image];
+      let initialImages = parseImages(product.images);
+      if (initialImages.length === 0) {
+        initialImages = parseImages(product.image);
       }
+      
       setExistingImages(initialImages);
       setImageFiles([]);
       setImagePreviews([]);
@@ -138,8 +149,10 @@ export default function EditProductModal({ isOpen, onClose, onSuccess, product }
       resetForm();
       onSuccess();
       onClose();
-    } catch {
-      toast.error('Failed to update product.');
+    } catch (err: any) {
+      console.error('Failed to update product:', err);
+      const errMsg = err?.response?.data?.error || 'Failed to update product.';
+      toast.error(errMsg);
     } finally {
       setIsSubmitting(false);
     }

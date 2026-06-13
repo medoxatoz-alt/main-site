@@ -61,3 +61,9 @@ body {
   }
 }
 
+/* Ensure all main page contents clear the mobile bottom navigation bar */
+@media (max-width: 767px) {
+  main {
+    padding-bottom: 112px !important; /* 72px nav bar + 40px safe buffer */
+  }
+}

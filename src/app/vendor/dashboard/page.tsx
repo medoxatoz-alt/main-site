@@ -33,9 +33,20 @@ export default function VendorDashboard() {
 
   // Guard
   useEffect(() => {
-    if (!loading && (!user || user.role !== 'vendor' || user.status !== 'approved')) {
-      router.replace('/');
-      toast.error('Access denied. Approved vendors only.');
+    if (!loading) {
+      if (!user) {
+        router.replace('/signin');
+        return;
+      }
+      if (user.role !== 'vendor') {
+        router.replace('/');
+        toast.error('Access denied. Vendors only.');
+        return;
+      }
+      if (user.status !== 'approved') {
+        router.replace('/vendor/not-approved');
+        return;
+      }
     }
   }, [user, loading, router]);
 

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { Suspense } from 'react';
 import { useAuth } from '@/context/AuthContext';
@@ -33,15 +33,31 @@ function SignUpContent() {
   const { refreshUser } = useAuth();
   const router = useRouter();
 
+  const recaptchaVerifierRef = useRef<RecaptchaVerifier | null>(null);
+  const recaptchaWidgetIdRef = useRef<number | null>(null);
+
+  // Pre-render the invisible reCAPTCHA once on mount per Firebase docs.
+  // Store the widgetId so we can reset it on retry instead of recreating.
   useEffect(() => {
-    if (!(window as any).recaptchaVerifier) {
-      (window as any).recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
-        size: 'invisible',
-        callback: () => {
-          // reCAPTCHA solved
-        },
-      });
+    // In development, disable app verification to bypass reCAPTCHA Enterprise requirement.
+    // Add test phone numbers in Firebase Console → Authentication → Sign-in method → Phone.
+    if (process.env.NODE_ENV === 'development') {
+      auth.settings.appVerificationDisabledForTesting = true;
     }
+
+    const verifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
+      size: 'invisible',
+      callback: () => {},
+    });
+    verifier.render().then((widgetId) => {
+      recaptchaWidgetIdRef.current = widgetId;
+    });
+    recaptchaVerifierRef.current = verifier;
+    return () => {
+      verifier.clear();
+      recaptchaVerifierRef.current = null;
+      recaptchaWidgetIdRef.current = null;
+    };
   }, []);
 
   const completeSignupWithBackend = async (idToken: string) => {
@@ -105,17 +121,25 @@ function SignUpContent() {
       toast.error('Please enter your full name first.');
       return;
     }
+    if (!recaptchaVerifierRef.current) return;
     setLoading(true);
-
     try {
       const formattedPhone = phoneNumber.startsWith('+') ? phoneNumber : `+91${phoneNumber}`;
-      // signInWithPhoneNumber automatically invokes verify() on the invisible recaptcha
-      const confirmation = await signInWithPhoneNumber(auth, formattedPhone, (window as any).recaptchaVerifier);
+      const confirmation = await signInWithPhoneNumber(auth, formattedPhone, recaptchaVerifierRef.current);
       setConfirmationResult(confirmation);
       setOtpStep(true);
       toast.success('OTP sent to your phone.');
     } catch (err: any) {
       console.error(err);
+      // Per Firebase docs: on failure reset the widget so the user can retry
+      if (recaptchaWidgetIdRef.current !== null) {
+        (window as any).grecaptcha?.reset(recaptchaWidgetIdRef.current);
+      } else {
+        recaptchaVerifierRef.current?.render().then((widgetId) => {
+          (window as any).grecaptcha?.reset(widgetId);
+          recaptchaWidgetIdRef.current = widgetId;
+        });
+      }
       toast.error(err.message || 'Failed to send OTP.');
     } finally {
       setLoading(false);
@@ -138,7 +162,7 @@ function SignUpContent() {
   };
 
   return (
-    <div className="flex min-h-screen bg-white sm:bg-[var(--bg-page)]">
+    <div className="flex min-h-screen bg-white sm:bg-[var(--bg-page)] overflow-y-auto">
       {/* Left side: Image/Text (hidden on mobile, visible on lg) */}
       <div className="hidden lg:flex flex-1 bg-[#1e2226] text-white flex-col justify-center px-16 relative overflow-hidden">
         {/* Background Pattern / Shapes */}
@@ -173,24 +197,24 @@ function SignUpContent() {
       </div>
 
       {/* Right side: Form (full width on mobile, half width on lg) */}
-      <div className="flex-1 flex flex-col justify-center items-center py-12 px-4 sm:px-6 lg:px-8">
-        <div className="w-full flex-1 flex flex-col px-2 pt-0 pb-8 sm:flex-none sm:bg-white sm:p-10 sm:rounded-2xl sm:shadow-[var(--shadow-soft)] sm:max-w-[440px] sm:border sm:border-gray-100">
-          <div className="text-center mb-6 flex flex-col items-center">
+      <div className="flex-1 flex flex-col justify-center items-center py-6 px-4 sm:py-12 sm:px-6 lg:px-8">
+        <div className="w-full flex flex-col px-2 pt-0 pb-6 sm:bg-white sm:p-10 sm:rounded-2xl sm:shadow-[var(--shadow-soft)] sm:max-w-[440px] sm:border sm:border-gray-100">
+          <div className="text-center mb-5 sm:mb-6 flex flex-col items-center">
             {/* Logo visible only on small screens because left side has it on large */}
-            <a href="/" className="inline-block mb-4 lg:hidden">
-              <img src="/logo.webp" alt="MedoxAtoZ Logo" className="h-20 w-auto object-contain" />
+            <a href="/" className="inline-block mb-3 lg:hidden">
+              <img src="/logo.webp" alt="MedoxAtoZ Logo" className="h-14 w-auto object-contain" />
             </a>
             <h2 className="text-2xl sm:text-3xl font-extrabold text-gray-900 tracking-tight">Create account</h2>
-            <p className="text-sm text-gray-500 mt-2 font-medium">Sign up to get started</p>
+            <p className="text-sm text-gray-500 mt-1 sm:mt-2 font-medium">Sign up to get started</p>
           </div>
 
         {/* Hidden recaptcha container for phone auth */}
         <div id="recaptcha-container"></div>
 
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-3.5">
           {/* Full Name input is always visible at the top */}
           <div>
-            <label className="block text-sm font-bold text-gray-700 mb-1.5">Full Name</label>
+            <label className="block text-xs sm:text-sm font-bold text-gray-700 mb-1 sm:mb-1.5">Full Name</label>
             <input 
               type="text" 
               value={name}
@@ -198,45 +222,45 @@ function SignUpContent() {
               placeholder="Dr. Name / Store Name"
               required
               disabled={otpStep}
-              className="w-full px-3.5 py-2.5 border border-gray-300 rounded-lg text-[15px] outline-none transition-all focus:border-gold-primary focus:ring-2 focus:ring-gold-primary/20"
+              className="w-full px-3 py-2 sm:px-3.5 sm:py-2.5 border border-gray-300 rounded-lg text-sm sm:text-[15px] outline-none transition-all focus:border-gold-primary focus:ring-2 focus:ring-gold-primary/20"
             />
           </div>
 
           {!otpStep ? (
-            <form onSubmit={handleEmailSignUp} className="flex flex-col gap-4">
+            <form onSubmit={handleEmailSignUp} className="flex flex-col gap-3.5">
               <div>
-                <label className="block text-sm font-bold text-gray-700 mb-1.5">Email</label>
+                <label className="block text-xs sm:text-sm font-bold text-gray-700 mb-1 sm:mb-1.5">Email</label>
                 <input 
                   type="email" 
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="Enter your email"
                   required
-                  className="w-full px-3.5 py-2.5 border border-gray-300 rounded-lg text-[15px] outline-none transition-all focus:border-gold-primary focus:ring-2 focus:ring-gold-primary/20"
+                  className="w-full px-3 py-2 sm:px-3.5 sm:py-2.5 border border-gray-300 rounded-lg text-sm sm:text-[15px] outline-none transition-all focus:border-gold-primary focus:ring-2 focus:ring-gold-primary/20"
                 />
               </div>
               
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-1.5">Password</label>
+                  <label className="block text-xs sm:text-sm font-bold text-gray-700 mb-1 sm:mb-1.5">Password</label>
                   <input 
                     type="password" 
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="At least 6 chars"
                     required
-                    className="w-full px-3.5 py-2.5 border border-gray-300 rounded-lg text-[15px] outline-none transition-all focus:border-gold-primary focus:ring-2 focus:ring-gold-primary/20"
+                    className="w-full px-3 py-2 sm:px-3.5 sm:py-2.5 border border-gray-300 rounded-lg text-sm sm:text-[15px] outline-none transition-all focus:border-gold-primary focus:ring-2 focus:ring-gold-primary/20"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-1.5">Confirm</label>
+                  <label className="block text-xs sm:text-sm font-bold text-gray-700 mb-1 sm:mb-1.5">Confirm</label>
                   <input 
                     type="password" 
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     placeholder="Repeat password"
                     required
-                    className="w-full px-3.5 py-2.5 border border-gray-300 rounded-lg text-[15px] outline-none transition-all focus:border-gold-primary focus:ring-2 focus:ring-gold-primary/20"
+                    className="w-full px-3 py-2 sm:px-3.5 sm:py-2.5 border border-gray-300 rounded-lg text-sm sm:text-[15px] outline-none transition-all focus:border-gold-primary focus:ring-2 focus:ring-gold-primary/20"
                   />
                 </div>
               </div>
@@ -244,28 +268,28 @@ function SignUpContent() {
               <button 
                 type="submit" 
                 disabled={loading}
-                className="w-full py-3.5 bg-[#2b3036] hover:bg-[#1e2226] text-white hover:text-gold-primary border border-transparent hover:border-gold-primary font-bold rounded-xl transition-all duration-200 shadow-md active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:text-white disabled:hover:border-transparent mt-1 cursor-pointer"
+                className="w-full py-3 sm:py-3.5 bg-[#2b3036] hover:bg-[#1e2226] text-white hover:text-gold-primary border border-transparent hover:border-gold-primary font-bold rounded-xl transition-all duration-200 shadow-md active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:text-white disabled:hover:border-transparent mt-0.5 sm:mt-1 cursor-pointer"
               >
                 {loading ? 'Registering...' : 'Register with Email'}
               </button>
             </form>
           ) : (
-            <form onSubmit={verifyOTP} className="flex flex-col gap-4">
+            <form onSubmit={verifyOTP} className="flex flex-col gap-3.5">
                <div>
-                <label className="block text-sm font-bold text-gray-700 mb-1.5">Enter OTP</label>
+                <label className="block text-xs sm:text-sm font-bold text-gray-700 mb-1 sm:mb-1.5">Enter OTP</label>
                 <input 
                   type="text" 
                   value={otp}
                   onChange={(e) => setOtp(e.target.value)}
                   placeholder="6-digit code"
                   required
-                  className="w-full px-3.5 py-2.5 border border-gray-300 rounded-lg text-[15px] outline-none transition-all focus:border-gold-primary focus:ring-2 focus:ring-gold-primary/20 text-center tracking-[5px]"
+                  className="w-full px-3 py-2 sm:px-3.5 sm:py-2.5 border border-gray-300 rounded-lg text-sm sm:text-[15px] outline-none transition-all focus:border-gold-primary focus:ring-2 focus:ring-gold-primary/20 text-center tracking-[5px]"
                 />
               </div>
               <button 
                 type="submit" 
                 disabled={loading}
-                className="w-full py-3.5 bg-[#2b3036] hover:bg-[#1e2226] text-white hover:text-gold-primary border border-transparent hover:border-gold-primary font-bold rounded-xl transition-all duration-200 shadow-md active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:text-white disabled:hover:border-transparent cursor-pointer"
+                className="w-full py-3 sm:py-3.5 bg-[#2b3036] hover:bg-[#1e2226] text-white hover:text-gold-primary border border-transparent hover:border-gold-primary font-bold rounded-xl transition-all duration-200 shadow-md active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:text-white disabled:hover:border-transparent cursor-pointer"
               >
                 {loading ? 'Verifying...' : 'Verify OTP & Register'}
               </button>
@@ -281,7 +305,7 @@ function SignUpContent() {
 
           {!otpStep && (
             <>
-              <div className="flex items-center my-3.5">
+              <div className="flex items-center my-3 sm:my-3.5">
                 <div className="flex-1 h-[1px] bg-gray-200"></div>
                 <div className="px-2.5 text-gray-400 text-xs font-semibold">OR</div>
                 <div className="flex-1 h-[1px] bg-gray-200"></div>
@@ -295,12 +319,12 @@ function SignUpContent() {
                     value={phoneNumber}
                     onChange={e => setPhoneNumber(e.target.value)}
                     required
-                    className="flex-1 px-3.5 py-2.5 border border-gray-300 rounded-lg text-sm outline-none focus:border-gold-primary focus:ring-2 focus:ring-gold-primary/20"
+                    className="flex-1 px-3 py-2 sm:px-3.5 sm:py-2.5 border border-gray-300 rounded-lg text-sm sm:text-base outline-none focus:border-gold-primary focus:ring-2 focus:ring-gold-primary/20"
                   />
                   <button 
                     type="submit"
                     disabled={loading}
-                    className="px-4 py-2.5 bg-white text-gray-700 hover:bg-gray-50 border border-gray-300 hover:border-gray-400 font-bold rounded-xl transition-all text-sm cursor-pointer whitespace-nowrap active:scale-[0.97]"
+                    className="px-4 py-2 sm:px-4.5 sm:py-2.5 bg-white text-gray-700 hover:bg-gray-50 border border-gray-300 hover:border-gray-400 font-bold rounded-xl transition-all text-sm cursor-pointer whitespace-nowrap active:scale-[0.97]"
                   >
                     Send OTP
                   </button>
@@ -309,7 +333,7 @@ function SignUpContent() {
                 <button 
                   onClick={handleGoogleSignUp}
                   disabled={loading}
-                  className="w-full py-3.5 bg-white hover:bg-gray-50 text-gray-700 border border-gray-300 hover:border-gray-400 font-bold rounded-xl transition-all duration-200 flex items-center justify-center gap-2.5 cursor-pointer shadow-sm active:scale-[0.98]"
+                  className="w-full py-3 sm:py-3.5 bg-white hover:bg-gray-50 text-gray-700 border border-gray-300 hover:border-gray-400 font-bold rounded-xl transition-all duration-200 flex items-center justify-center gap-2 sm:gap-2.5 cursor-pointer shadow-sm active:scale-[0.98]"
                 >
                   <img src="https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_%22G%22_logo.svg" alt="Google" className="w-[18px]" />
                   <span>Sign up with Google</span>
@@ -318,7 +342,7 @@ function SignUpContent() {
             </>
           )}
 
-          <div className="mt-5 text-xs text-center text-gray-500">
+          <div className="mt-4 sm:mt-5 text-xs text-center text-gray-500">
             Already have an account?{' '}
             <Link href="/signin" className="text-[#007185] hover:text-[#c7511f] hover:underline font-bold">
               Sign In

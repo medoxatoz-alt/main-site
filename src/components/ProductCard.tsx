@@ -8,6 +8,7 @@ interface Product {
   price: number | string;
   mrp?: number | string;
   image: string | string[];
+  stock?: number | string;
 }
 
 interface ProductCardProps {
@@ -72,6 +73,11 @@ export default function ProductCard({ product, onAddToCart }: ProductCardProps) 
     return 0;
   }, [price, mrp]);
 
+  const isOutOfStock = useMemo(() => {
+    const stockVal = product.stock !== undefined ? Number(product.stock) : 10;
+    return stockVal <= 0;
+  }, [product.stock]);
+
   // Cycle through images on hover
   useEffect(() => {
     if (!isHovered || images.length <= 1) {
@@ -89,6 +95,7 @@ export default function ProductCard({ product, onAddToCart }: ProductCardProps) 
   const handleAddToCart = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    if (isOutOfStock) return;
     if (onAddToCart) {
       onAddToCart(product);
     } else {
@@ -102,12 +109,21 @@ export default function ProductCard({ product, onAddToCart }: ProductCardProps) 
       onMouseLeave={() => setIsHovered(false)}
       className="bg-white p-3 sm:p-5 rounded-lg flex flex-col justify-between relative border border-gray-200 transition-all duration-300 hover:shadow-xl hover:-translate-y-1 hover:border-gold-primary/50 active:scale-[0.98] sm:active:scale-100 focus-within:ring-2 focus-within:ring-gold-primary group"
     >
-      {/* Dynamic Discount Badge */}
-      {discountPercentage > 0 && (
-        <div className="absolute top-2 left-2 sm:top-3 sm:left-3 z-20 bg-red-600 text-white text-[9px] sm:text-[11px] uppercase tracking-wider font-bold px-1.5 py-0.5 sm:px-2 sm:py-1 rounded shadow-sm">
-          {discountPercentage}% OFF
-        </div>
-      )}
+      {/* Badges Container */}
+      <div className="absolute top-2 left-2 sm:top-3 sm:left-3 z-20 flex flex-col gap-1.5">
+        {/* Dynamic Discount Badge */}
+        {discountPercentage > 0 && (
+          <div className="bg-red-600 text-white text-[9px] sm:text-[11px] uppercase tracking-wider font-bold px-1.5 py-0.5 sm:px-2 sm:py-1 rounded shadow-sm self-start">
+            {discountPercentage}% OFF
+          </div>
+        )}
+        {/* Out of Stock Badge */}
+        {isOutOfStock && (
+          <div className="bg-gray-900/90 text-white text-[9px] sm:text-[11px] uppercase tracking-wider font-bold px-1.5 py-0.5 sm:px-2 sm:py-1 rounded shadow-sm self-start border border-gray-700">
+            Out of Stock
+          </div>
+        )}
+      </div>
 
       {/* Image Frame - Independently Wrapped in Link */}
       <Link 
@@ -177,15 +193,22 @@ export default function ProductCard({ product, onAddToCart }: ProductCardProps) 
           {/* Add to Cart Button */}
           <button
             onClick={handleAddToCart}
-            className="relative z-10 px-2.5 py-1.5 sm:px-4 sm:py-2 text-[10px] sm:text-[13px] font-bold text-[#2b3036] bg-gold-primary hover:bg-gold-hover rounded-full transition-all duration-200 active:scale-95 shadow-md shadow-amber-500/10 flex items-center gap-1 cursor-pointer"
-            aria-label={`Add ${product.title} to cart`}
+            disabled={isOutOfStock}
+            className={`relative z-10 px-2.5 py-1.5 sm:px-4 sm:py-2 text-[10px] sm:text-[13px] font-bold rounded-full transition-all duration-200 flex items-center gap-1 ${
+              isOutOfStock
+                ? 'bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed shadow-none'
+                : 'text-[#2b3036] bg-gold-primary hover:bg-gold-hover active:scale-95 shadow-md shadow-amber-500/10 cursor-pointer'
+            }`}
+            aria-label={isOutOfStock ? `${product.title} is out of stock` : `Add ${product.title} to cart`}
           >
-            <span>Add</span>
-            <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-current fill-none stroke-2" viewBox="0 0 24 24">
-              <circle cx="9" cy="21" r="1"></circle>
-              <circle cx="20" cy="21" r="1"></circle>
-              <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
-            </svg>
+            <span>{isOutOfStock ? 'Sold Out' : 'Add'}</span>
+            {!isOutOfStock && (
+              <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-current fill-none stroke-2" viewBox="0 0 24 24">
+                <circle cx="9" cy="21" r="1"></circle>
+                <circle cx="20" cy="21" r="1"></circle>
+                <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
+              </svg>
+            )}
           </button>
 
         </div>

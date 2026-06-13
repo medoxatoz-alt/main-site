@@ -52,6 +52,7 @@ export default function ProductDetail({ params }: { params: Promise<{ id: string
   const [reviewRating, setReviewRating] = useState(5);
   const [reviewComment, setReviewComment] = useState('');
   const [submittingReview, setSubmittingReview] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
   
   const { user } = useAuth();
   const router = useRouter();
@@ -144,8 +145,10 @@ export default function ProductDetail({ params }: { params: Promise<{ id: string
             }
           } catch(e) {}
         }
-      } catch (err) {
-        toast.error('Product not found');
+      } catch (err: any) {
+        const msg = err.response?.data?.error || 'Product not found';
+        setErrorMsg(msg);
+        toast.error(msg);
       } finally {
         setLoading(false);
       }
@@ -224,6 +227,17 @@ export default function ProductDetail({ params }: { params: Promise<{ id: string
         <div className="flex flex-col items-center justify-center flex-1 py-20 animate-pulse">
           <Loader2 className="w-12 h-12 text-gold-primary animate-spin" />
           <p className="mt-4 text-gray-500 font-semibold tracking-wide">Loading premium medical supplies...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (errorMsg) {
+    return (
+      <div className="min-h-screen bg-[var(--bg-page)] flex flex-col">
+        <Navbar />
+        <div className="flex flex-col items-center justify-center flex-1 py-20">
+          <ErrorState message={errorMsg} />
         </div>
       </div>
     );

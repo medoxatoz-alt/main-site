@@ -108,8 +108,10 @@ export default function AddProductModal({ isOpen, onClose, onSuccess }: AddProdu
       resetForm();
       onSuccess();
       onClose();
-    } catch {
-      toast.error('Failed to add product.');
+    } catch (err: any) {
+      console.error('Add product error:', err);
+      const errMsg = err?.response?.data?.error || 'Failed to add product.';
+      toast.error(errMsg);
     } finally {
       setIsSubmitting(false);
     }

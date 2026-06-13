@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { X, Package, MapPin, Clock, CheckCircle, XCircle, Truck, ShoppingBag, Store } from 'lucide-react';
+import { X, Package, MapPin, Clock, CheckCircle, XCircle, Truck, ShoppingBag, Store, ExternalLink, Download } from 'lucide-react';
 import ConfirmActionModal from './ConfirmActionModal';
 import VendorProfileModal from './VendorProfileModal';
 import api from '@/lib/api';
@@ -41,6 +41,12 @@ interface Order {
     pincode: string;
   };
   timeline?: TimelineEntry[];
+  trackingId?: string;
+  trackingLink?: string;
+  razorpayOrderId?: string;
+  razorpayPaymentId?: string;
+  invoiceUrl?: string;
+  refundId?: string;
 }
 
 interface OrderDetailModalProps {
@@ -76,12 +82,39 @@ export default function OrderDetailModal({
   const [showRejectConfirm, setShowRejectConfirm] = useState(false);
   const [viewVendorUid, setViewVendorUid] = useState<string | null>(null);
   const [isUpdating, setIsUpdating] = useState(false);
+  const [showApproveForm, setShowApproveForm] = useState(false);
+  const [trackingId, setTrackingId] = useState('');
+  const [trackingLink, setTrackingLink] = useState('');
 
   const isOwner = viewerRole === 'admin'
     ? (order.vendorId === 'admin' || !order.vendorId)
     : (order.vendorId === viewerUid);
 
   const canAct = isOwner && (viewerRole === 'admin' || viewerRole === 'vendor');
+
+  const handleApproveSubmit = async () => {
+    if (!trackingId.trim() || !trackingLink.trim()) {
+      toast.error('Both tracking ID and tracking link are required');
+      return;
+    }
+    setIsUpdating(true);
+    try {
+      await api.patch(`/orders/${order.id}`, {
+        status: 'Approved',
+        trackingId: trackingId.trim(),
+        trackingLink: trackingLink.trim(),
+      });
+      toast.success(`Order marked as Approved`);
+      onStatusChange?.();
+      onClose();
+    } catch (err: any) {
+      const msg = err?.response?.data?.error || 'Failed to update order';
+      toast.error(msg);
+    } finally {
+      setIsUpdating(false);
+      setShowApproveForm(false);
+    }
+  };
 
   const updateStatus = async (status: string) => {
     setIsUpdating(true);
@@ -189,7 +222,74 @@ export default function OrderDetailModal({
                 <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Payment</h3>
                 <p className="font-semibold text-sm text-gray-900">{order.paymentMethod || 'N/A'}</p>
                 <p className="text-[13px] text-gray-500 mt-1.5">Placed on {new Date(order.createdAt).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}</p>
+                {order.razorpayPaymentId && viewerRole !== 'vendor' && (
+                  <div className="mt-3 pt-3 border-t border-gray-200">
+                    <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Razorpay Order ID</p>
+                    <p className="font-mono text-xs text-gray-700 mt-0.5 break-all">{order.razorpayOrderId}</p>
+                    <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mt-2">Payment ID</p>
+                    <p className="font-mono text-xs text-gray-700 mt-0.5 break-all">{order.razorpayPaymentId}</p>
+                  </div>
+                )}
+                {order.invoiceUrl && (
+                  <div className="mt-3 pt-3 border-t border-gray-200">
+                    {(new Date().getTime() - new Date(order.createdAt).getTime()) > 30 * 24 * 60 * 60 * 1000 ? (
+                      <div className="w-full px-4 py-2 bg-red-50 border border-red-100 text-red-600 text-xs font-bold rounded-xl flex items-center justify-center gap-1.5">
+                        <XCircle className="w-3.5 h-3.5" /> Invoice Expired & Deleted
+                      </div>
+                    ) : (
+                      <>
+                        <a
+                          href={order.invoiceUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="w-full px-4 py-2 bg-gray-900 hover:bg-black text-white text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                        >
+                          <Download className="w-3.5 h-3.5" /> Download Invoice
+                        </a>
+                        <p className="text-[10px] text-gray-400 text-center mt-1.5 italic">
+                          Note: Invoices are automatically deleted after 30 days to save space.
+                        </p>
+                      </>
+                    )}
+                  </div>
+                )}
               </section>
+
+              {order.refundId && (
+                <section className="bg-red-50/50 rounded-xl border border-red-100 p-4 col-span-1 sm:col-span-2">
+                  <h3 className="text-xs font-bold text-red-600 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                    <XCircle className="w-4 h-4" /> Refund Initiated
+                  </h3>
+                  <p className="text-[13px] text-red-800 leading-relaxed">
+                    Your refund (ID: <span className="font-mono font-bold bg-white/60 px-1.5 py-0.5 rounded text-xs border border-red-200">{order.refundId}</span>) has been automatically initiated. 
+                    Please allow 5-7 business days for the amount to reflect in your original payment method.
+                  </p>
+                </section>
+              )}
+
+              {order.trackingId && (
+                <section className="bg-emerald-50/50 rounded-xl border border-emerald-100 p-4 col-span-1 sm:col-span-2">
+                  <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3 flex items-center gap-1.5">
+                    <Truck className="w-4 h-4 text-emerald-600" /> Tracking Information
+                  </h3>
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-sm">
+                    <div>
+                      <p className="text-xs text-gray-400 font-bold uppercase tracking-wider">Tracking ID</p>
+                      <p className="font-bold font-mono text-gray-900 mt-0.5">{order.trackingId}</p>
+                    </div>
+                    <div>
+                      <a
+                        href={order.trackingLink}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="w-full sm:w-auto px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl transition-all cursor-pointer border border-transparent flex items-center justify-center gap-1 text-xs"
+                      >
+                        Track Shipment <ExternalLink className="w-3.5 h-3.5" />
+                      </a>
+                    </div>
+                  </div>
+                </section>
+              )}
 
               {viewerRole === 'admin' && (
                 <section className="bg-blue-50/50 rounded-xl border border-blue-100 p-4 col-span-1 sm:col-span-2">
@@ -252,43 +352,90 @@ export default function OrderDetailModal({
             </section>
           </div>
 
-          {/* Action footer — Full width buttons on mobile, row on desktop */}
-          {canAct && (
+          {/* Admin/Vendor Action Panel */}
+          {((viewerRole === 'admin' && order.vendorId === 'admin') || 
+            (viewerRole === 'vendor' && order.vendorId === viewerUid)) && canAct && (
             <div className="p-4 sm:px-6 sm:py-4 border-t border-gray-100 bg-white flex-shrink-0">
-              <div className="flex flex-col-reverse sm:flex-row gap-3 sm:justify-end">
-                {order.status === 'Pending' && (
-                  <>
-                    <button
-                      onClick={() => setShowRejectConfirm(true)}
-                      disabled={isUpdating}
-                      className="w-full sm:w-auto px-5 py-3.5 sm:py-2.5 bg-red-50 sm:bg-red-600 hover:bg-red-100 sm:hover:bg-red-700 text-red-600 sm:text-white active:bg-red-200 text-sm font-bold rounded-xl transition-all cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2"
-                    >
-                      <XCircle className="w-5 h-5 sm:w-4 sm:h-4" /> Reject
-                    </button>
-                    <button
-                      onClick={() => updateStatus('Approved')}
-                      disabled={isUpdating}
-                      className="w-full sm:w-auto px-5 py-3.5 sm:py-2.5 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white text-sm font-bold rounded-xl transition-all cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2"
-                    >
-                      <CheckCircle className="w-5 h-5 sm:w-4 sm:h-4" /> Approve
-                    </button>
-                  </>
-                )}
-                {order.status === 'Approved' && (
-                  <button
-                    onClick={() => setShowDeliveredConfirm(true)}
-                    disabled={isUpdating}
-                    className="w-full sm:w-auto px-5 py-3.5 sm:py-2.5 bg-purple-600 hover:bg-purple-700 active:bg-purple-800 text-white text-sm font-bold rounded-xl transition-all cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2"
-                  >
-                    <Truck className="w-5 h-5 sm:w-4 sm:h-4" /> Mark Delivered
-                  </button>
-                )}
-                {(order.status === 'Rejected' || order.status === 'Delivered') && (
-                  <div className="w-full text-center sm:text-right">
-                    <span className="text-sm text-gray-400 italic font-medium">No further actions available</span>
+              {showApproveForm ? (
+                <div className="space-y-4">
+                  <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider">Enter Shipment Tracking Details</h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-bold text-gray-700 mb-1">Tracking ID</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. SF123456789IN"
+                        value={trackingId}
+                        onChange={(e) => setTrackingId(e.target.value)}
+                        className="w-full px-3.5 py-2 border border-gray-300 rounded-lg text-sm outline-none transition-all focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/30"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-gray-700 mb-1">Tracking Link</label>
+                      <input
+                        type="url"
+                        placeholder="https://example-courier.com/track?id=..."
+                        value={trackingLink}
+                        onChange={(e) => setTrackingLink(e.target.value)}
+                        className="w-full px-3.5 py-2 border border-gray-300 rounded-lg text-sm outline-none transition-all focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/30"
+                      />
+                    </div>
                   </div>
-                )}
-              </div>
+                  <div className="flex gap-3 justify-end pt-2">
+                    <button
+                      type="button"
+                      onClick={() => setShowApproveForm(false)}
+                      disabled={isUpdating}
+                      className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold rounded-xl text-sm transition-all cursor-pointer"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleApproveSubmit()}
+                      disabled={isUpdating || !trackingId.trim() || !trackingLink.trim()}
+                      className="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-sm transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1.5"
+                    >
+                      {isUpdating ? 'Approving...' : 'Confirm Approval'}
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex flex-col-reverse sm:flex-row gap-3 sm:justify-end">
+                  {order.status === 'Pending' && (
+                    <>
+                      <button
+                        onClick={() => setShowRejectConfirm(true)}
+                        disabled={isUpdating}
+                        className="w-full sm:w-auto px-5 py-3.5 sm:py-2.5 bg-red-50 sm:bg-red-600 hover:bg-red-100 sm:hover:bg-red-700 text-red-600 sm:text-white active:bg-red-200 text-sm font-bold rounded-xl transition-all cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2"
+                      >
+                        <XCircle className="w-5 h-5 sm:w-4 sm:h-4" /> Reject
+                      </button>
+                      <button
+                        onClick={() => setShowApproveForm(true)}
+                        disabled={isUpdating}
+                        className="w-full sm:w-auto px-5 py-3.5 sm:py-2.5 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white text-sm font-bold rounded-xl transition-all cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2"
+                      >
+                        <CheckCircle className="w-5 h-5 sm:w-4 sm:h-4" /> Approve
+                      </button>
+                    </>
+                  )}
+                  {order.status === 'Approved' && (
+                    <button
+                      onClick={() => setShowDeliveredConfirm(true)}
+                      disabled={isUpdating}
+                      className="w-full sm:w-auto px-5 py-3.5 sm:py-2.5 bg-purple-600 hover:bg-purple-700 active:bg-purple-800 text-white text-sm font-bold rounded-xl transition-all cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2"
+                    >
+                      <Truck className="w-5 h-5 sm:w-4 sm:h-4" /> Mark Delivered
+                    </button>
+                  )}
+                  {(order.status === 'Rejected' || order.status === 'Delivered') && (
+                    <div className="w-full text-center sm:text-right">
+                      <span className="text-sm text-gray-400 italic font-medium">No further actions available</span>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           )}
         </div>
