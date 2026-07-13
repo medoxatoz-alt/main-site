@@ -53,12 +53,19 @@ export default function Cart() {
         .filter((id: string) => !productDetails[id]);
 
       if (missingProductIds.length > 0) {
-        const productPromises = missingProductIds.map((id: string) => api.get(`/products/${id}`));
+        const productPromises = missingProductIds.map((id: string) => 
+          api.get(`/products/${id}`).catch(err => {
+            console.error(`Failed to fetch product ${id}`, err);
+            return null;
+          })
+        );
         const productResponses = await Promise.all(productPromises);
 
         const newDetails = { ...productDetails };
         productResponses.forEach((res, index) => {
-          newDetails[missingProductIds[index]] = res.data;
+          if (res && res.data) {
+            newDetails[missingProductIds[index]] = res.data;
+          }
         });
         setProductDetails(newDetails);
       }

@@ -23,7 +23,7 @@ export default function TermsPage() {
 
             <section>
               <h2 className="text-xl font-bold text-gray-900 mb-3">1. Acceptance of Terms</h2>
-              <p>By accessing or using MedoxAtoZ, you agree to be bound by these Terms & Conditions. If you do not agree, please discontinue use of the platform immediately.</p>
+              <p>By accessing or using MedoxAtoZ (operated by SREE SAI LAKSHMI GANAPATHI TRADERS), you agree to be bound by these Terms & Conditions. If you do not agree, please discontinue use of the platform immediately.</p>
             </section>
 
             <section>

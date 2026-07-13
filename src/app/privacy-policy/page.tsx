@@ -25,7 +25,7 @@ export default function PrivacyPolicyPage() {
 
             <section>
               <h2 className="text-xl font-bold text-gray-900 mb-3">1. Information We Collect</h2>
-              <p>We collect personal information you provide when you register, place an order, or contact us. This includes your name, email address, phone number, and delivery address. We also collect usage data such as pages visited and actions taken within the platform.</p>
+              <p>MedoxAtoZ (operated by SREE SAI LAKSHMI GANAPATHI TRADERS) collects personal information you provide when you register, place an order, or contact us. This includes your name, email address, phone number, and delivery address. We also collect usage data such as pages visited and actions taken within the platform.</p>
             </section>
 
             <section>

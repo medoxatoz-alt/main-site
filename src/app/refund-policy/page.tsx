@@ -23,7 +23,7 @@ export default function RefundPolicyPage() {
 
             <section>
               <h2 className="text-xl font-bold text-gray-900 mb-3">1. Return Eligibility</h2>
-              <p>Products may be returned within <strong>7 days of delivery</strong> if they are:</p>
+              <p>Products purchased from MedoxAtoZ (operated by SREE SAI LAKSHMI GANAPATHI TRADERS) may be returned within <strong>7 days of delivery</strong> if they are:</p>
               <ul className="list-disc pl-5 mt-2 space-y-1 text-sm">
                 <li>Damaged or defective upon arrival</li>
                 <li>Incorrectly delivered (wrong item or quantity)</li>

@@ -8,6 +8,7 @@ import { useState, useEffect, Suspense, useRef } from 'react';
 import api from '@/lib/api';
 import toast from 'react-hot-toast';
 import { usePWAInstall } from '@/hooks/usePWAInstall';
+import CategoriesRow from '@/components/CategoriesRow';
 
 function SearchBarInput() {
   const router = useRouter();
@@ -347,6 +348,8 @@ export default function Navbar() {
             </Link>
           </div>
         </div>
+        {/* Categories Row */}
+        <CategoriesRow />
       </header>
 
       {/* UPGRADED: Mobile Sticky Bottom Tab Bar */}

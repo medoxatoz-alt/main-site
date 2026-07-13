@@ -104,7 +104,7 @@ export default function Footer() {
 
       {/* Footer Bottom */}
       <div className="max-w-7xl mx-auto px-5 py-6 flex flex-col md:flex-row items-center justify-between gap-4 text-[13px] text-[#a0aab5]">
-        <span className="font-medium">© 2026, MedoxAtoZ.in — All rights reserved.</span>
+        <span className="font-medium">© 2026, SREE SAI LAKSHMI GANAPATHI TRADERS (MedoxAtoZ) — All rights reserved.</span>
         <div className="flex items-center gap-5 flex-wrap font-medium">
           <Link href="/privacy-policy" className="hover:text-white transition-colors">Privacy Policy</Link>
           <span className="opacity-20">|</span>

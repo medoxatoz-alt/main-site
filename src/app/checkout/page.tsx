@@ -145,8 +145,12 @@ export default function Checkout() {
       const details: Record<string, any> = {};
       for (const item of items) {
         if (!details[item.productId]) {
-          const prodRes = await api.get(`/products/${item.productId}`);
-          details[item.productId] = prodRes.data;
+          try {
+            const prodRes = await api.get(`/products/${item.productId}`);
+            details[item.productId] = prodRes.data;
+          } catch (err) {
+            console.error(`Failed to fetch product ${item.productId}`, err);
+          }
         }
       }
       setProductDetails(details);
@@ -275,6 +279,46 @@ export default function Checkout() {
     }
   };
 
+  const handlePayWithPhonePe = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!shipping.fullName?.trim() || !shipping.phone?.trim() || !shipping.address?.trim() || !shipping.city?.trim() || !shipping.state?.trim() || !shipping.pincode?.trim()) {
+      toast.error('Please fill in all shipping details.');
+      return;
+    }
+
+    setPlacingOrder(true);
+    setPaymentStep('creating');
+
+    try {
+      if (useNewAddress && shipping.address.trim() !== '') {
+        try {
+          await api.post('/user/addresses', shipping);
+        } catch (e) {
+          console.error('Failed to auto-save new address', e);
+        }
+      }
+
+      const { data } = await api.post('/payments/phonepe/create-order', {
+        cartItems: cartItems.map(i => ({ productId: i.productId, quantity: i.quantity })),
+        shippingDetails: shipping,
+      });
+
+      if (data.redirectUrl) {
+        setPaymentStep('paying');
+        window.location.href = data.redirectUrl;
+      } else {
+        throw new Error('Failed to get PhonePe payment link.');
+      }
+    } catch (err: any) {
+      console.error(err);
+      const msg = err.response?.data?.error || err.message || 'Something went wrong. Please try again.';
+      toast.error(msg);
+      setPlacingOrder(false);
+      setPaymentStep('idle');
+    }
+  };
+
   if (authLoading || loading) {
     return (
       <div className="min-h-screen bg-[var(--bg-page)] flex flex-col">
@@ -303,7 +347,7 @@ export default function Checkout() {
     verifying: 'Verifying payment...',
   };
 
-  const buttonLabel = paymentStatusLabel[paymentStep] || (placingOrder ? 'Processing...' : 'Pay with Razorpay');
+  const buttonLabel = paymentStatusLabel[paymentStep] || (placingOrder ? 'Processing...' : 'Pay with PhonePe');
 
   return (
     <main className="bg-[var(--bg-page)] min-h-screen pb-28">
@@ -351,7 +395,7 @@ export default function Checkout() {
               Checkout
             </h1>
 
-            <form id="checkoutForm" onSubmit={handlePayWithRazorpay} className="flex flex-col gap-6">
+            <form id="checkoutForm" onSubmit={handlePayWithPhonePe} className="flex flex-col gap-6">
               <div className="flex justify-between items-center mt-2.5">
                 <h2 className="text-lg font-bold text-gray-900">Shipping Address</h2>
                 {addresses.length > 0 && (
@@ -476,16 +520,15 @@ export default function Checkout() {
                 </>
               )}
 
-              {/* Payment Method — Razorpay */}
+              {/* Payment Method — PhonePe (Razorpay hidden) */}
               <h2 className="text-lg font-bold text-gray-900 mt-4 border-t border-gray-100 pt-5">Payment</h2>
-              <div className="p-5 border-2 border-gold-primary/40 rounded-xl bg-amber-50/40 flex items-start gap-4">
-          
-                  <img src="/assets/razorpay.svg" alt="Razorpay" className="w-7 h-7" />
-           
+              <div className="p-5 border-2 border-purple-500/40 rounded-xl bg-purple-50/40 flex items-start gap-4">
+                <div className="flex items-center justify-center w-8 h-8 rounded-full bg-white shadow-sm border border-gray-200 shrink-0">
+                  <span className="font-bold text-purple-700 text-xs">पे</span>
+                </div>
                 <div>
-                  <p className="font-bold text-gray-900">Razorpay — Secure Online Payment</p>
+                  <p className="font-bold text-gray-900">PhonePe — Secure Online Payment</p>
                   <p className="text-xs text-gray-500 mt-1">Pay securely via UPI, Credit/Debit Card, Net Banking, or Wallets. Your order will be confirmed only after successful payment.</p>
-             
                 </div>
               </div>
             </form>
@@ -524,7 +567,7 @@ export default function Checkout() {
                 </>
               ) : (
                 <>
-                  <img src="/assets/razorpay.svg" alt="Razorpay" className="w-5 h-5" />
+                  <span className="font-bold text-lg">पे</span>
                   <span>Pay ₹{totalAmount.toLocaleString('en-IN')} Securely</span>
                 </>
               )}
@@ -532,7 +575,7 @@ export default function Checkout() {
 
             <p className="text-xs text-gray-400 text-center mt-3 flex items-center justify-center gap-1">
               <Lock className="w-3 h-3" />
-              Powered by Razorpay. 100% secure.
+              Powered by PhonePe. 100% secure.
             </p>
           </div>
         </div>
