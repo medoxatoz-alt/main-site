@@ -42,16 +42,15 @@ export default function Footer() {
           </Link>
         </div>
 
-        {/* UPGRADED: Functional Shop Links */}
+        {/* Column: Shop */}
         <div>
-          <h3 className="text-xs font-extrabold text-white mb-5 tracking-[0.2em] uppercase">Quick Links</h3>
+          <h3 className="text-xs font-extrabold text-white mb-5 tracking-[0.2em] uppercase">Shop</h3>
           <ul className="space-y-3.5">
             {[
-              { label: 'Shop Categories', href: '/categories' },
-              { label: 'Featured Brands', href: '/brands' },
-              { label: 'New Arrivals', href: '/new-arrivals' },
-              { label: 'Bulk Enquiries', href: '/bulk-orders' },
-              { label: 'Special Offers', href: '/offers' },
+ 
+              { label: 'Shopping Cart', href: '/cart' },
+              { label: 'Secure Checkout', href: '/checkout' },
+              { label: 'Download App', href: '/download' },
             ].map(({ label, href }) => (
               <li key={href}>
                 <Link href={href} className="text-[#a0aab5] text-[14px] hover:text-gold-primary hover:translate-x-1 inline-block transition-all duration-200">
@@ -67,10 +66,8 @@ export default function Footer() {
           <h3 className="text-xs font-extrabold text-white mb-5 tracking-[0.2em] uppercase">Company</h3>
           <ul className="space-y-3.5">
             {[
-              { label: 'About Us', href: '/about' },
               { label: 'Contact Us', href: 'mailto:medoxatoz@gmail.com' },
               { label: 'Sell on MedoxAtoZ', href: '/vendor/register' },
-              { label: 'Blog & Insights', href: '/blog' },
             ].map(({ label, href }) => (
               <li key={href}>
                 <Link href={href} className="text-[#a0aab5] text-[14px] hover:text-gold-primary hover:translate-x-1 inline-block transition-all duration-200">
@@ -81,15 +78,16 @@ export default function Footer() {
           </ul>
         </div>
 
-        {/* Column: Help */}
+        {/* Column: Account & Support */}
         <div>
-          <h3 className="text-xs font-extrabold text-white mb-5 tracking-[0.2em] uppercase">Support</h3>
+          <h3 className="text-xs font-extrabold text-white mb-5 tracking-[0.2em] uppercase">Account & Support</h3>
           <ul className="space-y-3.5">
             {[
+              { label: 'Sign In', href: '/signin' },
+              { label: 'Create Account', href: '/signup' },
               { label: 'Your Account', href: '/account' },
-              { label: 'Track Order', href: '/account/orders' },
+              { label: 'Track Orders', href: '/account/orders' },
               { label: 'Saved Wishlist', href: '/account/wishlist' },
-              { label: 'Help Center', href: '/help' },
             ].map(({ label, href }) => (
               <li key={href}>
                 <Link href={href} className="text-[#a0aab5] text-[14px] hover:text-gold-primary hover:translate-x-1 inline-block transition-all duration-200">
@@ -110,7 +108,9 @@ export default function Footer() {
           <span className="opacity-20">|</span>
           <Link href="/terms" className="hover:text-white transition-colors">Terms & Conditions</Link>
           <span className="opacity-20">|</span>
-          <Link href="/refund-policy" className="hover:text-white transition-colors">Refund Policy</Link>
+          <Link href="/refund-policy" className="hover:text-white transition-colors">Return & Refund Policy</Link>
+          <span className="opacity-20">|</span>
+          <Link href="/shipping-policy" className="hover:text-white transition-colors">Shipping Policy</Link>
         </div>
       </div>
 
