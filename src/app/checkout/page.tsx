@@ -6,30 +6,9 @@ import api from '@/lib/api';
 import toast from 'react-hot-toast';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
-import { Loader2, MapPin, ShieldCheck,  Lock, X } from 'lucide-react';
-import { DotLottieReact } from '@lottiefiles/dotlottie-react';
-
-// ── Razorpay type declaration ────────────────────────────────────────────────
-declare global {
-  interface Window {
-    Razorpay: any;
-  }
-}
-
-// Load Razorpay script dynamically
-function loadRazorpayScript(): Promise<boolean> {
-  return new Promise((resolve) => {
-    if (typeof window !== 'undefined' && window.Razorpay) {
-      resolve(true);
-      return;
-    }
-    const script = document.createElement('script');
-    script.src = 'https://checkout.razorpay.com/v1/checkout.js';
-    script.onload = () => resolve(true);
-    script.onerror = () => resolve(false);
-    document.body.appendChild(script);
-  });
-}
+import { Loader2, MapPin, Lock, X, CheckCircle } from 'lucide-react';
+import { load } from '@cashfreepayments/cashfree-js';
+import PhoneVerification from '@/components/PhoneVerification';
 
 export default function Checkout() {
   const { user, loading: authLoading } = useAuth();
@@ -43,7 +22,25 @@ export default function Checkout() {
   const [placingOrder, setPlacingOrder] = useState(false);
   const [useNewAddress, setUseNewAddress] = useState(false);
   const [detectingLoc, setDetectingLoc] = useState(false);
-  const [paymentStep, setPaymentStep] = useState<'idle' | 'creating' | 'paying' | 'verifying'>('idle');
+  
+  // Payment Method Selection
+  const [paymentMethod, setPaymentMethod] = useState<'CASHFREE' | 'COD'>('CASHFREE');
+  const [cashfree, setCashfree] = useState<any>(null);
+
+  // Initialize Cashfree SDK
+  useEffect(() => {
+    const initializeCashfree = async () => {
+      try {
+        const cf = await load({
+          mode: process.env.NEXT_PUBLIC_CASHFREE_ENV?.toUpperCase() === 'PRODUCTION' ? 'production' : 'sandbox',
+        });
+        setCashfree(cf);
+      } catch (err) {
+        console.error('Failed to load Cashfree SDK:', err);
+      }
+    };
+    initializeCashfree();
+  }, []);
 
   const autoFillCheckoutLocation = () => {
     if (!navigator.geolocation) {
@@ -150,6 +147,13 @@ export default function Checkout() {
             details[item.productId] = prodRes.data;
           } catch (err) {
             console.error(`Failed to fetch product ${item.productId}`, err);
+            // Auto-remove unavailable product
+            try {
+              await api.delete(`/cart/${item.productId}`);
+              setCartItems(prev => prev.filter(i => i.productId !== item.productId));
+            } catch (delErr) {
+              console.error(`Failed to auto-remove unavailable product ${item.productId}`, delErr);
+            }
           }
         }
       }
@@ -165,7 +169,7 @@ export default function Checkout() {
     if (user) fetchData();
   }, [user, fetchData]);
 
-  const handlePayWithRazorpay = async (e: React.FormEvent) => {
+  const handlePlaceOrder = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!shipping.fullName?.trim() || !shipping.phone?.trim() || !shipping.address?.trim() || !shipping.city?.trim() || !shipping.state?.trim() || !shipping.pincode?.trim()) {
@@ -174,7 +178,6 @@ export default function Checkout() {
     }
 
     setPlacingOrder(true);
-    setPaymentStep('creating');
 
     try {
       if (useNewAddress && shipping.address.trim() !== '') {
@@ -185,137 +188,59 @@ export default function Checkout() {
         }
       }
 
-      const loaded = await loadRazorpayScript();
-      if (!loaded) {
-        toast.error('Failed to load payment gateway. Please check your internet connection.');
-        setPlacingOrder(false);
-        setPaymentStep('idle');
-        return;
-      }
-
-      const { data: orderData } = await api.post('/payments/create-order', {
+      const payload = {
         cartItems: cartItems.map(i => ({ productId: i.productId, quantity: i.quantity })),
         shippingDetails: shipping,
-      });
+      };
 
-      setPaymentStep('paying');
+      if (paymentMethod === 'COD') {
+        const { data } = await api.post('/payments/place-order', payload);
+        await api.delete('/cart');
+        
+        if (data.invoiceUrls && data.invoiceUrls.length > 0) {
+          toast.success('🎉 Order placed successfully!');
+          setInvoicePdfUrl(data.invoiceUrls[0]);
+        } else {
+          toast.success('🎉 Order placed successfully!');
+          router.push('/account');
+        }
+      } else if (paymentMethod === 'CASHFREE') {
+        if (!cashfree) {
+          toast.error('Payment gateway is still initializing. Please try again in a moment.');
+          setPlacingOrder(false);
+          return;
+        }
 
-      const urls = await new Promise<string[]>((resolve, reject) => {
-        const options = {
-          key: orderData.keyId,
-          amount: orderData.amount,
-          currency: orderData.currency,
-          name: 'MedoxAtoZ',
-          description: `Order for ${cartItems.length} item(s)`,
-          image: '/logo.png',
-          order_id: orderData.razorpayOrderId,
-          prefill: {
-            name: shipping.fullName,
-            email: shipping.email || user?.email || '',
-            contact: shipping.phone,
-          },
-          theme: {
-            color: '#D97706',
-          },
-          modal: {
-            ondismiss: () => {
-              reject(new Error('PAYMENT_DISMISSED'));
-            },
-          },
-          handler: async (response: {
-            razorpay_order_id: string;
-            razorpay_payment_id: string;
-            razorpay_signature: string;
-          }) => {
-            try {
-              setPaymentStep('verifying');
+        const { data } = await api.post('/payments/cashfree/create-order', payload);
+        
+        if (!data.payment_session_id) {
+          throw new Error('Failed to create Cashfree session');
+        }
 
-              const res = await api.post('/payments/verify', {
-                razorpay_order_id: response.razorpay_order_id,
-                razorpay_payment_id: response.razorpay_payment_id,
-                razorpay_signature: response.razorpay_signature,
-              });
-
-              await api.delete('/cart');
-
-              resolve(res.data?.invoiceUrls || []);
-            } catch (verifyErr: any) {
-              reject(verifyErr);
-            }
-          },
+        // Open Cashfree Drop-in Checkout
+        const checkoutOptions = {
+          paymentSessionId: data.payment_session_id,
+          redirectTarget: '_self', 
         };
-
-        const rzp = new window.Razorpay(options);
-
-        rzp.on('payment.failed', (resp: any) => {
-          console.error('[Razorpay] Payment failed:', resp.error);
-          reject(new Error('PAYMENT_FAILED|' + (resp.error?.description || 'Payment failed')));
+        
+        cashfree.checkout(checkoutOptions).then((result: any) => {
+          if (result.error) {
+            console.error('Cashfree Error:', result.error);
+            toast.error(result.error.message || 'Payment failed or cancelled.');
+            setPlacingOrder(false);
+          } else if (result.redirect) {
+            // Handled by Cashfree SDK natively (if user clicks UPIDent/Wallet etc.)
+          } else if (result.paymentDetails) {
+            // Success in modal
+            console.log('Payment success:', result.paymentDetails);
+          }
         });
-
-        rzp.open();
-      });
-
-      if (urls && urls.length > 0) {
-        toast.success('🎉 Payment successful!');
-        setInvoicePdfUrl(urls[0]);
-      } else {
-        toast.success('🎉 Payment successful! Order placed.');
-        router.push('/account');
       }
 
     } catch (err: any) {
-      if (err.message === 'PAYMENT_DISMISSED') {
-        toast('Payment cancelled. Your order was not placed.', { icon: '⚠️' });
-      } else if (err.message?.startsWith('PAYMENT_FAILED|')) {
-        const msg = err.message.split('|')[1];
-        toast.error(`Payment failed: ${msg}`);
-      } else {
-        const msg = err.response?.data?.error || err.message || 'Something went wrong. Please try again.';
-        toast.error(msg);
-      }
-    } finally {
-      setPlacingOrder(false);
-      setPaymentStep('idle');
-    }
-  };
-
-  const handlePayWithPhonePe = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (!shipping.fullName?.trim() || !shipping.phone?.trim() || !shipping.address?.trim() || !shipping.city?.trim() || !shipping.state?.trim() || !shipping.pincode?.trim()) {
-      toast.error('Please fill in all shipping details.');
-      return;
-    }
-
-    setPlacingOrder(true);
-    setPaymentStep('creating');
-
-    try {
-      if (useNewAddress && shipping.address.trim() !== '') {
-        try {
-          await api.post('/user/addresses', shipping);
-        } catch (e) {
-          console.error('Failed to auto-save new address', e);
-        }
-      }
-
-      const { data } = await api.post('/payments/phonepe/create-order', {
-        cartItems: cartItems.map(i => ({ productId: i.productId, quantity: i.quantity })),
-        shippingDetails: shipping,
-      });
-
-      if (data.redirectUrl) {
-        setPaymentStep('paying');
-        window.location.href = data.redirectUrl;
-      } else {
-        throw new Error('Failed to get PhonePe payment link.');
-      }
-    } catch (err: any) {
-      console.error(err);
       const msg = err.response?.data?.error || err.message || 'Something went wrong. Please try again.';
       toast.error(msg);
       setPlacingOrder(false);
-      setPaymentStep('idle');
     }
   };
 
@@ -333,6 +258,17 @@ export default function Checkout() {
 
   if (!user) return null;
 
+  if (!user.phone) {
+    return (
+      <main className="bg-[var(--bg-page)] min-h-screen pb-safe sm:pb-20">
+        <Navbar />
+        <div className="max-w-2xl mx-auto px-4 sm:px-6 py-6 sm:py-10">
+          <PhoneVerification onVerified={() => fetchData()} />
+        </div>
+      </main>
+    );
+  }
+
   const totalAmount = cartItems.reduce((acc, item) => {
     const p = productDetails[item.productId];
     if (!p) return acc;
@@ -340,32 +276,9 @@ export default function Checkout() {
     return acc + (price * item.quantity);
   }, 0);
 
-  const paymentStatusLabel = {
-    idle: placingOrder ? 'Initiating...' : null,
-    creating: 'Creating secure payment...',
-    paying: 'Waiting for payment...',
-    verifying: 'Verifying payment...',
-  };
-
-  const buttonLabel = paymentStatusLabel[paymentStep] || (placingOrder ? 'Processing...' : 'Pay with PhonePe');
-
   return (
     <main className="bg-[var(--bg-page)] min-h-screen pb-28">
       <Navbar />
-
-      {/* Verifying Lottie Overlay */}
-      {paymentStep === 'verifying' && (
-        <div className="fixed inset-0 z-[9999] bg-gradient-to-br from-black/90 to-gray-900/90 flex flex-col items-center justify-center backdrop-blur-sm">
-          <div className="w-64 h-64 flex items-center justify-center">
-            <DotLottieReact
-              src="https://lottie.host/a2345253-3c9e-443b-8cfa-5a37e74a01ca/KiTAb9htWE.lottie"
-              loop
-              autoplay
-            />
-          </div>
-          <p className="text-white font-bold text-xl mt-4 animate-pulse">Verifying secure payment...</p>
-        </div>
-      )}
 
       {/* Invoice PDF Modal */}
       {invoicePdfUrl && (
@@ -375,7 +288,7 @@ export default function Checkout() {
               <h2 className="font-bold text-gray-800 text-lg">Order Confirmed! Your Invoice</h2>
               <button 
                 onClick={() => router.push('/account')}
-                className="px-5 py-2.5 bg-gold-primary text-white rounded-lg text-sm font-bold hover:bg-gold-hover transition-colors flex items-center gap-2"
+                className="px-5 py-2.5 bg-gold-primary text-white rounded-lg text-sm font-bold hover:bg-gold-hover transition-colors flex items-center gap-2 cursor-pointer"
               >
                 Continue to Account <X className="w-4 h-4" />
               </button>
@@ -395,7 +308,7 @@ export default function Checkout() {
               Checkout
             </h1>
 
-            <form id="checkoutForm" onSubmit={handlePayWithPhonePe} className="flex flex-col gap-6">
+            <form id="checkoutForm" onSubmit={handlePlaceOrder} className="flex flex-col gap-6">
               <div className="flex justify-between items-center mt-2.5">
                 <h2 className="text-lg font-bold text-gray-900">Shipping Address</h2>
                 {addresses.length > 0 && (
@@ -427,7 +340,7 @@ export default function Checkout() {
                           name="addressSelection"
                           checked={isSelected}
                           onChange={() => setShipping({...shipping, ...addr})}
-                          className="mt-1"
+                          className="mt-1 cursor-pointer"
                         />
                         <div className="text-gray-700">
                           <strong className="text-gray-900 font-bold">{addr.fullName}</strong>
@@ -520,16 +433,59 @@ export default function Checkout() {
                 </>
               )}
 
-              {/* Payment Method — PhonePe (Razorpay hidden) */}
-              <h2 className="text-lg font-bold text-gray-900 mt-4 border-t border-gray-100 pt-5">Payment</h2>
-              <div className="p-5 border-2 border-purple-500/40 rounded-xl bg-purple-50/40 flex items-start gap-4">
-                <div className="flex items-center justify-center w-8 h-8 rounded-full bg-white shadow-sm border border-gray-200 shrink-0">
-                  <span className="font-bold text-purple-700 text-xs">पे</span>
-                </div>
-                <div>
-                  <p className="font-bold text-gray-900">PhonePe — Secure Online Payment</p>
-                  <p className="text-xs text-gray-500 mt-1">Pay securely via UPI, Credit/Debit Card, Net Banking, or Wallets. Your order will be confirmed only after successful payment.</p>
-                </div>
+              {/* Payment Methods */}
+              <h2 className="text-lg font-bold text-gray-900 mt-4 border-t border-gray-100 pt-5">Payment Method</h2>
+              <div className="flex flex-col gap-3">
+                {/* Cashfree Online Payment */}
+                <label
+                  className={`flex items-start gap-4 p-4 border-2 rounded-xl cursor-pointer transition-all ${
+                    paymentMethod === 'CASHFREE'
+                      ? 'border-indigo-500 bg-indigo-50/40 shadow-sm'
+                      : 'border-gray-200 bg-white hover:bg-gray-50/50'
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="paymentMethod"
+                    checked={paymentMethod === 'CASHFREE'}
+                    onChange={() => setPaymentMethod('CASHFREE')}
+                    className="mt-1.5 cursor-pointer"
+                  />
+                  <div className="flex-1 flex justify-between items-center">
+                    <div>
+                      <p className="font-bold text-gray-900 flex items-center gap-2">
+                        Pay Online <span className="bg-indigo-100 text-indigo-700 text-[10px] px-2 py-0.5 rounded-full font-bold uppercase">Recommended</span>
+                      </p>
+                      <p className="text-xs text-gray-500 mt-1">UPI, Credit/Debit Cards, Net Banking, and Wallets</p>
+                    </div>
+                    {/* Minimal Cashfree badging */}
+                    <div className="text-[10px] font-bold text-gray-400 uppercase flex flex-col items-end">
+                      Secured by
+                      <img src="https://mintcdn.com/cashfreepayments-d00050e9/dtW4IY4XfWXyv9-C/static/logo/light.svg" alt="Cashfree" className="h-4 mt-1 opacity-70 grayscale" />
+                    </div>
+                  </div>
+                </label>
+
+                {/* Cash on Delivery */}
+                <label
+                  className={`flex items-start gap-4 p-4 border-2 rounded-xl cursor-pointer transition-all ${
+                    paymentMethod === 'COD'
+                      ? 'border-gold-primary bg-amber-50/40 shadow-sm'
+                      : 'border-gray-200 bg-white hover:bg-gray-50/50'
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="paymentMethod"
+                    checked={paymentMethod === 'COD'}
+                    onChange={() => setPaymentMethod('COD')}
+                    className="mt-1.5 cursor-pointer"
+                  />
+                  <div className="flex-1">
+                    <p className="font-bold text-gray-900">Cash on Delivery (COD)</p>
+                    <p className="text-xs text-gray-500 mt-1">Pay when your order arrives. Your order will be confirmed immediately.</p>
+                  </div>
+                </label>
               </div>
             </form>
           </div>
@@ -563,19 +519,16 @@ export default function Checkout() {
               {placingOrder ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  <span>{buttonLabel}</span>
+                  <span>{paymentMethod === 'CASHFREE' ? 'Initiating Payment...' : 'Placing Order...'}</span>
                 </>
               ) : (
-                <>
-                  <span className="font-bold text-lg">पे</span>
-                  <span>Pay ₹{totalAmount.toLocaleString('en-IN')} Securely</span>
-                </>
+                <span>{paymentMethod === 'CASHFREE' ? `Pay ₹${totalAmount.toLocaleString('en-IN')}` : `Place Order — ₹${totalAmount.toLocaleString('en-IN')}`}</span>
               )}
             </button>
 
             <p className="text-xs text-gray-400 text-center mt-3 flex items-center justify-center gap-1">
               <Lock className="w-3 h-3" />
-              Powered by PhonePe. 100% secure.
+              {paymentMethod === 'CASHFREE' ? '100% Secure Checkout' : 'Secure checkout. Pay on delivery.'}
             </p>
           </div>
         </div>

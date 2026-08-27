@@ -5,98 +5,105 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import Navbar from '@/components/Navbar';
 import { Loader2, CheckCircle, XCircle } from 'lucide-react';
 import api from '@/lib/api';
+import toast from 'react-hot-toast';
 
 function StatusContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
-  const [message, setMessage] = useState('Verifying your payment...');
+  const cashfreeOrderId = searchParams.get('cashfree_order_id');
+  const [status, setStatus] = useState<'verifying' | 'success' | 'failed'>('verifying');
+  const [invoiceUrl, setInvoiceUrl] = useState<string | null>(null);
 
   useEffect(() => {
-    const verifyPayment = async () => {
-      // PhonePe appends transactionId to the redirect URL
-      const transactionId = searchParams.get('transactionId') || searchParams.get('id');
-      
-      if (!transactionId) {
-        setStatus('error');
-        setMessage('Invalid request. No transaction ID found.');
-        return;
-      }
+    if (!cashfreeOrderId) {
+      router.replace('/');
+      return;
+    }
 
+    const verifyPayment = async () => {
       try {
-        const { data } = await api.post('/payments/phonepe/verify', {
-          merchantTransactionId: transactionId
+        const { data } = await api.post('/payments/cashfree/verify', {
+          cashfree_order_id: cashfreeOrderId
         });
 
-        if (data.success) {
+        if (data.success || data.status === 'PAID') {
           setStatus('success');
-          setMessage('Payment successful! Your order has been placed.');
-          // Clear cart
-          try {
-            await api.delete('/cart');
-          } catch (e) {
-            // ignore cart clear error
+          if (data.invoiceUrls && data.invoiceUrls.length > 0) {
+            setInvoiceUrl(data.invoiceUrls[0]);
           }
+          await api.delete('/cart').catch(() => {});
+          toast.success('Payment successful!');
+        } else if (data.status === 'PENDING') {
+          // Keep verifying or tell user it's pending
+          setTimeout(verifyPayment, 3000);
         } else {
-          setStatus('error');
-          setMessage('Payment could not be verified.');
+          setStatus('failed');
+          toast.error('Payment failed.');
         }
       } catch (err: any) {
-        console.error(err);
-        setStatus('error');
-        setMessage(err.response?.data?.error || 'Payment failed or was cancelled.');
+        if (err.response?.status === 202) {
+          // Pending status
+          setTimeout(verifyPayment, 3000);
+        } else {
+          console.error(err);
+          setStatus('failed');
+          toast.error('Payment verification failed.');
+        }
       }
     };
 
     verifyPayment();
-  }, [searchParams]);
+  }, [cashfreeOrderId, router]);
 
   return (
     <div className="flex flex-col items-center justify-center flex-1 py-20 px-4 text-center">
-      {status === 'loading' && (
+      {status === 'verifying' && (
         <>
-          <Loader2 className="w-16 h-16 text-gold-primary animate-spin mb-6" />
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">Processing Payment</h1>
-          <p className="text-gray-500">{message}</p>
+          <Loader2 className="w-16 h-16 text-indigo-500 animate-spin mb-6" />
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">Verifying Payment...</h2>
+          <p className="text-gray-500 max-w-md mx-auto">Please wait while we confirm your payment with Cashfree. Do not close or refresh this page.</p>
         </>
       )}
 
       {status === 'success' && (
-        <>
-          <CheckCircle className="w-20 h-20 text-emerald-500 mb-6" />
-          <h1 className="text-3xl font-extrabold text-gray-900 mb-4">Order Confirmed!</h1>
-          <p className="text-gray-600 mb-8 max-w-md">{message}</p>
+        <div className="animate-in zoom-in duration-500">
+          <CheckCircle className="w-20 h-20 text-emerald-500 mx-auto mb-6" />
+          <h2 className="text-3xl font-bold text-gray-900 mb-2">Order Confirmed!</h2>
+          <p className="text-gray-500 max-w-md mx-auto mb-8">Your payment was successful and your order has been placed.</p>
           
-          <div className="flex flex-col sm:flex-row gap-4">
+          <div className="flex gap-4 justify-center">
+            {invoiceUrl && (
+              <a
+                href={invoiceUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-6 py-3 bg-gray-900 text-white font-bold rounded-xl hover:bg-black transition-all"
+              >
+                View Invoice
+              </a>
+            )}
             <button
               onClick={() => router.push('/account')}
-              className="px-8 py-3 bg-gold-primary text-white font-bold rounded-lg hover:bg-gold-hover transition-colors"
+              className="px-6 py-3 bg-indigo-50 text-indigo-700 font-bold rounded-xl hover:bg-indigo-100 border border-indigo-200 transition-all cursor-pointer"
             >
-              View My Orders
-            </button>
-            <button
-              onClick={() => router.push('/')}
-              className="px-8 py-3 bg-gray-100 text-gray-800 font-bold rounded-lg hover:bg-gray-200 transition-colors"
-            >
-              Continue Shopping
+              Go to My Orders
             </button>
           </div>
-        </>
+        </div>
       )}
 
-      {status === 'error' && (
-        <>
-          <XCircle className="w-20 h-20 text-red-500 mb-6" />
-          <h1 className="text-3xl font-extrabold text-gray-900 mb-4">Payment Failed</h1>
-          <p className="text-gray-600 mb-8 max-w-md">{message}</p>
-          
+      {status === 'failed' && (
+        <div className="animate-in zoom-in duration-500">
+          <XCircle className="w-20 h-20 text-red-500 mx-auto mb-6" />
+          <h2 className="text-3xl font-bold text-gray-900 mb-2">Payment Failed</h2>
+          <p className="text-gray-500 max-w-md mx-auto mb-8">We could not process your payment. Your account has not been charged.</p>
           <button
             onClick={() => router.push('/checkout')}
-            className="px-8 py-3 bg-gold-primary text-white font-bold rounded-lg hover:bg-gold-hover transition-colors"
+            className="px-8 py-3 bg-gold-primary text-text-main font-bold rounded-xl hover:bg-gold-hover transition-all cursor-pointer"
           >
             Try Again
           </button>
-        </>
+        </div>
       )}
     </div>
   );
@@ -108,7 +115,7 @@ export default function CheckoutStatusPage() {
       <Navbar />
       <Suspense fallback={
         <div className="flex flex-col items-center justify-center flex-1 py-20 px-4 text-center">
-          <Loader2 className="w-16 h-16 text-gold-primary animate-spin mb-6" />
+          <Loader2 className="w-16 h-16 text-indigo-500 animate-spin mb-6" />
           <p className="text-gray-500">Loading...</p>
         </div>
       }>

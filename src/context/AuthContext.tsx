@@ -6,6 +6,7 @@ import api from '../lib/api';
 export interface User {
   uid: string;
   email: string;
+  phone?: string;
   name?: string;
   role: 'buyer' | 'vendor' | 'admin';
   status?: 'pending' | 'approved' | 'rejected';

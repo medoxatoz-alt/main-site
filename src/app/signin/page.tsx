@@ -37,11 +37,7 @@ function SignInContent() {
   // Pre-render the invisible reCAPTCHA once on mount per Firebase docs.
   // Store the widgetId so we can reset it on retry instead of recreating.
   useEffect(() => {
-    // In development, disable app verification to bypass reCAPTCHA Enterprise requirement.
-    // Add test phone numbers in Firebase Console → Authentication → Sign-in method → Phone.
-    if (process.env.NODE_ENV === 'development') {
-      auth.settings.appVerificationDisabledForTesting = true;
-    }
+    // ReCAPTCHA requires no bypass to allow real SMS testing.
 
     const verifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
       size: 'invisible',

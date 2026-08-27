@@ -43,8 +43,10 @@ interface Order {
   timeline?: TimelineEntry[];
   trackingId?: string;
   trackingLink?: string;
-  razorpayOrderId?: string;
-  razorpayPaymentId?: string;
+  cashfreeOrderId?: string;
+  cashfreePaymentId?: string;
+  awbCode?: string;
+  courierName?: string;
   invoiceUrl?: string;
   refundId?: string;
 }
@@ -222,12 +224,12 @@ export default function OrderDetailModal({
                 <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Payment</h3>
                 <p className="font-semibold text-sm text-gray-900">{order.paymentMethod || 'N/A'}</p>
                 <p className="text-[13px] text-gray-500 mt-1.5">Placed on {new Date(order.createdAt).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}</p>
-                {order.razorpayPaymentId && viewerRole !== 'vendor' && (
+                {order.cashfreePaymentId && viewerRole !== 'vendor' && (
                   <div className="mt-3 pt-3 border-t border-gray-200">
-                    <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Razorpay Order ID</p>
-                    <p className="font-mono text-xs text-gray-700 mt-0.5 break-all">{order.razorpayOrderId}</p>
+                    <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Cashfree Order ID</p>
+                    <p className="font-mono text-xs text-gray-700 mt-0.5 break-all">{order.cashfreeOrderId}</p>
                     <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mt-2">Payment ID</p>
-                    <p className="font-mono text-xs text-gray-700 mt-0.5 break-all">{order.razorpayPaymentId}</p>
+                    <p className="font-mono text-xs text-gray-700 mt-0.5 break-all">{order.cashfreePaymentId}</p>
                   </div>
                 )}
                 {order.invoiceUrl && (
@@ -274,8 +276,10 @@ export default function OrderDetailModal({
                   </h3>
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-sm">
                     <div>
-                      <p className="text-xs text-gray-400 font-bold uppercase tracking-wider">Tracking ID</p>
-                      <p className="font-bold font-mono text-gray-900 mt-0.5">{order.trackingId}</p>
+                      <p className="text-xs text-gray-400 font-bold uppercase tracking-wider">
+                        {order.courierName ? `Courier: ${order.courierName}` : 'Tracking ID'}
+                      </p>
+                      <p className="font-bold font-mono text-gray-900 mt-0.5">{order.awbCode || order.trackingId}</p>
                     </div>
                     <div>
                       <a

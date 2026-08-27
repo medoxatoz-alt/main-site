@@ -54,8 +54,15 @@ export default function Cart() {
 
       if (missingProductIds.length > 0) {
         const productPromises = missingProductIds.map((id: string) => 
-          api.get(`/products/${id}`).catch(err => {
+          api.get(`/products/${id}`).catch(async err => {
             console.error(`Failed to fetch product ${id}`, err);
+            // If product is 403/404 (unavailable or vendor rejected), auto-remove from cart
+            try {
+              await api.delete(`/cart/${id}`);
+              setCartItems(prev => prev.filter(i => i.productId !== id));
+            } catch (delErr) {
+              console.error(`Failed to auto-remove unavailable product ${id}`, delErr);
+            }
             return null;
           })
         );
