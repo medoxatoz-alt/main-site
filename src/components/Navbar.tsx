@@ -139,7 +139,7 @@ export default function Navbar() {
           {/* Logo */}
           <div className="order-1">
             <Link href="/" className="flex items-center gap-2 transition-transform duration-300 hover:scale-105">
-              <img src="/logo.webp" alt="MedoxAtoZ Logo" className="h-16 md:h-20 w-auto object-contain" />
+              <img src="/logo.webp" alt="MedoxAtoZ Logo" className="h-18 md:h-22 w-auto object-contain" />
             </Link>
           </div>
           
@@ -337,7 +337,7 @@ export default function Navbar() {
           </div>
         </div>
         {/* Categories Mega Menu */}
-        <MegaMenu />
+        {(pathname === '/' || pathname?.startsWith('/categories')) && <MegaMenu />}
       </header>
 
       {/* UPGRADED: Mobile Sticky Bottom Tab Bar */}

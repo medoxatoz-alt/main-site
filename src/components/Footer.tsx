@@ -30,7 +30,7 @@ export default function Footer() {
 
         {/* Brand Column */}
         <div className="col-span-2">
-          <img src="/logo-footer.webp" alt="MedoxAtoZ" className="h-28 object-contain mb-6 drop-shadow-md" />
+          <img src="/logo-footer.webp" alt="MedoxAtoZ" className="h-34 object-contain mb-6 drop-shadow-md" />
           <p className="text-[#a0aab5] text-[14px] leading-relaxed mb-6 pr-10">
             India's premier B2B marketplace for premium medical and diagnostic supplies. Engineering the clinical supply chain with clinical precision.
           </p>
@@ -40,6 +40,7 @@ export default function Footer() {
           >
             <Download className="w-4 h-4" /> Get the App
           </Link>
+
         </div>
 
         {/* Column: Shop */}
@@ -96,12 +97,25 @@ export default function Footer() {
               </li>
             ))}
           </ul>
+
+          {/* Developer Credit */}
+          <div className="mt-8 flex flex-col items-start gap-1 text-xs pt-10 text-[#a0aab5]">
+            <span className="uppercase tracking-widest text-[10px] font-bold opacity-80">Developed By</span>
+            <a 
+              href="https://mv-tech-solution.netlify.app/#contact" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="inline-flex items-center  text-[16px] gap-1.5 py-1 font-black tracking-wide transition-all duration-300 bg-gradient-to-r from-amber-200 via-gold-primary to-amber-500 bg-clip-text text-transparent hover:from-amber-100 hover:via-yellow-400 hover:to-amber-400 hover:drop-shadow-[0_0_12px_rgba(212,175,55,0.8)]"
+            >
+              MVTechSolutions
+            </a>
+          </div>
         </div>
 
       </div>
 
       {/* Footer Bottom */}
-      <div className="max-w-7xl mx-auto px-5 py-6 flex flex-col md:flex-row items-center justify-between gap-4 text-[13px] text-[#a0aab5]">
+      <div className=" mx-auto px-5 py-6 flex flex-col md:flex-row items-center justify-between gap-4 text-[13px] text-[#a0aab5]">
         <span className="font-medium">© 2026, SREE SAI LAKSHMI GANAPATHI TRADERS (MedoxAtoZ) — All rights reserved.</span>
         <div className="flex items-center gap-5 flex-wrap font-medium">
           <Link href="/privacy-policy" className="hover:text-white transition-colors">Privacy Policy</Link>

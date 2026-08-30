@@ -55,8 +55,10 @@ function HomeContent() {
 
   useEffect(() => {
     const fetchProducts = async () => {
+      setLoading(true);
       try {
-        const res = await api.get('/products');
+        const endpoint = searchQuery ? `/products?search=${encodeURIComponent(searchQuery)}` : '/products';
+        const res = await api.get(endpoint);
         setProducts(res.data);
       } catch (err) {
         console.error('Failed to fetch products', err);
@@ -66,7 +68,7 @@ function HomeContent() {
       }
     };
     fetchProducts();
-  }, []);
+  }, [searchQuery]);
 
   const handleAddToCart = async (product: any) => {
     if (!user) {
@@ -114,13 +116,7 @@ function HomeContent() {
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-6 mb-10">
             {(() => {
-              const filteredProducts = products.filter(p => {
-                const t = p.title?.toLowerCase() || '';
-                const c = p.category?.toLowerCase() || '';
-                return t.includes(searchQuery) || c.includes(searchQuery);
-              });
-
-              if (filteredProducts.length === 0) {
+              if (products.length === 0) {
                 return (
                   <div className="col-span-full">
                     <EmptyState message="No products found matching your search." />
@@ -129,8 +125,8 @@ function HomeContent() {
               }
 
               const itemsPerPage = 20;
-              const totalPages = Math.max(1, Math.ceil(filteredProducts.length / itemsPerPage));
-              const paginatedProducts = filteredProducts.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+              const totalPages = Math.max(1, Math.ceil(products.length / itemsPerPage));
+              const paginatedProducts = products.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
               return (
                 <>

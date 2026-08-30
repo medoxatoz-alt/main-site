@@ -311,7 +311,7 @@ export default function ProductDetail({ params }: { params: Promise<{ id: string
             </div>
           </div>
 
-          {/* Middle Column: Details Area (lg:col-span-4) */}
+          {/* Middle Column: Details & Actions Area (lg:col-span-4) */}
           <div className="lg:col-span-4 flex flex-col gap-6">
             <div className="bg-white p-6 sm:p-8 rounded-2xl border border-gray-200/60 shadow-[var(--shadow-soft)]">
               <div className="flex items-center justify-between mb-3">
@@ -360,10 +360,76 @@ export default function ProductDetail({ params }: { params: Promise<{ id: string
                     </>
                   )}
                 </div>
-                <div className="text-[11px] text-gray-400 mt-1.5 font-medium">Inclusive of all duties and taxes</div>
-              </div>
+                <div className="text-[11px] text-gray-400 mt-1.5 font-medium mb-4">Inclusive of all duties and taxes</div>
 
- 
+                {/* Inline Checkout Actions */}
+                {(() => {
+                  const stock = Number(product.stock) || 0;
+                  const isOutOfStock = stock <= 0;
+                  return (
+                    <div className="flex flex-col gap-5 mt-6 border-t border-gray-100 pt-6">
+                      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                        <div className="flex flex-col gap-1">
+                          <div className={isOutOfStock ? "text-red-600 font-bold text-sm" : "text-emerald-600 font-bold text-sm"}>
+                            {isOutOfStock ? "Out of Stock" : "In Stock & Secure"}
+                          </div>
+                          {!isOutOfStock && <div className="text-xs text-gray-500 font-medium">Estimated Dispatch: Within 24 Hours</div>}
+                        </div>
+
+                        {/* Quantity Selector */}
+                        <div className="flex items-center gap-3 bg-gray-50 border border-gray-200 rounded-lg p-1.5">
+                          <button
+                            onClick={() => setQuantity(q => Math.max(1, q - 1))}
+                            disabled={isOutOfStock || quantity <= 1}
+                            className="p-1.5 hover:bg-white active:scale-90 text-gray-600 disabled:opacity-40 disabled:cursor-not-allowed rounded transition-all duration-150 shadow-sm cursor-pointer"
+                            aria-label="Decrease quantity"
+                          >
+                            <Minus className="w-3.5 h-3.5 stroke-2" />
+                          </button>
+                          <span className="text-sm font-extrabold text-gray-800 w-6 text-center">{quantity}</span>
+                          <button
+                            onClick={() => setQuantity(q => Math.min(Math.min(10, stock), q + 1))}
+                            disabled={isOutOfStock || quantity >= Math.min(10, stock)}
+                            className="p-1.5 hover:bg-white active:scale-90 text-gray-600 disabled:opacity-40 disabled:cursor-not-allowed rounded transition-all duration-150 shadow-sm cursor-pointer"
+                            aria-label="Increase quantity"
+                          >
+                            <Plus className="w-3.5 h-3.5 stroke-2" />
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Action Buttons */}
+                      <div className="flex flex-col sm:flex-row gap-3">
+                        <button 
+                          onClick={handleAddToCart}
+                          disabled={isOutOfStock || addingToCart}
+                          className={`flex-1 py-3.5 font-extrabold rounded-full transition-all duration-300 shadow-md cursor-pointer flex items-center justify-center gap-2 ${
+                            isOutOfStock 
+                              ? 'bg-gray-100 text-gray-400 border border-gray-200 shadow-none cursor-not-allowed' 
+                              : 'bg-white text-gray-900 border-2 border-gold-primary hover:bg-gold-50 shadow-sm active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none'
+                          }`}
+                        >
+                          <ShoppingBag className="w-4 h-4 stroke-2" />
+                          <span>{isOutOfStock ? 'Out of Stock' : addingToCart ? 'Adding to Cart...' : 'Add to Cart'}</span>
+                        </button>
+                        
+                        <button 
+                          onClick={handleBuyNow}
+                          disabled={isOutOfStock || addingToCart}
+                          className={`flex-1 py-3.5 font-extrabold rounded-full transition-all duration-300 shadow-md cursor-pointer flex items-center justify-center gap-2 ${
+                            isOutOfStock 
+                              ? 'bg-gray-200 text-gray-400 border border-gray-200 shadow-none cursor-not-allowed hidden' 
+                              : 'bg-gold-primary hover:bg-gold-hover text-[#2b3036] shadow-amber-500/20 hover:shadow-lg active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none'
+                          }`}
+                        >
+                          <span>Buy Now</span>
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })()}
+
+              </div>
             </div>
 
             {/* Attributes List */}
@@ -385,125 +451,49 @@ export default function ProductDetail({ params }: { params: Promise<{ id: string
               </div>
             </div>
 
-            {/* About this item (Description) */}
-            <div className="bg-white px-6 sm:px-8 py-6 border-t border-gray-100">
-              <h2 className="text-sm font-extrabold text-gray-900 mb-4 uppercase tracking-wider">About this item</h2>
-              <div className="text-sm text-gray-700 leading-relaxed whitespace-pre-line">
-                {product.description ? (
-                  <ul className="list-disc pl-5 space-y-2.5 marker:text-gold-primary">
-                    {product.description.split('\n').map((line: string, i: number) => {
-                      const trimmed = line.trim();
-                      if (!trimmed) return null;
-                      return <li key={i} className="pl-1">{trimmed.replace(/^- /, '')}</li>;
-                    })}
-                  </ul>
-                ) : (
-                  <p className="italic text-gray-400">No detailed description provided for this item.</p>
-                )}
-              </div>
-            </div>
-            
-            {/* Vendor Details */}
-            <div className="bg-gray-50/80 p-6 sm:p-8 rounded-b-2xl border-t border-gray-100">
-              <div className="flex flex-col gap-2">
-                <div className="flex items-center gap-2">
-                  <ShieldCheck className="w-5 h-5 text-emerald-600" />
-                  <div className="text-sm font-extrabold text-gray-900">
-                    {product.is_sold_by_vendor ? 'Verified Third-Party Vendor' : 'Medox Certified Partner'}
-                  </div>
-                </div>
-                <p className="text-xs text-gray-500 leading-relaxed pl-7">
-                  {product.is_sold_by_vendor 
-                    ? 'This item is sold by a verified independent vendor on the MedoxAtoZ platform. All sellers must meet strict quality standards.'
-                    : 'This item is shipped directly from a certified medical warehousing facility to maintain precise temperature and moisture controls. Only authorized vendors can publish listing records.'}
-                </p>
-              </div>
-            </div>
           </div>
 
-          {/* Right Column: Checkout Action Widget (lg:col-span-3) */}
-          <div className="lg:col-span-3 w-full sticky top-24 pt-10">
-            <div className="bg-white p-6 rounded-2xl border-t-4 border-t-gold-primary border-x border-b border-gray-200/80 shadow-[0_6px_20px_rgba(0,0,0,0.06)]">
-              <div className="text-3xl font-extrabold text-gray-900 mb-1">
-                ₹{price.toLocaleString('en-IN')}
+          {/* Right Column: Information & Related Area (lg:col-span-3) */}
+          <div className="lg:col-span-3 flex flex-col gap-6 sticky top-24">
+            <div className="bg-white rounded-2xl border border-gray-200/60 shadow-[var(--shadow-soft)] overflow-hidden">
+              {/* About this item (Description) */}
+              <div className="px-6 sm:px-8 py-6">
+                <h2 className="text-sm font-extrabold text-gray-900 mb-4 uppercase tracking-wider">About this item</h2>
+                <div className="text-sm text-gray-700 leading-relaxed whitespace-pre-line">
+                  {product.description ? (
+                    <ul className="list-disc pl-5 space-y-2.5 marker:text-gold-primary">
+                      {product.description.split('\n').map((line: string, i: number) => {
+                        const trimmed = line.trim();
+                        if (!trimmed) return null;
+                        return <li key={i} className="pl-1">{trimmed.replace(/^- /, '')}</li>;
+                      })}
+                    </ul>
+                  ) : (
+                    <p className="italic text-gray-400">No detailed description provided for this item.</p>
+                  )}
+                </div>
               </div>
-              <div className="text-[11px] text-gray-400 mb-5 font-semibold">FREE Delivery to your clinic address</div>
               
-              <div className="flex flex-col gap-1 mb-5">
-                <div className="text-emerald-600 font-bold text-sm">In Stock & Secure</div>
-                <div className="text-xs text-gray-500 font-medium">Estimated Dispatch: Within 24 Hours</div>
-              </div>
-
-              {/* Quantity Selector */}
-              {(() => {
-                const stock = Number(product.stock) || 0;
-                const isOutOfStock = stock <= 0;
-                return (
-                  <>
-                    <div className="mb-6 flex items-center justify-between bg-gray-50 p-2.5 rounded-xl border border-gray-100">
-                      <span className="text-xs font-extrabold text-gray-650 pl-1.5">Quantity</span>
-                      <div className="flex items-center gap-3 bg-white border border-gray-200 rounded-lg p-1">
-                        <button
-                          onClick={() => setQuantity(q => Math.max(1, q - 1))}
-                          disabled={isOutOfStock || quantity <= 1}
-                          className="p-1 hover:bg-gray-50 active:scale-90 text-gray-600 disabled:opacity-40 disabled:cursor-not-allowed rounded transition-all duration-150 cursor-pointer"
-                          aria-label="Decrease quantity"
-                        >
-                          <Minus className="w-3.5 h-3.5 stroke-2" />
-                        </button>
-                        <span className="text-sm font-extrabold text-gray-800 w-4 text-center">{quantity}</span>
-                        <button
-                          onClick={() => setQuantity(q => Math.min(Math.min(10, stock), q + 1))}
-                          disabled={isOutOfStock || quantity >= Math.min(10, stock)}
-                          className="p-1 hover:bg-gray-50 active:scale-90 text-gray-600 disabled:opacity-40 disabled:cursor-not-allowed rounded transition-all duration-150 cursor-pointer"
-                          aria-label="Increase quantity"
-                        >
-                          <Plus className="w-3.5 h-3.5 stroke-2" />
-                        </button>
-                      </div>
+              {/* Vendor Details */}
+              <div className="bg-gray-50/80 p-6 sm:p-8 border-t border-gray-100">
+                <div className="flex flex-col gap-2">
+                  <div className="flex items-center gap-2">
+                    <ShieldCheck className="w-5 h-5 text-emerald-600" />
+                    <div className="text-sm font-extrabold text-gray-900">
+                      {product.is_sold_by_vendor ? 'Verified Third-Party Vendor' : 'Medox Certified Partner'}
                     </div>
-
-                    <div className="flex flex-col gap-3">
-                      <button 
-                        onClick={handleAddToCart}
-                        disabled={isOutOfStock || addingToCart}
-                        className={`w-full py-3.5 font-extrabold rounded-full transition-all duration-300 shadow-md cursor-pointer flex items-center justify-center gap-2 ${
-                          isOutOfStock 
-                            ? 'bg-gray-100 text-gray-400 border border-gray-200 shadow-none cursor-not-allowed' 
-                            : 'bg-white text-gray-900 border-2 border-gold-primary hover:bg-gold-50 shadow-sm active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none'
-                        }`}
-                      >
-                        <ShoppingBag className="w-4 h-4 stroke-2" />
-                        <span>{isOutOfStock ? 'Out of Stock' : addingToCart ? 'Adding to Cart...' : 'Add to Cart'}</span>
-                      </button>
-                      
-                      <button 
-                        onClick={handleBuyNow}
-                        disabled={isOutOfStock || addingToCart}
-                        className={`w-full py-3.5 font-extrabold rounded-full transition-all duration-300 shadow-md cursor-pointer flex items-center justify-center gap-2 ${
-                          isOutOfStock 
-                            ? 'bg-gray-200 text-gray-400 border border-gray-200 shadow-none cursor-not-allowed hidden' 
-                            : 'bg-gold-primary hover:bg-gold-hover text-[#2b3036] shadow-amber-500/20 hover:shadow-lg active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none'
-                        }`}
-                      >
-                        <span>Buy Now</span>
-                      </button>
-                    </div>
-                  </>
-                );
-              })()}
-
-              <div className="mt-6 border-t border-gray-100 pt-4 flex flex-col gap-2">
-                <div className="flex items-center gap-2 text-[10px] text-gray-400 font-semibold uppercase tracking-wider">
-                  <ShieldCheck className="w-4 h-4 text-emerald-600" />
-                  <span>Verified Purchase Guard</span>
-                </div>
-                <div className="text-[10px] text-gray-500 leading-normal">
-                  All equipment meets central medical device certification guidelines. 100% money back guarantee.
+                  </div>
+                  <p className="text-xs text-gray-500 leading-relaxed pl-7">
+                    {product.is_sold_by_vendor 
+                      ? 'This item is sold by a verified independent vendor on the MedoxAtoZ platform. All sellers must meet strict quality standards.'
+                      : 'This item is shipped directly from a certified medical warehousing facility to maintain precise temperature and moisture controls. Only authorized vendors can publish listing records.'}
+                  </p>
                 </div>
               </div>
             </div>
           </div>
+
+
 
         </div>
       </div>

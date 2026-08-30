@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { getCategoriesCached } from '@/lib/api';
 import { Plus, Trash2, Package } from 'lucide-react';
 import PaginationBar from '@/components/PaginationBar';
 import EmptyState from '@/components/EmptyState';
@@ -33,6 +34,24 @@ function SkeletonRow() {
 export default function ProductsTab({ products, isFetching, fetchError, onDelete, onAdd, onEdit, showAddButton = true }: ProductsTabProps) {
   const { page, setPage, totalPages, slice, total } = usePagination(products, 10);
   const [productToDelete, setProductToDelete] = useState<any | null>(null);
+  
+  const [categoriesConfig, setCategoriesConfig] = useState<{mainCategories: {id: string, name: string}[], subcategories: Record<string, {id: string, name: string}[]>}>({ mainCategories: [], subcategories: {} });
+  useEffect(() => {
+    getCategoriesCached().then(setCategoriesConfig).catch(console.error);
+  }, []);
+
+  const getCategoryName = (id: string, isSub: boolean, mainId?: string) => {
+    if (!id) return null;
+    if (!isSub) {
+      const found = categoriesConfig.mainCategories.find(c => c.id === id);
+      return found ? found.name : id.replace(/-/g, ' ');
+    } else {
+      if (!mainId) return id.replace(/-/g, ' ');
+      const subs = categoriesConfig.subcategories[mainId] || [];
+      const found = subs.find(s => s.id === id);
+      return found ? found.name : id.replace(/-/g, ' ');
+    }
+  };
 
   return (
     <div className="space-y-4">
@@ -92,8 +111,14 @@ export default function ProductsTab({ products, isFetching, fetchError, onDelete
                     </td>
                     <td className="py-3.5 px-5">
                       <div className="flex flex-col gap-1">
-                        <span className="px-2 py-0.5 bg-gray-100 text-gray-600 rounded text-[10px] font-semibold w-max truncate max-w-[120px]">{p.mainCategory || p.category}</span>
-                        {p.subCategory && <span className="px-2 py-0.5 bg-gray-50 text-gray-400 rounded text-[10px] font-medium w-max truncate max-w-[120px]">{p.subCategory}</span>}
+                        <span className="px-2 py-0.5 bg-gray-100 text-gray-600 rounded text-[10px] font-semibold w-max truncate max-w-[120px] capitalize">
+                          {p.mainCategory || p.category || getCategoryName(p.mainCategoryId, false) || "Uncategorized"}
+                        </span>
+                        {(p.subCategory || p.subCategoryId) && (
+                          <span className="px-2 py-0.5 bg-gray-50 text-gray-400 rounded text-[10px] font-medium w-max truncate max-w-[120px] capitalize">
+                            {p.subCategory || getCategoryName(p.subCategoryId, true, p.mainCategoryId) || "Uncategorized"}
+                          </span>
+                        )}
                       </div>
                     </td>
                     <td className="py-3.5 px-5 font-bold text-gray-900">₹{price.toLocaleString('en-IN')}</td>
