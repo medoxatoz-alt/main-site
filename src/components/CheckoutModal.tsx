@@ -310,7 +310,7 @@ export default function CheckoutModal({ isOpen, onClose }: { isOpen: boolean; on
       <div className="flex flex-col lg:flex-row gap-6 md:gap-8 items-start">
         {/* Shipping Form Card */}
         <div className="flex-1 w-full">
-          <div className="bg-white p-5 md:p-8 rounded-2xl shadow-[var(--shadow-soft)] border-t-4 border-t-gold-primary border-x border-b border-gray-100/80">
+          <div className="px-5 border-x border-b border-gray-100/80">
             <form id="checkoutForm" onSubmit={handlePlaceOrder} className="flex flex-col gap-6">
               <div className="flex justify-between items-center mt-2.5">
                 <h2 className="text-lg font-bold text-gray-900">Shipping Address</h2>

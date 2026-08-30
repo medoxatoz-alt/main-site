@@ -94,7 +94,9 @@ export default function MyOrdersPage() {
           ) : (
             <Pagination items={orders} pageSize={8} showPageInfo renderPage={(slice) => (
               <div className="flex flex-col gap-3 sm:gap-4">
-                {slice.map(order => (
+                {slice.map(order => {
+                  const displayStatus = order.status === 'Pending' ? 'Approved' : order.status;
+                  return (
                   <div
                     key={order.id}
                     onClick={() => setSelectedOrder(order)}
@@ -117,8 +119,8 @@ export default function MyOrdersPage() {
                       <div className="text-right">
                         <div className="text-[10px] text-gray-400 uppercase tracking-wider font-bold">Order # {order.orderId}</div>
                         <div className="mt-1">
-                          <span className={`text-xs font-bold px-2.5 py-0.5 rounded-full inline-block border ${STATUS_COLORS[order.status] || 'bg-gray-50 text-gray-700 border-gray-200'}`}>
-                            {order.status}
+                          <span className={`text-xs font-bold px-2.5 py-0.5 rounded-full inline-block border ${STATUS_COLORS[displayStatus] || 'bg-gray-50 text-gray-700 border-gray-200'}`}>
+                            {displayStatus}
                           </span>
                         </div>
                       </div>
@@ -127,8 +129,8 @@ export default function MyOrdersPage() {
                     {/* Meta row - Mobile (Native iOS/Android Style) */}
                     <div className="sm:hidden bg-white px-4 pt-4 pb-2 flex justify-between items-start">
                       <div>
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md border mb-2 inline-block ${STATUS_COLORS[order.status] || 'bg-gray-50 text-gray-700 border-gray-200'}`}>
-                          {order.status}
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md border mb-2 inline-block ${STATUS_COLORS[displayStatus] || 'bg-gray-50 text-gray-700 border-gray-200'}`}>
+                          {displayStatus}
                         </span>
                         <div className="text-[13px] text-gray-500">
                           {new Date(order.createdAt).toLocaleDateString('en-IN', { dateStyle: 'medium' })}
@@ -176,7 +178,8 @@ export default function MyOrdersPage() {
                       <ChevronRight className="w-5 h-5 text-gray-300 sm:hidden flex-shrink-0" />
                     </div>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             )} />
           )}

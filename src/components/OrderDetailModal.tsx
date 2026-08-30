@@ -134,9 +134,11 @@ export default function OrderDetailModal({
     }
   };
 
+  const displayStatus = order.status === 'Pending' ? 'Approved' : order.status;
+
   const timeline: TimelineEntry[] = order.timeline?.length
-    ? order.timeline
-    : [{ status: 'Pending', timestamp: order.createdAt }];
+    ? order.timeline.map(t => t.status === 'Pending' ? { ...t, status: 'Approved' } : t)
+    : [{ status: 'Approved', timestamp: order.createdAt }];
 
   return (
     <>
@@ -166,8 +168,8 @@ export default function OrderDetailModal({
               <h2 className="text-base sm:text-lg font-extrabold text-gray-900 truncate">Order #{order.orderId}</h2>
               <p className="text-xs text-gray-500 mt-0.5 truncate">{order.customerEmail}</p>
             </div>
-            <span className={`px-2.5 py-1 rounded-full text-[10px] sm:text-xs font-bold border whitespace-nowrap ${STATUS_COLORS[order.status] || 'bg-gray-50 text-gray-700 border-gray-200'}`}>
-              {order.status}
+            <span className={`px-2.5 py-1 rounded-full text-[10px] sm:text-xs font-bold border whitespace-nowrap ${STATUS_COLORS[displayStatus] || 'bg-gray-50 text-gray-700 border-gray-200'}`}>
+              {displayStatus}
             </span>
             <button onClick={onClose} className="ml-1 p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-200 active:bg-gray-300 rounded-full transition-all cursor-pointer">
               <X className="w-5 h-5" />
