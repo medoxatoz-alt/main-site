@@ -33,6 +33,7 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
   const [loading, setLoading] = useState(true);
   const [isUpdating, setIsUpdating] = useState<string | null>(null);
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
+  const [buyNowItem, setBuyNowItem] = useState<{ productId: string, quantity: number } | null>(null);
 
   // Close drawer if pressed escape
   useEffect(() => {
@@ -42,6 +43,19 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
     window.addEventListener('keydown', handleEsc);
     return () => window.removeEventListener('keydown', handleEsc);
   }, [isOpen, onClose]);
+
+  useEffect(() => {
+    const handleOpenCheckout = (e: any) => {
+      if (e.detail?.buyNowItem) {
+        setBuyNowItem(e.detail.buyNowItem);
+      } else {
+        setBuyNowItem(null);
+      }
+      setIsCheckoutOpen(true);
+    };
+    window.addEventListener('open-checkout', handleOpenCheckout);
+    return () => window.removeEventListener('open-checkout', handleOpenCheckout);
+  }, []);
 
   // Prevent background scrolling when open
   useEffect(() => {
@@ -158,7 +172,11 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
     }, 0);
   };
 
-  if (!isOpen) return null;
+  if (!isOpen) {
+    return (
+      <CheckoutModal isOpen={isCheckoutOpen} onClose={() => setIsCheckoutOpen(false)} buyNowItem={buyNowItem} />
+    );
+  }
 
   const totalAmount = calculateTotal();
   const hasInventoryIssues = cartItems.some(item => {
@@ -330,7 +348,7 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
         )}
       </div>
 
-      <CheckoutModal isOpen={isCheckoutOpen} onClose={() => setIsCheckoutOpen(false)} />
+      <CheckoutModal isOpen={isCheckoutOpen} onClose={() => setIsCheckoutOpen(false)} buyNowItem={buyNowItem} />
     </div>
   );
 }

@@ -1,4 +1,5 @@
-const CACHE_NAME = 'medoxatoz-v1';
+// Bump this on any deploy that changes STATIC_ASSETS or the caching strategy below.
+const CACHE_NAME = 'medoxatoz-v2';
 const STATIC_ASSETS = [
   '/',
   '/manifest.json',

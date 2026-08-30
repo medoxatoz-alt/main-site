@@ -10,6 +10,7 @@ import toast from 'react-hot-toast';
 import { usePWAInstall } from '@/hooks/usePWAInstall';
 import MegaMenu from '@/components/MegaMenu';
 import CartDrawer from '@/components/CartDrawer';
+import { useGeolocatedAddress } from '@/hooks/useGeolocatedAddress';
 
 function SearchBarInput() {
   const router = useRouter();
@@ -63,7 +64,7 @@ export default function Navbar() {
   const [cartCount, setCartCount] = useState(0);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [location, setLocation] = useState('India');
-  const [loadingLocation, setLoadingLocation] = useState(false);
+  const { detect: detectLocationRaw, detecting: loadingLocation } = useGeolocatedAddress({ onError: (msg) => toast.error(msg) });
   const { isInstallable, promptInstall } = usePWAInstall();
   
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -76,37 +77,16 @@ export default function Navbar() {
     }
   }, []);
 
-  const detectLocation = () => {
-    if (!navigator.geolocation) {
-      toast.error('Geolocation is not supported by your browser');
-      return;
+  const detectLocation = async () => {
+    try {
+      const parsed = await detectLocationRaw();
+      const displayLoc = parsed.city ? `${parsed.city}, ${parsed.state}` : parsed.state || 'India';
+      localStorage.setItem('medox_location', displayLoc);
+      setLocation(displayLoc);
+      toast.success(`Location set to ${displayLoc}`);
+    } catch {
+      // error toast already shown by the hook
     }
-    setLoadingLocation(true);
-    navigator.geolocation.getCurrentPosition(
-      async (position) => {
-        const { latitude, longitude } = position.coords;
-        try {
-          const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${latitude}&lon=${longitude}`);
-          const data = await res.json();
-          const address = data.address || {};
-          const city = address.city || address.town || address.village || address.suburb || address.county || '';
-          const state = address.state || '';
-          const displayLoc = city ? `${city}, ${state}` : state || 'India';
-          
-          localStorage.setItem('medox_location', displayLoc);
-          setLocation(displayLoc);
-          toast.success(`Location set to ${displayLoc}`);
-        } catch {
-          toast.error('Failed to detect location.');
-        } finally {
-          setLoadingLocation(false);
-        }
-      },
-      () => {
-        toast.error('Location access denied or unavailable.');
-        setLoadingLocation(false);
-      }
-    );
   };
 
   useEffect(() => {

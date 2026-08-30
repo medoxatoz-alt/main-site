@@ -8,6 +8,7 @@ interface Product {
   price: number | string;
   mrp?: number | string;
   image: string | string[];
+  images?: string[];
   stock?: number | string;
 }
 
@@ -57,14 +58,14 @@ export default function ProductCard({ product, onAddToCart }: ProductCardProps) 
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [isHovered, setIsHovered] = useState(false);
 
-  if (!product) {
-    return null;
-  }
-
   // Parse data
-  const images = useMemo(() => parseImages(product.image), [product.image]);
-  const price = useMemo(() => parsePrice(product.price), [product.price]);
-  const mrp = useMemo(() => parsePrice(product.mrp), [product.mrp]);
+  const images = useMemo(() => {
+    if (!product) return [];
+    if (Array.isArray(product.images) && product.images.length > 0) return product.images;
+    return parseImages(product.image);
+  }, [product?.image, product?.images]);
+  const price = useMemo(() => parsePrice(product?.price), [product?.price]);
+  const mrp = useMemo(() => parsePrice(product?.mrp), [product?.mrp]);
 
   const discountPercentage = useMemo(() => {
     if (mrp && mrp > price) {
@@ -74,9 +75,10 @@ export default function ProductCard({ product, onAddToCart }: ProductCardProps) 
   }, [price, mrp]);
 
   const isOutOfStock = useMemo(() => {
+    if (!product) return true;
     const stockVal = product.stock !== undefined ? Number(product.stock) : 10;
     return stockVal <= 0;
-  }, [product.stock]);
+  }, [product?.stock, product]);
 
   // Cycle through images on hover
   useEffect(() => {
@@ -91,6 +93,10 @@ export default function ProductCard({ product, onAddToCart }: ProductCardProps) 
 
     return () => clearInterval(interval);
   }, [isHovered, images.length]);
+
+  if (!product) {
+    return null;
+  }
 
   const handleAddToCart = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -132,7 +138,9 @@ export default function ProductCard({ product, onAddToCart }: ProductCardProps) 
         aria-label={`View details for ${product.title}`}
       >
         <div className="h-[140px] sm:h-[240px] w-full flex items-center justify-center mb-3 sm:mb-4 overflow-hidden bg-white relative rounded-md">
-          {images.map((imgUrl, idx) => (
+          {/* Only mount the extra images once hovered — otherwise every card in
+              the grid would eagerly fetch every image up front. */}
+          {(isHovered ? images : images.slice(0, 1)).map((imgUrl, idx) => (
             <img
               key={idx}
               src={imgUrl}

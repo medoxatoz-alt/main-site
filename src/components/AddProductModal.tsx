@@ -30,6 +30,7 @@ export default function AddProductModal({ isOpen, onClose, onSuccess }: AddProdu
   const [newDescription, setNewDescription] = useState('');
   const [imageFiles, setImageFiles] = useState<File[]>([]);
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
+  const [attributes, setAttributes] = useState<{key: string, value: string}[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -96,7 +97,7 @@ export default function AddProductModal({ isOpen, onClose, onSuccess }: AddProdu
   const resetForm = () => {
     imagePreviews.forEach(url => URL.revokeObjectURL(url));
     setNewTitle(''); setNewBrand(''); setNewPrice(''); setNewMrp(''); setNewStock('10');
-    setNewDescription(''); setNewSubCategoryId(''); setSubCatSearch('');
+    setNewDescription(''); setNewSubCategoryId(''); setSubCatSearch(''); setAttributes([]);
     if (categoriesConfig.mainCategories.length > 0) setNewMainCategoryId(categoriesConfig.mainCategories[0].id);
     setImageFiles([]); setImagePreviews([]);
   };
@@ -113,16 +114,15 @@ export default function AddProductModal({ isOpen, onClose, onSuccess }: AddProdu
 
     setIsSubmitting(true);
     try {
-      // Upload all images
-      const uploadedUrls: string[] = [];
-      for (const file of imageFiles) {
+      // Upload all images in parallel (order preserved so uploadedUrls[0] stays the thumbnail)
+      const uploadedUrls: string[] = await Promise.all(imageFiles.map(async (file) => {
         const formData = new FormData();
         formData.append('image', file);
         const res = await api.post('/upload/image', formData, {
           headers: { 'Content-Type': 'multipart/form-data' }
         });
-        uploadedUrls.push(res.data.url);
-      }
+        return res.data.url;
+      }));
 
       // thumbnail = first image
       const thumbnail = uploadedUrls[0] || 'https://via.placeholder.com/200?text=No+Image';
@@ -143,6 +143,7 @@ export default function AddProductModal({ isOpen, onClose, onSuccess }: AddProdu
         images: uploadedUrls,
         image: thumbnail,   // backwards-compat alias
         thumbnail,
+        attributes: attributes.filter(a => a.key.trim() && a.value.trim()),
       };
 
       await api.post('/products', payload);
@@ -255,6 +256,54 @@ export default function AddProductModal({ isOpen, onClose, onSuccess }: AddProdu
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none transition-all focus:border-gold-primary"
                   />
                 </div>
+              </div>
+            </div>
+
+            {/* Custom Attributes */}
+            <div>
+              <div className="flex justify-between items-center mb-1.5">
+                <label className="block text-sm font-bold text-gray-700">Custom Attributes</label>
+                <button 
+                  type="button" 
+                  onClick={() => setAttributes([...attributes, { key: '', value: '' }])}
+                  className="text-xs font-bold text-blue-600 hover:text-blue-800 cursor-pointer"
+                >
+                  + Add Attribute
+                </button>
+              </div>
+              <div className="space-y-2">
+                {attributes.map((attr, idx) => (
+                  <div key={idx} className="flex gap-2">
+                    <input 
+                      type="text" placeholder="e.g. Material" value={attr.key}
+                      onChange={e => {
+                        const newAttrs = [...attributes];
+                        newAttrs[idx].key = e.target.value;
+                        setAttributes(newAttrs);
+                      }}
+                      className="w-1/3 px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:border-gold-primary"
+                    />
+                    <input 
+                      type="text" placeholder="e.g. Cotton" value={attr.value}
+                      onChange={e => {
+                        const newAttrs = [...attributes];
+                        newAttrs[idx].value = e.target.value;
+                        setAttributes(newAttrs);
+                      }}
+                      className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:border-gold-primary"
+                    />
+                    <button 
+                      type="button" 
+                      onClick={() => setAttributes(attributes.filter((_, i) => i !== idx))}
+                      className="p-2 text-red-500 hover:bg-red-50 rounded-lg cursor-pointer"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                ))}
+                {attributes.length === 0 && (
+                  <div className="text-sm text-gray-400 italic">No custom attributes added.</div>
+                )}
               </div>
             </div>
 

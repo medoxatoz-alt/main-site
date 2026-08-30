@@ -4,14 +4,17 @@ import { Search, ChevronDown, ChevronUp } from 'lucide-react';
 interface FilterSidebarProps {
   subcategories: { id: string, name: string }[];
   brands: string[];
+  availableAttributes?: Record<string, string[]>;
   counts: {
     subcategories: Record<string, number>;
     brands: Record<string, number>;
+    attributes?: Record<string, Record<string, number>>;
   };
   filters: {
     subcategories: string[];
     brands: string[];
     priceRange: [number, number];
+    attributes?: Record<string, string[]>;
   };
   maxPrice: number;
   onFilterChange: (newFilters: any) => void;
@@ -21,6 +24,7 @@ interface FilterSidebarProps {
 export default function FilterSidebar({
   subcategories,
   brands,
+  availableAttributes,
   counts,
   filters,
   maxPrice,
@@ -29,13 +33,13 @@ export default function FilterSidebar({
 }: FilterSidebarProps) {
   const [brandSearch, setBrandSearch] = useState('');
   const [showAllBrands, setShowAllBrands] = useState(false);
-  const [expandedSections, setExpandedSections] = useState({
+  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
     categories: true,
     brand: true,
     price: true
   });
 
-  const toggleSection = (section: keyof typeof expandedSections) => {
+  const toggleSection = (section: string) => {
     setExpandedSections(prev => ({ ...prev, [section]: !prev[section] }));
   };
 
@@ -53,6 +57,19 @@ export default function FilterSidebar({
     onFilterChange({ ...filters, brands: newBrands });
   };
 
+  const handleAttributeToggle = (key: string, value: string) => {
+    const currentAttrFilters = filters.attributes || {};
+    const selectedValues = currentAttrFilters[key] || [];
+    const newSelectedValues = selectedValues.includes(value)
+      ? selectedValues.filter(v => v !== value)
+      : [...selectedValues, value];
+    
+    onFilterChange({ 
+      ...filters, 
+      attributes: { ...currentAttrFilters, [key]: newSelectedValues } 
+    });
+  };
+
   const filteredBrands = useMemo(() => {
     return brands.filter(b => b.toLowerCase().includes(brandSearch.toLowerCase()));
   }, [brands, brandSearch]);
@@ -67,9 +84,9 @@ export default function FilterSidebar({
     <div className={containerClass}>
       <div className="flex items-center justify-between mb-2">
         <h2 className="text-[15px] font-bold text-gray-900 tracking-widest uppercase">Filters</h2>
-        {(filters.subcategories.length > 0 || filters.brands.length > 0 || filters.priceRange[0] > 0 || filters.priceRange[1] < maxPrice) && (
+        {(filters.subcategories.length > 0 || filters.brands.length > 0 || filters.priceRange[0] > 0 || filters.priceRange[1] < maxPrice || Object.keys(filters.attributes || {}).some(k => filters.attributes![k].length > 0)) && (
           <button 
-            onClick={() => onFilterChange({ subcategories: [], brands: [], priceRange: [0, maxPrice] })}
+            onClick={() => onFilterChange({ subcategories: [], brands: [], priceRange: [0, maxPrice], attributes: {} })}
             className="text-xs font-semibold text-red-500 hover:text-red-600 uppercase tracking-wider"
           >
             Clear All
@@ -177,6 +194,51 @@ export default function FilterSidebar({
         </div>
       )}
 
+      {/* Dynamic Attributes */}
+      {availableAttributes && Object.keys(availableAttributes).map(attrKey => {
+        const values = availableAttributes[attrKey];
+        if (!values || values.length === 0) return null;
+        
+        const sectionKey = `attr_${attrKey}`;
+        const isExpanded = expandedSections[sectionKey] !== false; // default true
+        const selectedValues = (filters.attributes || {})[attrKey] || [];
+        
+        return (
+          <div key={attrKey} className="border-t border-gray-100 pt-5">
+            <div 
+              className="flex items-center justify-between cursor-pointer mb-4"
+              onClick={() => toggleSection(sectionKey)}
+            >
+              <h3 className="text-[13px] font-bold text-gray-900 uppercase tracking-widest">{attrKey}</h3>
+              {isExpanded ? <ChevronUp className="w-4 h-4 text-gray-400" /> : <ChevronDown className="w-4 h-4 text-gray-400" />}
+            </div>
+            
+            {isExpanded && (
+              <div className="space-y-3 max-h-[300px] overflow-y-auto custom-scrollbar pr-2">
+                {values.map((val: string) => (
+                  <label key={val} className="flex items-center group cursor-pointer">
+                    <div className="relative flex items-center justify-center">
+                      <input 
+                        type="checkbox" 
+                        className="peer appearance-none w-4 h-4 border border-gray-300 rounded-sm checked:bg-gold-primary checked:border-gold-primary transition-colors cursor-pointer"
+                        checked={selectedValues.includes(val)}
+                        onChange={() => handleAttributeToggle(attrKey, val)}
+                      />
+                      <svg className="absolute w-3 h-3 text-white pointer-events-none opacity-0 peer-checked:opacity-100 transition-opacity" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="20 6 9 17 4 12"></polyline>
+                      </svg>
+                    </div>
+                    <span className={`ml-3 text-[14px] ${selectedValues.includes(val) ? 'font-semibold text-gray-900' : 'text-gray-600 group-hover:text-gray-900'}`}>
+                      {val}
+                    </span>
+                    <span className="ml-1 text-[11px] text-gray-400">({counts.attributes?.[attrKey]?.[val] || 0})</span>
+                  </label>
+                ))}
+              </div>
+            )}
+          </div>
+        );
+      })}
       {/* Price */}
       {maxPrice > 0 && (
         <div className="border-t border-gray-100 pt-5 pb-5">

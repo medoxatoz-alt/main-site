@@ -26,11 +26,11 @@ export default function Footer() {
       </div>
 
       {/* Main footer grid */}
-      <div className="max-w-7xl mx-auto px-5 py-14 grid grid-cols-2 md:grid-cols-5 gap-10 border-b border-white/5">
+      <div className="mx-auto px-5 py-14 grid grid-cols-2 md:grid-cols-5 gap-10 border-b border-white/5">
 
         {/* Brand Column */}
         <div className="col-span-2">
-          <img src="/logo.webp" alt="MedoxAtoZ" className="h-16 object-contain mb-6 drop-shadow-md" />
+          <img src="/logo-footer.webp" alt="MedoxAtoZ" className="h-16 object-contain mb-6 drop-shadow-md" />
           <p className="text-[#a0aab5] text-[14px] leading-relaxed mb-6 pr-10">
             India's premier B2B marketplace for premium medical and diagnostic supplies. Engineering the clinical supply chain with clinical precision.
           </p>

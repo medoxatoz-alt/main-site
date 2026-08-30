@@ -10,6 +10,7 @@ import { Loader2, ChevronRight, Heart, MapPin, Phone, Trash2, Plus, Package, Edi
 import EmptyState from '@/components/EmptyState';
 import ErrorState from '@/components/ErrorState';
 import Link from 'next/link';
+import { useGeolocatedAddress } from '@/hooks/useGeolocatedAddress';
 
 const inputCls = "w-full px-3.5 py-2.5 border border-gray-200 bg-gray-50/50 rounded-xl text-sm outline-none transition-all focus:border-gold-primary focus:ring-2 focus:ring-gold-primary/20 hover:border-gray-300 disabled:opacity-70 disabled:bg-gray-100 disabled:cursor-not-allowed";
 
@@ -23,7 +24,7 @@ export default function Account() {
   const [showAddForm, setShowAddForm] = useState(false);
   const [newAddress, setNewAddress] = useState({ fullName: '', phone: '', address: '', city: '', state: '', pincode: '' });
   const [savingAddress, setSavingAddress] = useState(false);
-  const [detectingAddrLoc, setDetectingAddrLoc] = useState(false);
+  const { detect: detectAddrLocation, detecting: detectingAddrLoc } = useGeolocatedAddress({ onError: (msg) => toast.error(msg) });
   const [pincodeLoading, setPincodeLoading] = useState(false);
 
   // Auto-fetch City and State from Pincode
@@ -55,49 +56,20 @@ export default function Account() {
     fetchPincode();
   }, [newAddress.pincode]);
 
-  const autoFillAddressLocation = () => {
-    if (!navigator.geolocation) {
-      toast.error('Geolocation is not supported by your browser');
-      return;
+  const autoFillAddressLocation = async () => {
+    try {
+      const parsed = await detectAddrLocation();
+      setNewAddress(prev => ({
+        ...prev,
+        address: parsed.streetAddress || prev.address,
+        city: parsed.city || prev.city,
+        state: parsed.state || prev.state,
+        pincode: parsed.pincode || prev.pincode
+      }));
+      toast.success('Location fields autofilled!');
+    } catch {
+      // error toast already shown by the hook
     }
-    setDetectingAddrLoc(true);
-    navigator.geolocation.getCurrentPosition(
-      async (position) => {
-        const { latitude, longitude } = position.coords;
-        try {
-          const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${latitude}&lon=${longitude}`);
-          const data = await res.json();
-          const address = data.address || {};
-
-          const parts = [
-            address.road || address.pedestrian || '',
-            address.suburb || address.neighbourhood || address.residential || '',
-          ].filter(Boolean);
-
-          const streetAddress = parts.join(', ');
-          const city = address.city || address.town || address.village || address.suburb || address.county || '';
-          const state = address.state || '';
-          const pincode = address.postcode || '';
-
-          setNewAddress(prev => ({
-            ...prev,
-            address: streetAddress || prev.address,
-            city: city || prev.city,
-            state: state || prev.state,
-            pincode: pincode || prev.pincode
-          }));
-          toast.success('Location fields autofilled!');
-        } catch {
-          toast.error('Failed to resolve location details.');
-        } finally {
-          setDetectingAddrLoc(false);
-        }
-      },
-      () => {
-        toast.error('Location access denied or unavailable.');
-        setDetectingAddrLoc(false);
-      }
-    );
   };
 
   const [showEditModal, setShowEditModal] = useState(false);
@@ -171,7 +143,10 @@ export default function Account() {
   }, [user, authLoading, router]);
 
   const fetchData = async () => {
-    if (!user) return;
+    if (!user) {
+      setLoading(false);
+      return;
+    }
     setFetchError(false);
     try {
       const res = await api.get('/user/addresses');

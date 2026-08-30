@@ -3,7 +3,7 @@
 import { useEffect, useState, use, useMemo } from 'react';
 import Navbar from '@/components/Navbar';
 import ProductCard from '@/components/ProductCard';
-import api from '@/lib/api';
+import api, { getCategoriesCached } from '@/lib/api';
 import toast from 'react-hot-toast';
 import { useAuth } from '@/context/AuthContext';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -95,10 +95,12 @@ export default function CategoryPage({ params }: { params: Promise<{ category: s
     subcategories: string[];
     brands: string[];
     priceRange: [number, number];
+    attributes: Record<string, string[]>;
   }>({
     subcategories: subCategoryQuery ? [subCategoryQuery] : [],
     brands: [],
-    priceRange: [0, Number.MAX_SAFE_INTEGER]
+    priceRange: [0, Number.MAX_SAFE_INTEGER],
+    attributes: {}
   });
   
   const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false);
@@ -109,12 +111,12 @@ export default function CategoryPage({ params }: { params: Promise<{ category: s
   useEffect(() => {
     const fetchProductsAndCategories = async () => {
       try {
-        const [prodRes, catRes] = await Promise.all([
+        const [prodRes, catData] = await Promise.all([
           api.get('/products'),
-          api.get('/categories')
+          getCategoriesCached()
         ]);
         setAllProducts(prodRes.data || []);
-        setCategoriesConfig(catRes.data);
+        setCategoriesConfig(catData);
       } catch (err) {
         console.error('Failed to fetch data', err);
         setFetchError(true);
@@ -143,10 +145,15 @@ export default function CategoryPage({ params }: { params: Promise<{ category: s
     });
   }, [allProducts, categoryStr]);
 
-  const { availableSubcats, availableBrands, counts, maxPrice } = useMemo(() => {
+  const { availableSubcats, availableBrands, counts, maxPrice, availableAttributes } = useMemo(() => {
     const subs = new Set<string>();
     const brands = new Set<string>();
-    const c = { subcategories: {} as Record<string, number>, brands: {} as Record<string, number> };
+    const attrs: Record<string, Set<string>> = {};
+    const c = { 
+      subcategories: {} as Record<string, number>, 
+      brands: {} as Record<string, number>,
+      attributes: {} as Record<string, Record<string, number>>
+    };
     let mPrice = 0;
 
     baseProducts.forEach(p => {
@@ -161,6 +168,19 @@ export default function CategoryPage({ params }: { params: Promise<{ category: s
         brands.add(p.brand);
         c.brands[p.brand] = (c.brands[p.brand] || 0) + 1;
       }
+
+      if (p.attributes && Array.isArray(p.attributes)) {
+        p.attributes.forEach((attr: any) => {
+          if (attr.key && attr.value) {
+            if (!attrs[attr.key]) {
+              attrs[attr.key] = new Set();
+              c.attributes[attr.key] = {};
+            }
+            attrs[attr.key].add(attr.value);
+            c.attributes[attr.key][attr.value] = (c.attributes[attr.key][attr.value] || 0) + 1;
+          }
+        });
+      }
     });
 
     // Map subcategory IDs to {id, name}
@@ -173,9 +193,15 @@ export default function CategoryPage({ params }: { params: Promise<{ category: s
       };
     }).sort((a, b) => a.name.localeCompare(b.name));
 
+    const formattedAttrs: Record<string, string[]> = {};
+    Object.keys(attrs).forEach(key => {
+      formattedAttrs[key] = Array.from(attrs[key]).sort();
+    });
+
     return {
       availableSubcats: mappedSubcats,
       availableBrands: Array.from(brands).sort(),
+      availableAttributes: formattedAttrs,
       counts: c,
       maxPrice: mPrice || 50000
     };
@@ -194,6 +220,16 @@ export default function CategoryPage({ params }: { params: Promise<{ category: s
       if (filters.subcategories.length > 0 && (!subId || !filters.subcategories.includes(subId))) return false;
       if (filters.brands.length > 0 && (!p.brand || !filters.brands.includes(p.brand))) return false;
       if (p.price > filters.priceRange[1]) return false;
+      
+      if (filters.attributes && Object.keys(filters.attributes).length > 0) {
+        for (const key of Object.keys(filters.attributes)) {
+          if (filters.attributes[key] && filters.attributes[key].length > 0) {
+            const prodAttr = (p.attributes || []).find((a: any) => a.key === key);
+            if (!prodAttr || !filters.attributes[key].includes(prodAttr.value)) return false;
+          }
+        }
+      }
+      
       return true;
     });
   }, [baseProducts, filters]);

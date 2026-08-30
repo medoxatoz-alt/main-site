@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import EmptyState from '@/components/EmptyState';
 import ErrorState from '@/components/ErrorState';
+import React from 'react';
 
 const parseImages = (imageProp: any): string[] => {
   if (Array.isArray(imageProp)) return imageProp;
@@ -44,7 +45,6 @@ export default function ProductDetail({ params }: { params: Promise<{ id: string
   const [addingToCart, setAddingToCart] = useState(false);
   const [activeImgIdx, setActiveImgIdx] = useState(0);
   const [quantity, setQuantity] = useState(1);
-  const [activeTab, setActiveTab] = useState<'desc' | 'specs' | 'vendor'>('desc');
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   
   const { user } = useAuth();
@@ -139,7 +139,6 @@ export default function ProductDetail({ params }: { params: Promise<{ id: string
     }
     setAddingToCart(true);
     try {
-      // Fetch current cart items to check existing quantity
       const cartRes = await api.get('/cart');
       const existingItem = cartRes.data.find((item: any) => item.productId === product.id);
       const currentQty = existingItem ? existingItem.quantity : 0;
@@ -150,7 +149,7 @@ export default function ProductDetail({ params }: { params: Promise<{ id: string
       if (stock < targetQty) {
         toast.error(`Cannot add to cart. Only ${stock} units available in stock (you already have ${currentQty} in your cart).`);
         setAddingToCart(false);
-        return;
+        return false;
       }
       
       if (currentQty === 0) {
@@ -164,12 +163,30 @@ export default function ProductDetail({ params }: { params: Promise<{ id: string
 
       toast.success('Added to Cart!');
       window.dispatchEvent(new Event('cart-updated'));
-      window.dispatchEvent(new Event('open-cart'));
+      return true;
     } catch (err) {
       toast.error('Failed to add to cart');
+      return false;
     } finally {
       setAddingToCart(false);
     }
+  };
+
+  const handleBuyNow = async () => {
+    if (!user) {
+      toast('Please sign in to buy');
+      router.push('/signin');
+      return;
+    }
+    
+    window.dispatchEvent(new CustomEvent('open-checkout', { 
+      detail: { 
+        buyNowItem: { 
+          productId: product.id, 
+          quantity: quantity 
+        } 
+      } 
+    }));
   };
 
   if (loading) {
@@ -206,17 +223,19 @@ export default function ProductDetail({ params }: { params: Promise<{ id: string
     );
   }
 
-  const images = parseImages(product.image);
+  const images = Array.isArray(product.images) && product.images.length > 0 
+    ? product.images 
+    : parseImages(product.image);
   const activeImageUrl = images[activeImgIdx] || images[0] || 'https://via.placeholder.com/400';
   const price = typeof product.price === 'string' ? parseFloat(product.price.replace(/,/g, '')) : Number(product.price);
   const mrp = product.mrp ? (typeof product.mrp === 'string' ? parseFloat(product.mrp.replace(/,/g, '')) : Number(product.mrp)) : null;
   const discountPercentage = mrp && mrp > price ? Math.round(((mrp - price) / mrp) * 100) : 0;
 
   return (
-    <main className="bg-[var(--bg-page)] min-h-screen pb-20">
+    <main className="bg-[var(--bg-page)] min-h-screen pb-20 ">
       <Navbar />
       
-      <div className="max-w-[1500px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="max-w-[1500px] mx-auto px-4 sm:px-6 lg:px-8 py-8 pt-5">
         
         {/* Navigation Breadcrumb */}
         <div className="text-xs text-gray-500 mb-6 flex items-center gap-1.5 font-medium">
@@ -249,7 +268,7 @@ export default function ProductDetail({ params }: { params: Promise<{ id: string
             {/* Thumbnails */}
             {images.length > 1 && (
               <div className="flex gap-2.5 mt-4 overflow-x-auto py-1 no-scrollbar max-w-full">
-                {images.map((img, idx) => (
+                {images.map((img: string, idx: number) => (
                   <button
                     key={idx}
                     type="button"
@@ -344,106 +363,66 @@ export default function ProductDetail({ params }: { params: Promise<{ id: string
                 <div className="text-[11px] text-gray-400 mt-1.5 font-medium">Inclusive of all duties and taxes</div>
               </div>
 
-              {/* Mini Highlights */}
-              <div className="space-y-3 mb-6">
-                <div className="flex items-center gap-2.5 text-sm">
-                  <BadgeCheck className="w-4 h-4 text-emerald-600 shrink-0" />
-                  <span className="text-gray-650 font-medium">Original Manufacturer Warranty Included</span>
-                </div>
-                <div className="flex items-center gap-2.5 text-sm">
-                  <Truck className="w-4 h-4 text-gold-primary shrink-0" />
-                  <span className="text-gray-650 font-medium">Free Express Shipping to medical institutes</span>
-                </div>
-                <div className="flex items-center gap-2.5 text-sm">
-                  <RotateCcw className="w-4 h-4 text-[#007185] shrink-0" />
-                  <span className="text-gray-650 font-medium">10 Days Easy Return Policy</span>
-                </div>
+ 
+            </div>
+
+            {/* Attributes List */}
+            <div className="bg-white px-6 sm:px-8 py-5 border-t border-gray-100">
+              <h2 className="text-sm font-extrabold text-gray-900 mb-4 uppercase tracking-wider">Product Specifications</h2>
+              <div className="grid grid-cols-[140px_1fr] sm:grid-cols-[160px_1fr] gap-y-3 text-sm">
+                <div className="font-bold text-gray-800">Item Category</div>
+                <div className="text-gray-600 capitalize">{product.category}</div>
+                
+                <div className="font-bold text-gray-800">Availability</div>
+                <div className="text-emerald-700 font-semibold">{product.stock && product.stock > 0 ? 'Certified In Stock' : 'Pre-order Available'}</div>
+
+                {product.attributes && product.attributes.map((attr: any, idx: number) => (
+                  <React.Fragment key={idx}>
+                    <div className="font-bold text-gray-800 capitalize">{attr.key}</div>
+                    <div className="text-gray-600">{attr.value}</div>
+                  </React.Fragment>
+                ))}
               </div>
             </div>
 
-            {/* Information Tabs */}
-            <div className="bg-white rounded-2xl border border-gray-200/60 shadow-[var(--shadow-soft)] overflow-hidden">
-              <div className="flex border-b border-gray-100 bg-gray-50">
-                <button
-                  onClick={() => setActiveTab('desc')}
-                  className={`flex-1 py-3.5 text-xs sm:text-sm font-bold border-b-2 transition-all duration-200 active:scale-95 cursor-pointer ${
-                    activeTab === 'desc' 
-                      ? 'border-gold-primary text-gold-primary bg-white' 
-                      : 'border-transparent text-gray-500 hover:text-gray-800'
-                  }`}
-                >
-                  Description
-                </button>
-                <button
-                  onClick={() => setActiveTab('specs')}
-                  className={`flex-1 py-3.5 text-xs sm:text-sm font-bold border-b-2 transition-all duration-200 active:scale-95 cursor-pointer ${
-                    activeTab === 'specs' 
-                      ? 'border-gold-primary text-gold-primary bg-white' 
-                      : 'border-transparent text-gray-500 hover:text-gray-800'
-                  }`}
-                >
-                  Specifications
-                </button>
-                <button
-                  onClick={() => setActiveTab('vendor')}
-                  className={`flex-1 py-3.5 text-xs sm:text-sm font-bold border-b-2 transition-all duration-200 active:scale-95 cursor-pointer ${
-                    activeTab === 'vendor' 
-                      ? 'border-gold-primary text-gold-primary bg-white' 
-                      : 'border-transparent text-gray-500 hover:text-gray-800'
-                  }`}
-                >
-                  Vendor
-                </button>
+            {/* About this item (Description) */}
+            <div className="bg-white px-6 sm:px-8 py-6 border-t border-gray-100">
+              <h2 className="text-sm font-extrabold text-gray-900 mb-4 uppercase tracking-wider">About this item</h2>
+              <div className="text-sm text-gray-700 leading-relaxed whitespace-pre-line">
+                {product.description ? (
+                  <ul className="list-disc pl-5 space-y-2.5 marker:text-gold-primary">
+                    {product.description.split('\n').map((line: string, i: number) => {
+                      const trimmed = line.trim();
+                      if (!trimmed) return null;
+                      return <li key={i} className="pl-1">{trimmed.replace(/^- /, '')}</li>;
+                    })}
+                  </ul>
+                ) : (
+                  <p className="italic text-gray-400">No detailed description provided for this item.</p>
+                )}
               </div>
-
-              <div className="p-6">
-                {activeTab === 'desc' && (
-                  <p className="leading-relaxed text-gray-700 text-sm whitespace-pre-line">
-                    {product.description || 'No detailed description provided for this premium medical equipment.'}
-                  </p>
-                )}
-
-                {activeTab === 'specs' && (
-                  <div className="overflow-hidden border border-gray-100 rounded-lg">
-                    <table className="min-w-full divide-y divide-gray-100 text-sm text-left">
-                      <tbody className="divide-y divide-gray-100 bg-white">
-                        <tr className="bg-gray-50/50">
-                          <td className="px-4 py-2.5 font-bold text-gray-500 w-1/3">Item Category</td>
-                          <td className="px-4 py-2.5 text-gray-800 font-medium capitalize">{product.category}</td>
-                        </tr>
-                        <tr>
-                          <td className="px-4 py-2.5 font-bold text-gray-500">Status</td>
-                          <td className="px-4 py-2.5 text-emerald-700 font-bold">
-                            {product.stock && product.stock > 0 ? 'Certified In Stock' : 'Pre-order Available'}
-                          </td>
-                        </tr>
-                        <tr className="bg-gray-50/50">
-                          <td className="px-4 py-2.5 font-bold text-gray-500">Compliance</td>
-                          <td className="px-4 py-2.5 text-gray-800 font-medium">CE / FDA Registered</td>
-                        </tr>
-                        <tr>
-                          <td className="px-4 py-2.5 font-bold text-gray-500">Target Segment</td>
-                          <td className="px-4 py-2.5 text-gray-800 font-medium">Hospitals & Clinics</td>
-                        </tr>
-                      </tbody>
-                    </table>
+            </div>
+            
+            {/* Vendor Details */}
+            <div className="bg-gray-50/80 p-6 sm:p-8 rounded-b-2xl border-t border-gray-100">
+              <div className="flex flex-col gap-2">
+                <div className="flex items-center gap-2">
+                  <ShieldCheck className="w-5 h-5 text-emerald-600" />
+                  <div className="text-sm font-extrabold text-gray-900">
+                    {product.is_sold_by_vendor ? 'Verified Third-Party Vendor' : 'Medox Certified Partner'}
                   </div>
-                )}
-
-                {activeTab === 'vendor' && (
-                  <div className="flex flex-col gap-2.5">
-                    <div className="text-sm font-bold text-gray-900">Medox Verified Partner</div>
-                    <p className="text-xs text-gray-500 leading-relaxed">
-                      This item is shipped directly from a certified medical warehousing facility to maintain precise temperature and moisture controls. Only authorized vendors can publish listing records.
-                    </p>
-                  </div>
-                )}
+                </div>
+                <p className="text-xs text-gray-500 leading-relaxed pl-7">
+                  {product.is_sold_by_vendor 
+                    ? 'This item is sold by a verified independent vendor on the MedoxAtoZ platform. All sellers must meet strict quality standards.'
+                    : 'This item is shipped directly from a certified medical warehousing facility to maintain precise temperature and moisture controls. Only authorized vendors can publish listing records.'}
+                </p>
               </div>
             </div>
           </div>
 
           {/* Right Column: Checkout Action Widget (lg:col-span-3) */}
-          <div className="lg:col-span-3 w-full sticky top-24">
+          <div className="lg:col-span-3 w-full sticky top-24 pt-10">
             <div className="bg-white p-6 rounded-2xl border-t-4 border-t-gold-primary border-x border-b border-gray-200/80 shadow-[0_6px_20px_rgba(0,0,0,0.06)]">
               <div className="text-3xl font-extrabold text-gray-900 mb-1">
                 ₹{price.toLocaleString('en-IN')}
@@ -490,12 +469,24 @@ export default function ProductDetail({ params }: { params: Promise<{ id: string
                         disabled={isOutOfStock || addingToCart}
                         className={`w-full py-3.5 font-extrabold rounded-full transition-all duration-300 shadow-md cursor-pointer flex items-center justify-center gap-2 ${
                           isOutOfStock 
-                            ? 'bg-gray-200 text-gray-400 border border-gray-200 shadow-none cursor-not-allowed' 
-                            : 'bg-gold-primary hover:bg-gold-hover text-[#2b3036] shadow-amber-500/10 hover:shadow-lg active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none'
+                            ? 'bg-gray-100 text-gray-400 border border-gray-200 shadow-none cursor-not-allowed' 
+                            : 'bg-white text-gray-900 border-2 border-gold-primary hover:bg-gold-50 shadow-sm active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none'
                         }`}
                       >
                         <ShoppingBag className="w-4 h-4 stroke-2" />
                         <span>{isOutOfStock ? 'Out of Stock' : addingToCart ? 'Adding to Cart...' : 'Add to Cart'}</span>
+                      </button>
+                      
+                      <button 
+                        onClick={handleBuyNow}
+                        disabled={isOutOfStock || addingToCart}
+                        className={`w-full py-3.5 font-extrabold rounded-full transition-all duration-300 shadow-md cursor-pointer flex items-center justify-center gap-2 ${
+                          isOutOfStock 
+                            ? 'bg-gray-200 text-gray-400 border border-gray-200 shadow-none cursor-not-allowed hidden' 
+                            : 'bg-gold-primary hover:bg-gold-hover text-[#2b3036] shadow-amber-500/20 hover:shadow-lg active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none'
+                        }`}
+                      >
+                        <span>Buy Now</span>
                       </button>
                     </div>
                   </>

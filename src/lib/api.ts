@@ -19,3 +19,26 @@ api.interceptors.response.use(
 );
 
 export default api;
+
+// ── Shared categories cache ─────────────────────────────────────────────────
+// Categories rarely change and are fetched independently by both the nav menu
+// and category pages on every load. Dedupe/cache in-memory (per page session)
+// so we don't issue the same GET twice for one navigation.
+let categoriesCache: any | null = null;
+let categoriesPromise: Promise<any> | null = null;
+
+export function getCategoriesCached(): Promise<any> {
+  if (categoriesCache) return Promise.resolve(categoriesCache);
+  if (!categoriesPromise) {
+    categoriesPromise = api.get('/categories')
+      .then(res => {
+        categoriesCache = res.data;
+        return res.data;
+      })
+      .catch(err => {
+        categoriesPromise = null; // allow retry on next call
+        throw err;
+      });
+  }
+  return categoriesPromise;
+}

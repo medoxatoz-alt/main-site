@@ -8,8 +8,9 @@ import { useAuth } from '@/context/AuthContext';
 import { Loader2, MapPin, Lock, X } from 'lucide-react';
 import { load } from '@cashfreepayments/cashfree-js';
 import PhoneVerification from '@/components/PhoneVerification';
+import { useGeolocatedAddress } from '@/hooks/useGeolocatedAddress';
 
-export default function CheckoutModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
+export default function CheckoutModal({ isOpen, onClose, buyNowItem }: { isOpen: boolean; onClose: () => void; buyNowItem?: { productId: string, quantity: number } | null }) {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
 
@@ -17,12 +18,11 @@ export default function CheckoutModal({ isOpen, onClose }: { isOpen: boolean; on
   const [productDetails, setProductDetails] = useState<Record<string, any>>({});
   const [addresses, setAddresses] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [invoicePdfUrl, setInvoicePdfUrl] = useState<string | null>(null);
-  const [paymentMethod, setPaymentMethod] = useState<'CASHFREE' | 'COD'>('CASHFREE');
+  const [paymentMethod] = useState<'CASHFREE'>('CASHFREE');
   const [useNewAddress, setUseNewAddress] = useState(false);
   const [placingOrder, setPlacingOrder] = useState(false);
   const [pincodeLoading, setPincodeLoading] = useState(false);
-  const [detectingLoc, setDetectingLoc] = useState(false);
+  const { detect: detectLocation, detecting: detectingLoc } = useGeolocatedAddress({ onError: (msg) => toast.error(msg) });
   const [cashfree, setCashfree] = useState<any>(null);
 
   const [shipping, setShipping] = useState<{
@@ -44,33 +44,40 @@ export default function CheckoutModal({ isOpen, onClose }: { isOpen: boolean; on
     pincode: ''
   });
 
-  // Auto-fetch City and State from Pincode
+  // Auto-fetch City and State from Pincode (debounced, and ignores stale responses
+  // if the pincode changes again before the request resolves)
   useEffect(() => {
-    const fetchPincode = async () => {
-      const pin = shipping.pincode?.replace(/\D/g, '');
-      if (useNewAddress && pin?.length === 6) {
-        setPincodeLoading(true);
-        try {
-          const res = await fetch(`https://api.postalpincode.in/pincode/${pin}`);
-          const data = await res.json();
-          if (data && data[0]?.Status === 'Success') {
-            const postOffice = data[0].PostOffice[0];
-            setShipping(prev => ({
-              ...prev,
-              city: postOffice.District || postOffice.Block || prev.city,
-              state: postOffice.State || prev.state
-            }));
-          } else {
-            toast.error('Invalid Pincode entered');
-          }
-        } catch (err) {
-          console.error('Failed to fetch pincode data', err);
-        } finally {
-          setPincodeLoading(false);
+    const pin = shipping.pincode?.replace(/\D/g, '');
+    if (!useNewAddress || pin?.length !== 6) return;
+
+    let cancelled = false;
+    const timer = setTimeout(async () => {
+      setPincodeLoading(true);
+      try {
+        const res = await fetch(`https://api.postalpincode.in/pincode/${pin}`);
+        const data = await res.json();
+        if (cancelled) return;
+        if (data && data[0]?.Status === 'Success') {
+          const postOffice = data[0].PostOffice[0];
+          setShipping(prev => ({
+            ...prev,
+            city: postOffice.District || postOffice.Block || prev.city,
+            state: postOffice.State || prev.state
+          }));
+        } else {
+          toast.error('Invalid Pincode entered');
         }
+      } catch (err) {
+        if (!cancelled) console.error('Failed to fetch pincode data', err);
+      } finally {
+        if (!cancelled) setPincodeLoading(false);
       }
+    }, 400);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
     };
-    fetchPincode();
   }, [shipping.pincode, useNewAddress]);
 
   // Initialize Cashfree SDK
@@ -88,49 +95,20 @@ export default function CheckoutModal({ isOpen, onClose }: { isOpen: boolean; on
     initializeCashfree();
   }, []);
 
-  const autoFillCheckoutLocation = () => {
-    if (!navigator.geolocation) {
-      toast.error('Geolocation is not supported by your browser');
-      return;
+  const autoFillCheckoutLocation = async () => {
+    try {
+      const parsed = await detectLocation();
+      setShipping(prev => ({
+        ...prev,
+        address: parsed.streetAddress || prev.address,
+        city: parsed.city || prev.city,
+        state: parsed.state || prev.state,
+        pincode: parsed.pincode || prev.pincode
+      }));
+      toast.success('Location fields autofilled!');
+    } catch {
+      // error toast already shown by the hook
     }
-    setDetectingLoc(true);
-    navigator.geolocation.getCurrentPosition(
-      async (position) => {
-        const { latitude, longitude } = position.coords;
-        try {
-          const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${latitude}&lon=${longitude}`);
-          const data = await res.json();
-          const address = data.address || {};
-
-          const parts = [
-            address.road || address.pedestrian || '',
-            address.suburb || address.neighbourhood || address.residential || '',
-          ].filter(Boolean);
-
-          const streetAddress = parts.join(', ');
-          const city = address.city || address.town || address.village || address.suburb || address.county || '';
-          const state = address.state || '';
-          const pincode = address.postcode || '';
-
-          setShipping(prev => ({
-            ...prev,
-            address: streetAddress || prev.address,
-            city: city || prev.city,
-            state: state || prev.state,
-            pincode: pincode || prev.pincode
-          }));
-          toast.success('Location fields autofilled!');
-        } catch {
-          toast.error('Failed to resolve location details.');
-        } finally {
-          setDetectingLoc(false);
-        }
-      },
-      () => {
-        toast.error('Location access denied or unavailable.');
-        setDetectingLoc(false);
-      }
-    );
   };
 
 
@@ -149,7 +127,7 @@ export default function CheckoutModal({ isOpen, onClose }: { isOpen: boolean; on
         api.get('/user/addresses')
       ]);
 
-      const items = cartRes.data;
+      const items = buyNowItem ? [buyNowItem] : cartRes.data;
       if (items.length === 0) {
         toast('Your cart is empty');
         onClose();
@@ -167,21 +145,28 @@ export default function CheckoutModal({ isOpen, onClose }: { isOpen: boolean; on
         setShipping(s => ({ ...s, fullName: user?.name || '' }));
       }
 
+      const uniqueProductIds: string[] = Array.from(new Set(items.map((i: any) => i.productId)));
+      const fetchResults = await Promise.all(uniqueProductIds.map(async (productId) => {
+        try {
+          const prodRes = await api.get(`/products/${productId}`);
+          return { productId, data: prodRes.data, ok: true as const };
+        } catch (err) {
+          console.error(`Failed to fetch product ${productId}`, err);
+          return { productId, ok: false as const };
+        }
+      }));
+
       const details: Record<string, any> = {};
-      for (const item of items) {
-        if (!details[item.productId]) {
+      for (const result of fetchResults) {
+        if (result.ok) {
+          details[result.productId] = result.data;
+        } else {
+          // Auto-remove unavailable product
           try {
-            const prodRes = await api.get(`/products/${item.productId}`);
-            details[item.productId] = prodRes.data;
-          } catch (err) {
-            console.error(`Failed to fetch product ${item.productId}`, err);
-            // Auto-remove unavailable product
-            try {
-              await api.delete(`/cart/${item.productId}`);
-              setCartItems(prev => prev.filter(i => i.productId !== item.productId));
-            } catch (delErr) {
-              console.error(`Failed to auto-remove unavailable product ${item.productId}`, delErr);
-            }
+            await api.delete(`/cart/${result.productId}`);
+            setCartItems(prev => prev.filter(i => i.productId !== result.productId));
+          } catch (delErr) {
+            console.error(`Failed to auto-remove unavailable product ${result.productId}`, delErr);
           }
         }
       }
@@ -191,11 +176,11 @@ export default function CheckoutModal({ isOpen, onClose }: { isOpen: boolean; on
     } finally {
       setLoading(false);
     }
-  }, [user, router]);
+  }, [user, router, buyNowItem]);
 
   useEffect(() => {
-    if (user) fetchData();
-  }, [user, fetchData]);
+    if (user && isOpen) fetchData();
+  }, [user, isOpen, fetchData]);
 
   const handlePlaceOrder = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -310,9 +295,9 @@ export default function CheckoutModal({ isOpen, onClose }: { isOpen: boolean; on
       <div className="bg-[#f8f9fa] w-full h-full md:h-auto md:max-h-[90vh] md:max-w-6xl md:rounded-2xl shadow-2xl flex flex-col relative overflow-hidden flex-1">
         
         {/* Header with Close Button */}
-        <div className="bg-white border-b border-gray-100 px-4 md:px-6 py-4 flex justify-between items-center shrink-0">
+        <div className=" border-b border-gray-100 px-4 md:px-6 py-4 flex justify-between items-center shrink-0">
           <h2 className="text-xl md:text-2xl font-extrabold text-gray-900 flex items-center gap-3">
-            <span className="w-1.5 h-6 md:h-8 bg-gold-primary rounded-full"></span>
+            
             Secure Checkout
           </h2>
           <button onClick={onClose} className="p-2 text-gray-400 hover:text-gray-900 hover:bg-gray-100 rounded-full transition-colors bg-transparent border-none cursor-pointer">
@@ -322,24 +307,6 @@ export default function CheckoutModal({ isOpen, onClose }: { isOpen: boolean; on
 
         {/* Scrollable Content */}
         <div className="flex-1 overflow-y-auto custom-scrollbar relative p-4 md:p-6">
-
-      {/* Invoice PDF Modal */}
-      {invoicePdfUrl && (
-        <div className="fixed inset-0 z-[9999] bg-black/80 flex flex-col items-center justify-center p-4 md:p-10 backdrop-blur-md">
-          <div className="w-full max-w-4xl bg-white rounded-xl shadow-2xl overflow-hidden flex flex-col h-full max-h-[90vh] animate-in fade-in zoom-in duration-300">
-            <div className="flex items-center justify-between p-4 border-b border-gray-100 bg-gray-50">
-              <h2 className="font-bold text-gray-800 text-lg">Order Confirmed! Your Invoice</h2>
-              <button 
-                onClick={() => router.push('/account')}
-                className="px-5 py-2.5 bg-gold-primary text-white rounded-lg text-sm font-bold hover:bg-gold-hover transition-colors flex items-center gap-2 cursor-pointer"
-              >
-                Continue to Account <X className="w-4 h-4" />
-              </button>
-            </div>
-            <iframe src={invoicePdfUrl} className="w-full flex-1 border-0" title="Invoice PDF" />
-          </div>
-        </div>
-      )}
 
       <div className="flex flex-col lg:flex-row gap-6 md:gap-8 items-start">
         {/* Shipping Form Card */}
@@ -489,7 +456,7 @@ export default function CheckoutModal({ isOpen, onClose }: { isOpen: boolean; on
                     type="radio"
                     name="paymentMethod"
                     checked={paymentMethod === 'CASHFREE'}
-                    onChange={() => setPaymentMethod('CASHFREE')}
+                    readOnly
                     className="mt-1.5 cursor-pointer"
                   />
                   <div className="flex-1 flex justify-between items-center">

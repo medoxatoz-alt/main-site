@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import api from '@/lib/api';
 import toast from 'react-hot-toast';
-import { Loader2, Plus, Trash2, FolderTree } from 'lucide-react';
+import { Loader2, Plus, Trash2, FolderTree, ArrowUp, ArrowDown } from 'lucide-react';
 
 interface SubcategoriesTabProps {
   isFetching: boolean;
@@ -17,6 +17,8 @@ export default function SubcategoriesTab({ isFetching, fetchError }: Subcategori
   const [selectedMainCatId, setSelectedMainCatId] = useState<string>('');
   const [newSubcatName, setNewSubcatName] = useState('');
   const [isAdding, setIsAdding] = useState(false);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [isSavingOrder, setIsSavingOrder] = useState(false);
 
   const fetchCategories = async () => {
     setLoadingConfig(true);
@@ -70,7 +72,49 @@ export default function SubcategoriesTab({ isFetching, fetchError }: Subcategori
       toast.error(err.response?.data?.error || 'Failed to delete subcategory');
     }
   };
+  const handleMove = async (index: number, direction: 'up' | 'down') => {
+    const currentSubcats = categoriesConfig.docs.filter(doc => doc.mainCategoryId === selectedMainCatId);
+    if ((direction === 'up' && index === 0) || (direction === 'down' && index === currentSubcats.length - 1)) return;
 
+    const newDocs = [...categoriesConfig.docs];
+    const catDocs = newDocs.filter(doc => doc.mainCategoryId === selectedMainCatId);
+    const otherDocs = newDocs.filter(doc => doc.mainCategoryId !== selectedMainCatId);
+    
+    // Swap
+    const targetIndex = direction === 'up' ? index - 1 : index + 1;
+    const temp = catDocs[index];
+    catDocs[index] = catDocs[targetIndex];
+    catDocs[targetIndex] = temp;
+
+    // Assign new orders
+    catDocs.forEach((doc, i) => {
+      doc.order = i;
+    });
+
+    setCategoriesConfig({
+      ...categoriesConfig,
+      docs: [...otherDocs, ...catDocs]
+    });
+
+    setHasUnsavedChanges(true);
+  };
+
+  const handleSaveOrder = async () => {
+    setIsSavingOrder(true);
+    const catDocs = categoriesConfig.docs.filter(doc => doc.mainCategoryId === selectedMainCatId);
+    try {
+      await api.put('/categories/sub/reorder', {
+        items: catDocs.map(d => ({ id: d.id, order: d.order }))
+      });
+      setHasUnsavedChanges(false);
+      toast.success('Order saved successfully');
+      fetchCategories();
+    } catch (err) {
+      toast.error('Failed to save order');
+    } finally {
+      setIsSavingOrder(false);
+    }
+  };
   if (isFetching || loadingConfig) {
     return (
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-10 flex flex-col items-center justify-center">
@@ -111,7 +155,11 @@ export default function SubcategoriesTab({ isFetching, fetchError }: Subcategori
           <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Select Main Category</label>
           <select 
             value={selectedMainCatId} 
-            onChange={(e) => setSelectedMainCatId(e.target.value)}
+            onChange={(e) => {
+              if (hasUnsavedChanges && !confirm('You have unsaved order changes. Do you want to discard them?')) return;
+              setSelectedMainCatId(e.target.value);
+              setHasUnsavedChanges(false);
+            }}
             className="w-full md:w-[300px] bg-gray-50 border border-gray-200 text-gray-900 text-sm rounded-lg focus:ring-teal-500 focus:border-teal-500 block px-3 py-2.5 outline-none transition-all"
           >
             {Array.isArray(categoriesConfig.mainCategories) && categoriesConfig.mainCategories.map((cat, idx) => {
@@ -156,9 +204,19 @@ export default function SubcategoriesTab({ isFetching, fetchError }: Subcategori
         </div>
 
         {/* List of existing */}
-        <div className="lg:col-span-2 bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-          <div className="px-6 py-4 border-b border-gray-100 bg-gray-50/50">
+        <div className="lg:col-span-2 bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden flex flex-col">
+          <div className="px-6 py-4 border-b border-gray-100 bg-gray-50/50 flex items-center justify-between">
             <h3 className="font-bold text-gray-900">Subcategories in "{selectedCatName}"</h3>
+            {hasUnsavedChanges && (
+              <button
+                onClick={handleSaveOrder}
+                disabled={isSavingOrder}
+                className="flex items-center gap-1.5 bg-amber-500 hover:bg-amber-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition-colors disabled:opacity-50"
+              >
+                {isSavingOrder ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
+                {isSavingOrder ? 'Saving...' : 'Save Order'}
+              </button>
+            )}
           </div>
           
           <div className="p-0">
@@ -168,16 +226,34 @@ export default function SubcategoriesTab({ isFetching, fetchError }: Subcategori
               </div>
             ) : (
               <ul className="divide-y divide-gray-100">
-                {currentSubcats.map(doc => (
+                {currentSubcats.map((doc, idx) => (
                   <li key={doc.id} className="flex items-center justify-between px-6 py-3.5 hover:bg-gray-50 transition-colors group">
                     <span className="text-sm font-medium text-gray-900">{doc.name}</span>
-                    <button 
-                      onClick={() => handleDeleteSubcategory(doc.id, doc.name)}
-                      className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100"
-                      title="Delete Subcategory"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
+                      <button 
+                        onClick={() => handleMove(idx, 'up')}
+                        disabled={idx === 0}
+                        className="p-1.5 text-gray-400 hover:text-teal-600 hover:bg-teal-50 rounded-lg transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                        title="Move Up"
+                      >
+                        <ArrowUp className="w-4 h-4" />
+                      </button>
+                      <button 
+                        onClick={() => handleMove(idx, 'down')}
+                        disabled={idx === currentSubcats.length - 1}
+                        className="p-1.5 text-gray-400 hover:text-teal-600 hover:bg-teal-50 rounded-lg transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                        title="Move Down"
+                      >
+                        <ArrowDown className="w-4 h-4" />
+                      </button>
+                      <button 
+                        onClick={() => handleDeleteSubcategory(doc.id, doc.name)}
+                        className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors ml-2"
+                        title="Delete Subcategory"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
                   </li>
                 ))}
               </ul>

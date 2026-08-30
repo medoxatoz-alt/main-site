@@ -11,15 +11,15 @@ const inter = Inter({ subsets: ['latin'] });
 export const metadata: Metadata = {
   title: 'MedoxAtoZ | Premium Medical Supplies',
   description: 'Premium medical and diagnostic supplies for clinics in India.',
-  manifest: '/manifest.json',
+  manifest: '/site.webmanifest',
   icons: {
     icon: [
-      { url: '/favicon/favicon.ico' },
-      { url: '/favicon/favicon.svg', type: 'image/svg+xml' },
-      { url: '/favicon/favicon-96x96.png', sizes: '96x96', type: 'image/png' },
+      { url: '/favicon.ico' },
+      { url: '/favicon.svg', type: 'image/svg+xml' },
+      { url: '/favicon-96x96.png', sizes: '96x96', type: 'image/png' },
     ],
     apple: [
-      { url: '/favicon/apple-touch-icon.png' },
+      { url: '/apple-touch-icon.png' },
     ],
   },
 };
