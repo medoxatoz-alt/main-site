@@ -91,7 +91,10 @@ export default function ProductsTab({ products, isFetching, fetchError, onDelete
                       <span className="font-semibold text-gray-800 line-clamp-1 max-w-[220px] block">{p.title}</span>
                     </td>
                     <td className="py-3.5 px-5">
-                      <span className="px-2.5 py-1 bg-gray-100 text-gray-600 rounded-full text-xs font-semibold">{p.category}</span>
+                      <div className="flex flex-col gap-1">
+                        <span className="px-2 py-0.5 bg-gray-100 text-gray-600 rounded text-[10px] font-semibold w-max truncate max-w-[120px]">{p.mainCategory || p.category}</span>
+                        {p.subCategory && <span className="px-2 py-0.5 bg-gray-50 text-gray-400 rounded text-[10px] font-medium w-max truncate max-w-[120px]">{p.subCategory}</span>}
+                      </div>
                     </td>
                     <td className="py-3.5 px-5 font-bold text-gray-900">₹{price.toLocaleString('en-IN')}</td>
                     <td className="py-3.5 px-5 text-right flex justify-end gap-2">

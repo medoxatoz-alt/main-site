@@ -7,7 +7,7 @@ import api from '@/lib/api';
 import toast from 'react-hot-toast';
 import {
   Loader2, LayoutDashboard, Users, Package, ShoppingBag,
-  BarChart3, XCircle, CreditCard, Store, ArrowLeft,
+  BarChart3, XCircle, CreditCard, Store, ArrowLeft, FolderTree
 } from 'lucide-react';
 import AddProductModal from '@/components/AddProductModal';
 import VendorsTab from '@/sections/admin/VendorsTab';
@@ -15,8 +15,9 @@ import ProductsTab from '@/sections/admin/ProductsTab';
 import OrdersTab from '@/sections/admin/OrdersTab';
 import AnalyticsTab from '@/sections/admin/AnalyticsTab';
 import EditProductModal from '@/components/EditProductModal';
+import SubcategoriesTab from '@/sections/admin/SubcategoriesTab';
 
-type Tab = 'vendors' | 'products' | 'orders' | 'all-orders' | 'rejected-orders' | 'payments' | 'analytics' | 'vendor-products';
+type Tab = 'vendors' | 'products' | 'orders' | 'all-orders' | 'rejected-orders' | 'payments' | 'analytics' | 'vendor-products' | 'subcategories';
 
 interface NavItem {
   id: Tab;
@@ -28,8 +29,9 @@ interface NavItem {
 
 const NAV_ITEMS: NavItem[] = [
   { id: 'vendors',         label: 'Vendors',          icon: <Users className="w-4 h-4" />,        accent: 'blue' },
-  { id: 'products',        label: 'My Products',       icon: <Package className="w-4 h-4" />,      accent: 'gold' },
-  { id: 'orders',          label: 'My Orders',         icon: <ShoppingBag className="w-4 h-4" />,  accent: 'gold', dividerBefore: true },
+  { id: 'subcategories',   label: 'Subcategories',    icon: <FolderTree className="w-4 h-4" />,   accent: 'teal' },
+  { id: 'products',        label: 'My Products',      icon: <Package className="w-4 h-4" />,      accent: 'gold' },
+  { id: 'orders',          label: 'My Orders',        icon: <ShoppingBag className="w-4 h-4" />,  accent: 'gold', dividerBefore: true },
   { id: 'all-orders',      label: 'All Orders',        icon: <LayoutDashboard className="w-4 h-4" />, accent: 'blue' },
   { id: 'rejected-orders', label: 'Rejected Orders',   icon: <XCircle className="w-4 h-4" />,      accent: 'red' },
   { id: 'payments',        label: 'Payments',          icon: <CreditCard className="w-4 h-4" />,   accent: 'emerald' },
@@ -42,11 +44,12 @@ const ACCENT_ACTIVE: Record<string, string> = {
   red:     'bg-red-500/10    text-red-400     border-l-red-400',
   emerald: 'bg-emerald-500/10 text-emerald-400 border-l-emerald-400',
   purple:  'bg-purple-500/10 text-purple-400  border-l-purple-400',
+  teal:    'bg-teal-500/10   text-teal-400    border-l-teal-400',
 };
 const ACCENT_INACTIVE = 'text-slate-400 hover:text-slate-200 hover:bg-white/5 border-l-transparent';
 
 const TAB_TITLES: Partial<Record<Tab, string>> = {
-  vendors: 'Vendor Management', products: 'My Products',
+  vendors: 'Vendor Management', subcategories: 'Manage Subcategories', products: 'My Products',
   orders: 'My Orders', 'all-orders': 'All Orders',
   'rejected-orders': 'Rejected Orders', payments: 'Payments Overview',
   analytics: 'Financial Analytics',
@@ -232,6 +235,9 @@ export default function AdminDashboard() {
                 onApprove={handleApproveVendor} onReject={handleRejectVendor}
                 onViewProducts={(uid, name) => { setSelectedVendorId(uid); setSelectedVendorName(name); setActiveTab('vendor-products'); }}
               />
+            )}
+            {activeTab === 'subcategories' && (
+              <SubcategoriesTab isFetching={isFetching} fetchError={fetchError} />
             )}
             {(activeTab === 'products' || activeTab === 'vendor-products') && (
               <>

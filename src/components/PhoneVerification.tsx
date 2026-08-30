@@ -81,7 +81,7 @@ export default function PhoneVerification({ onVerified }: { onVerified: () => vo
   };
 
   return (
-    <div className="bg-white p-6 sm:p-8 rounded-2xl border border-gray-200 shadow-sm mb-6 animate-in slide-in-from-top-4 fade-in duration-300">
+    <div className="bg-white p-4 sm:p-6 w-full animate-in slide-in-from-top-4 fade-in duration-300">
       <div className="flex items-center gap-4 mb-6">
         <div className="w-12 h-12 rounded-full bg-blue-50 flex items-center justify-center flex-shrink-0">
           <Phone className="w-6 h-6 text-blue-500" />

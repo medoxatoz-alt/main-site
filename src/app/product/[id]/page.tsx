@@ -44,14 +44,7 @@ export default function ProductDetail({ params }: { params: Promise<{ id: string
   const [addingToCart, setAddingToCart] = useState(false);
   const [activeImgIdx, setActiveImgIdx] = useState(0);
   const [quantity, setQuantity] = useState(1);
-  const [activeTab, setActiveTab] = useState<'desc' | 'specs' | 'vendor' | 'reviews'>('desc');
-  const [reviews, setReviews] = useState<any[]>([]);
-  const [canReview, setCanReview] = useState(false);
-  const [hasReviewed, setHasReviewed] = useState(false);
-  const [userReview, setUserReview] = useState<any>(null);
-  const [reviewRating, setReviewRating] = useState(5);
-  const [reviewComment, setReviewComment] = useState('');
-  const [submittingReview, setSubmittingReview] = useState(false);
+  const [activeTab, setActiveTab] = useState<'desc' | 'specs' | 'vendor'>('desc');
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   
   const { user } = useAuth();
@@ -127,24 +120,6 @@ export default function ProductDetail({ params }: { params: Promise<{ id: string
         if ((Number(res.data.stock) || 0) <= 0) {
           setQuantity(0);
         }
-        
-        const reviewsRes = await api.get(`/reviews/${id}`);
-        setReviews(reviewsRes.data);
-
-        // Check if user is logged in to get can-review status
-        const token = document.cookie.includes('medox_token'); // crude check if there might be a session
-        if (token || user) {
-          try {
-            const canReviewRes = await api.get(`/reviews/${id}/can-review`);
-            setCanReview(canReviewRes.data.canReview);
-            setHasReviewed(canReviewRes.data.hasReviewed || false);
-            if (canReviewRes.data.existingReview) {
-              setUserReview(canReviewRes.data.existingReview);
-              setReviewRating(canReviewRes.data.existingReview.rating);
-              setReviewComment(canReviewRes.data.existingReview.comment);
-            }
-          } catch(e) {}
-        }
       } catch (err: any) {
         const msg = err.response?.data?.error || 'Product not found';
         setErrorMsg(msg);
@@ -155,30 +130,6 @@ export default function ProductDetail({ params }: { params: Promise<{ id: string
     };
     fetchProductAndReviews();
   }, [id, user]);
-  const handleSubmitReview = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setSubmittingReview(true);
-    try {
-      await api.post(`/reviews/${id}`, {
-        rating: reviewRating,
-        comment: reviewComment
-      });
-      toast.success('Review submitted successfully!');
-      
-      const reviewsRes = await api.get(`/reviews/${id}`);
-      setReviews(reviewsRes.data);
-      
-      setProduct((prev: any) => ({
-        ...prev,
-        reviewCount: reviewsRes.data.length,
-        rating: reviewsRes.data.length > 0 ? (reviewsRes.data.reduce((acc: number, cur: any) => acc + cur.rating, 0) / reviewsRes.data.length).toFixed(1) : prev.rating
-      }));
-    } catch (error: any) {
-      toast.error(error.response?.data?.error || 'Failed to submit review');
-    } finally {
-      setSubmittingReview(false);
-    }
-  };
 
   const handleAddToCart = async () => {
     if (!user) {
@@ -213,6 +164,7 @@ export default function ProductDetail({ params }: { params: Promise<{ id: string
 
       toast.success('Added to Cart!');
       window.dispatchEvent(new Event('cart-updated'));
+      window.dispatchEvent(new Event('open-cart'));
     } catch (err) {
       toast.error('Failed to add to cart');
     } finally {
@@ -259,8 +211,6 @@ export default function ProductDetail({ params }: { params: Promise<{ id: string
   const price = typeof product.price === 'string' ? parseFloat(product.price.replace(/,/g, '')) : Number(product.price);
   const mrp = product.mrp ? (typeof product.mrp === 'string' ? parseFloat(product.mrp.replace(/,/g, '')) : Number(product.mrp)) : null;
   const discountPercentage = mrp && mrp > price ? Math.round(((mrp - price) / mrp) * 100) : 0;
-  const rating = product.rating || 4.8;
-  const reviewCount = product.reviewCount || 0;
 
   return (
     <main className="bg-[var(--bg-page)] min-h-screen pb-20">
@@ -370,23 +320,9 @@ export default function ProductDetail({ params }: { params: Promise<{ id: string
                 </div>
               </div>
 
-              <h1 className="text-xl sm:text-2xl font-extrabold text-gray-900 mb-2.5 leading-snug">
+              <h1 className="text-xl sm:text-2xl font-extrabold text-gray-900 mb-6 leading-snug">
                 {product.title}
               </h1>
-
-              {/* Ratings */}
-              <div className="flex items-center gap-2 mb-6">
-                <div className="flex text-amber-500 gap-0.5">
-                  {Array.from({ length: 5 }).map((_, i) => (
-                    <Star key={i} className={`w-4 h-4 ${i < Math.floor(rating) ? 'fill-current' : 'text-gray-200'}`} />
-                  ))}
-                </div>
-                <span className="text-sm font-bold text-gray-800">{rating}</span>
-                <span className="text-gray-300">|</span>
-                <span className="text-xs font-semibold text-gray-500 hover:text-gold-primary cursor-pointer transition-colors underline decoration-gray-300">
-                  {reviewCount} Clinic Reviews
-                </span>
-              </div>
 
               {/* Pricing Section */}
               <div className="border-t border-b border-gray-100 py-4 mb-6">
@@ -458,16 +394,6 @@ export default function ProductDetail({ params }: { params: Promise<{ id: string
                 >
                   Vendor
                 </button>
-                <button
-                  onClick={() => setActiveTab('reviews')}
-                  className={`flex-1 py-3.5 text-xs sm:text-sm font-bold border-b-2 transition-all duration-200 active:scale-95 cursor-pointer ${
-                    activeTab === 'reviews' 
-                      ? 'border-gold-primary text-gold-primary bg-white' 
-                      : 'border-transparent text-gray-500 hover:text-gray-800'
-                  }`}
-                >
-                  Reviews ({reviews.length})
-                </button>
               </div>
 
               <div className="p-6">
@@ -510,93 +436,6 @@ export default function ProductDetail({ params }: { params: Promise<{ id: string
                     <p className="text-xs text-gray-500 leading-relaxed">
                       This item is shipped directly from a certified medical warehousing facility to maintain precise temperature and moisture controls. Only authorized vendors can publish listing records.
                     </p>
-                  </div>
-                )}
-
-                {activeTab === 'reviews' && (
-                  <div className="flex flex-col gap-6">
-                    {/* Review Form */}
-                    {canReview && (
-                      <div className="bg-gray-50 p-5 rounded-xl border border-gray-100">
-                        <h3 className="text-sm font-bold text-gray-900 mb-4">
-                          {userReview ? 'Update Your Review' : 'Write a Review'}
-                        </h3>
-                        <form onSubmit={handleSubmitReview} className="flex flex-col gap-4">
-                          <div>
-                            <label className="block text-xs font-semibold text-gray-700 mb-1.5">Rating</label>
-                            <div className="flex gap-1">
-                              {[1, 2, 3, 4, 5].map((star) => (
-                                <button
-                                  key={star}
-                                  type="button"
-                                  onClick={() => setReviewRating(star)}
-                                  className="focus:outline-none cursor-pointer"
-                                >
-                                  <Star className={`w-6 h-6 ${star <= reviewRating ? 'fill-amber-500 text-amber-500' : 'text-gray-300'}`} />
-                                </button>
-                              ))}
-                            </div>
-                          </div>
-                          <div>
-                            <label className="block text-xs font-semibold text-gray-700 mb-1.5">Review Comment (Optional)</label>
-                            <textarea
-                              value={reviewComment}
-                              onChange={(e) => setReviewComment(e.target.value)}
-                              placeholder="Share your experience with this medical equipment..."
-                              className="w-full border border-gray-200 rounded-lg p-3 text-sm focus:ring-2 focus:ring-gold-primary/50 focus:border-gold-primary outline-none min-h-[100px] resize-y"
-                            />
-                          </div>
-                          <button
-                            type="submit"
-                            disabled={submittingReview}
-                            className="self-start bg-gray-900 hover:bg-black text-white font-bold py-2 px-6 rounded-lg text-sm transition-colors disabled:opacity-50 cursor-pointer"
-                          >
-                            {submittingReview ? 'Submitting...' : 'Submit Review'}
-                          </button>
-                        </form>
-                      </div>
-                    )}
-
-                    {!canReview && user && !hasReviewed && (
-                      <div className="bg-amber-50/50 p-4 rounded-lg border border-amber-100 text-sm text-amber-800 flex items-center gap-2">
-                        <ShoppingBag className="w-4 h-4" />
-                        You must purchase this product to leave a verified review.
-                      </div>
-                    )}
-
-                    {hasReviewed && (
-                      <div className="bg-emerald-50 p-4 rounded-lg border border-emerald-100 text-sm text-emerald-800 flex items-center gap-2">
-                        <BadgeCheck className="w-4 h-4" />
-                        You have already reviewed this product. Thank you!
-                      </div>
-                    )}
-
-                    {/* Review List */}
-                    <div className="flex flex-col gap-4">
-                      <h3 className="text-sm font-bold text-gray-900">Customer Reviews</h3>
-                      {reviews.length === 0 ? (
-                        <EmptyState message="No reviews yet. Be the first to review after purchase!" />
-                      ) : (
-                        reviews.map((review) => (
-                          <div key={review.id} className="border-b border-gray-100 pb-4 last:border-0 last:pb-0">
-                            <div className="flex items-center justify-between mb-1">
-                              <div className="font-bold text-gray-900 text-sm">{review.userName}</div>
-                              <div className="text-xs text-gray-400">
-                                {new Date(review.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}
-                              </div>
-                            </div>
-                            <div className="flex text-amber-500 gap-0.5 mb-2">
-                              {Array.from({ length: 5 }).map((_, i) => (
-                                <Star key={i} className={`w-3.5 h-3.5 ${i < review.rating ? 'fill-current' : 'text-gray-200'}`} />
-                              ))}
-                            </div>
-                            {review.comment && (
-                              <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-line">{review.comment}</p>
-                            )}
-                          </div>
-                        ))
-                      )}
-                    </div>
                   </div>
                 )}
               </div>

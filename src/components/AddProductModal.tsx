@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import api from '@/lib/api';
 import toast from 'react-hot-toast';
-import { X, Upload, Image as ImageIcon, Trash2 } from 'lucide-react';
+import { X, Upload, Image as ImageIcon, Trash2, Search, ChevronDown } from 'lucide-react';
 
 const ALLOWED_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
 const MAX_FILE_SIZE_MB = 5;
@@ -17,15 +17,39 @@ interface AddProductModalProps {
 
 export default function AddProductModal({ isOpen, onClose, onSuccess }: AddProductModalProps) {
   const [newTitle, setNewTitle] = useState('');
+  const [newBrand, setNewBrand] = useState('');
   const [newPrice, setNewPrice] = useState('');
   const [newMrp, setNewMrp] = useState('');
-  const [newCategory, setNewCategory] = useState('Medical Products');
+  const [newMainCategoryId, setNewMainCategoryId] = useState('');
+  const [newSubCategoryId, setNewSubCategoryId] = useState('');
   const [newStock, setNewStock] = useState('10');
   const [newDescription, setNewDescription] = useState('');
   const [imageFiles, setImageFiles] = useState<File[]>([]);
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const [categoriesConfig, setCategoriesConfig] = useState<{mainCategories: {id: string, name: string}[], subcategories: Record<string, {id: string, name: string}[]>}>({ mainCategories: [], subcategories: {} });
+  
+  const [isSubCatDropdownOpen, setIsSubCatDropdownOpen] = useState(false);
+  const [subCatSearch, setSubCatSearch] = useState('');
+
+  useEffect(() => {
+    if (isOpen) {
+      api.get('/categories').then(res => {
+        setCategoriesConfig(res.data);
+        if (res.data.mainCategories?.length > 0) {
+          setNewMainCategoryId(res.data.mainCategories[0].id);
+        }
+      }).catch(console.error);
+    }
+  }, [isOpen]);
+
+  useEffect(() => {
+    // Reset subcategory if main category changes
+    setNewSubCategoryId('');
+    setSubCatSearch('');
+  }, [newMainCategoryId]);
 
   if (!isOpen) return null;
 
@@ -67,8 +91,9 @@ export default function AddProductModal({ isOpen, onClose, onSuccess }: AddProdu
 
   const resetForm = () => {
     imagePreviews.forEach(url => URL.revokeObjectURL(url));
-    setNewTitle(''); setNewPrice(''); setNewMrp(''); setNewStock('10');
-    setNewDescription(''); setNewCategory('Medical Products');
+    setNewTitle(''); setNewBrand(''); setNewPrice(''); setNewMrp(''); setNewStock('10');
+    setNewDescription(''); setNewSubCategoryId(''); setSubCatSearch('');
+    if (categoriesConfig.mainCategories.length > 0) setNewMainCategoryId(categoriesConfig.mainCategories[0].id);
     setImageFiles([]); setImagePreviews([]);
   };
 
@@ -76,6 +101,12 @@ export default function AddProductModal({ isOpen, onClose, onSuccess }: AddProdu
 
   const handleAddProduct = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!newSubCategoryId) {
+      toast.error('Please select a subcategory.');
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       // Upload all images
@@ -94,9 +125,11 @@ export default function AddProductModal({ isOpen, onClose, onSuccess }: AddProdu
 
       await api.post('/products', {
         title: newTitle,
+        brand: newBrand,
         price: Number(newPrice),
         mrp: newMrp ? Number(newMrp) : undefined,
-        category: newCategory,
+        mainCategoryId: newMainCategoryId,
+        subCategoryId: newSubCategoryId || undefined,
         stock: Number(newStock),
         description: newDescription,
         images: uploadedUrls,
@@ -133,14 +166,24 @@ export default function AddProductModal({ isOpen, onClose, onSuccess }: AddProdu
         <div className="p-6 overflow-y-auto flex-1">
           <form id="add-product-form" onSubmit={handleAddProduct} className="flex flex-col gap-5">
 
-            {/* Title */}
-            <div>
-              <label className="block text-sm font-bold text-gray-700 mb-1.5">Product Title *</label>
-              <input
-                type="text" value={newTitle} onChange={e => setNewTitle(e.target.value)} required
-                placeholder="e.g., Digital Blood Pressure Monitor"
-                className="w-full px-3.5 py-2.5 border border-gray-300 rounded-xl text-sm outline-none transition-all focus:border-gold-primary focus:ring-2 focus:ring-gold-primary/20"
-              />
+            {/* Title & Brand */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-1.5">Product Title *</label>
+                <input
+                  type="text" value={newTitle} onChange={e => setNewTitle(e.target.value)} required
+                  placeholder="e.g., Digital Blood Pressure Monitor"
+                  className="w-full px-3.5 py-2.5 border border-gray-300 rounded-xl text-sm outline-none transition-all focus:border-gold-primary focus:ring-2 focus:ring-gold-primary/20"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-1.5">Brand Name</label>
+                <input
+                  type="text" value={newBrand} onChange={e => setNewBrand(e.target.value)}
+                  placeholder="e.g., Omron, Lakme"
+                  className="w-full px-3.5 py-2.5 border border-gray-300 rounded-xl text-sm outline-none transition-all focus:border-gold-primary focus:ring-2 focus:ring-gold-primary/20"
+                />
+              </div>
             </div>
 
             {/* Price / MRP / Stock */}
@@ -173,14 +216,87 @@ export default function AddProductModal({ isOpen, onClose, onSuccess }: AddProdu
             {/* Category */}
             <div>
               <label className="block text-sm font-bold text-gray-700 mb-1.5">Category *</label>
-              <select
-                value={newCategory} onChange={e => setNewCategory(e.target.value)}
-                className="w-full px-3.5 py-2.5 border border-gray-300 rounded-xl text-sm outline-none transition-all focus:border-gold-primary focus:ring-2 focus:ring-gold-primary/20 bg-white"
-              >
-                <option value="Diagnostics Products">Diagnostics Products</option>
-                <option value="Medical Products">Medical Products</option>
-                <option value="Skin & Hair Care">Skin &amp; Hair Care</option>
-              </select>
+              <div className="relative">
+                {/* Custom Searchable Dropdown */}
+                <div 
+                  className="w-full px-3.5 py-2.5 border border-gray-300 rounded-xl text-sm outline-none transition-all bg-white cursor-pointer flex items-center justify-between hover:border-gold-primary"
+                  onClick={() => setIsSubCatDropdownOpen(!isSubCatDropdownOpen)}
+                >
+                  <span className={newMainCategoryId ? "text-gray-900" : "text-gray-400"}>
+                    {newMainCategoryId ? (
+                      newSubCategoryId 
+                        ? (categoriesConfig.subcategories[newMainCategoryId]?.find(s => s.id === newSubCategoryId)?.name || 'Selected Subcategory')
+                        : (categoriesConfig.mainCategories.find(c => c.id === newMainCategoryId)?.name || 'Selected Category')
+                    ) : '-- Select Category --'}
+                  </span>
+                  <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${isSubCatDropdownOpen ? 'rotate-180' : ''}`} />
+                </div>
+
+                {isSubCatDropdownOpen && (
+                  <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg max-h-[280px] overflow-hidden flex flex-col">
+                    <div className="p-2 border-b border-gray-100 sticky top-0 bg-white">
+                      <div className="relative">
+                        <Search className="w-4 h-4 text-gray-400 absolute left-2.5 top-2.5" />
+                        <input
+                          type="text"
+                          placeholder="Search categories..."
+                          value={subCatSearch}
+                          onChange={(e) => setSubCatSearch(e.target.value)}
+                          onClick={(e) => e.stopPropagation()}
+                          className="w-full pl-8 pr-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm outline-none focus:border-gold-primary focus:bg-white transition-all"
+                        />
+                      </div>
+                    </div>
+                    <div className="overflow-y-auto flex-1 p-2 custom-scrollbar">
+                      {categoriesConfig.mainCategories.map(mainCat => {
+                        const subs = categoriesConfig.subcategories[mainCat.id] || [];
+                        const searchLower = subCatSearch.toLowerCase();
+                        const matchesMain = mainCat.name.toLowerCase().includes(searchLower);
+                        const matchedSubs = subs.filter(sub => sub.name.toLowerCase().includes(searchLower));
+                        
+                        if (subCatSearch && !matchesMain && matchedSubs.length === 0) return null;
+
+                        return (
+                          <div key={mainCat.id} className="mb-2">
+                            <div 
+                              className="px-3 py-2 text-sm font-bold rounded-lg mb-1 bg-gray-50 text-gray-800"
+                            >
+                              {mainCat.name}
+                            </div>
+                            
+                            {subs.length > 0 && (
+                              <div className="pl-3 border-l-2 border-gray-100 ml-3 space-y-0.5">
+                                {(subCatSearch && !matchesMain ? matchedSubs : subs).map(sub => (
+                                  <div
+                                    key={sub.id}
+                                    className={`px-3 py-1.5 text-sm rounded-lg cursor-pointer transition-colors ${
+                                      newSubCategoryId === sub.id 
+                                        ? 'bg-gold-primary/10 text-gold-700 font-semibold' 
+                                        : 'text-gray-600 hover:bg-gray-50'
+                                    }`}
+                                    onClick={() => { setNewMainCategoryId(mainCat.id); setNewSubCategoryId(sub.id); setIsSubCatDropdownOpen(false); }}
+                                  >
+                                    {sub.name}
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                      
+                      {categoriesConfig.mainCategories.length > 0 && 
+                       !categoriesConfig.mainCategories.some(mainCat => {
+                         const subs = categoriesConfig.subcategories[mainCat.id] || [];
+                         const searchLower = subCatSearch.toLowerCase();
+                         return mainCat.name.toLowerCase().includes(searchLower) || subs.some(s => s.name.toLowerCase().includes(searchLower));
+                       }) && (
+                        <div className="px-3 py-4 text-sm text-gray-400 text-center">No categories found</div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* Description */}

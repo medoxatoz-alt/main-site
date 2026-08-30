@@ -8,7 +8,8 @@ import { useState, useEffect, Suspense, useRef } from 'react';
 import api from '@/lib/api';
 import toast from 'react-hot-toast';
 import { usePWAInstall } from '@/hooks/usePWAInstall';
-import CategoriesRow from '@/components/CategoriesRow';
+import MegaMenu from '@/components/MegaMenu';
+import CartDrawer from '@/components/CartDrawer';
 
 function SearchBarInput() {
   const router = useRouter();
@@ -60,6 +61,7 @@ export default function Navbar() {
   const router = useRouter();
   const pathname = usePathname();
   const [cartCount, setCartCount] = useState(0);
+  const [isCartOpen, setIsCartOpen] = useState(false);
   const [location, setLocation] = useState('India');
   const [loadingLocation, setLoadingLocation] = useState(false);
   const { isInstallable, promptInstall } = usePWAInstall();
@@ -123,8 +125,14 @@ export default function Navbar() {
 
     fetchCartCount();
 
+    const handleOpenCart = () => setIsCartOpen(true);
+    
     window.addEventListener('cart-updated', fetchCartCount);
-    return () => window.removeEventListener('cart-updated', fetchCartCount);
+    window.addEventListener('open-cart', handleOpenCart);
+    return () => {
+      window.removeEventListener('cart-updated', fetchCartCount);
+      window.removeEventListener('open-cart', handleOpenCart);
+    };
   }, [user]);
 
   useEffect(() => {
@@ -334,9 +342,9 @@ export default function Navbar() {
             </Link>
 
             {/* UPGRADED: Cart Button */}
-            <Link 
-              href="/cart" 
-              className="relative hidden md:flex items-center gap-2 bg-gradient-to-tr from-gold-primary/20 to-transparent py-2 px-5 rounded-full border border-gold-primary/40 text-gold-primary hover:bg-gold-primary hover:text-[#0d1117] transition-all duration-500 shadow-[0_0_15px_rgba(212,175,55,0.15)] hover:shadow-[0_0_25px_rgba(212,175,55,0.4)] group"
+            <button 
+              onClick={() => setIsCartOpen(true)}
+              className="relative hidden md:flex items-center gap-2 bg-gradient-to-tr from-gold-primary/20 to-transparent py-2 px-5 rounded-full border border-gold-primary/40 text-gold-primary hover:bg-gold-primary hover:text-[#0d1117] transition-all duration-500 shadow-[0_0_15px_rgba(212,175,55,0.15)] hover:shadow-[0_0_25px_rgba(212,175,55,0.4)] group cursor-pointer"
             >
               <LucideShoppingBag className="w-5 h-5 group-hover:scale-110 transition-transform duration-300" />
               {cartCount > 0 && (
@@ -345,11 +353,11 @@ export default function Navbar() {
                 </span>
               )}
               <span className="text-sm font-bold tracking-wide">Cart</span>
-            </Link>
+            </button>
           </div>
         </div>
-        {/* Categories Row */}
-        <CategoriesRow />
+        {/* Categories Mega Menu */}
+        <MegaMenu />
       </header>
 
       {/* UPGRADED: Mobile Sticky Bottom Tab Bar */}
@@ -367,8 +375,8 @@ export default function Navbar() {
 
         {/* Floating Action Button (FAB) for Cart on Mobile */}
         <div className="flex-1 flex justify-center relative h-full">
-          <Link href="/cart" className="absolute -top-6 flex flex-col items-center justify-center transition-transform duration-300 active:scale-95 group">
-            <div className={`relative flex items-center justify-center w-14 h-14 rounded-full shadow-[0_8px_20px_rgba(212,175,55,0.3)] border-[3px] border-white transition-colors duration-300 ${pathname === '/cart' ? 'bg-gold-primary text-white' : 'bg-[#0d1117] text-gold-primary'}`}>
+          <button onClick={() => setIsCartOpen(true)} className="absolute -top-6 flex flex-col items-center justify-center transition-transform duration-300 active:scale-95 group cursor-pointer border-none bg-transparent">
+            <div className={`relative flex items-center justify-center w-14 h-14 rounded-full shadow-[0_8px_20px_rgba(212,175,55,0.3)] border-[3px] border-white transition-colors duration-300 ${isCartOpen ? 'bg-gold-primary text-white' : 'bg-[#0d1117] text-gold-primary'}`}>
               <LucideShoppingBag className="w-6 h-6 stroke-2 group-hover:scale-110 transition-transform" />
               {cartCount > 0 && (
                 <span className="bg-red-500 text-white font-extrabold text-[10px] h-[18px] min-w-[18px] rounded-full inline-flex items-center justify-center px-1 border-2 border-white absolute -top-1 -right-1 z-[2]">
@@ -376,8 +384,8 @@ export default function Navbar() {
                 </span>
               )}
             </div>
-            <span className={`text-[10px] font-bold mt-1.5 tracking-wide ${pathname === '/cart' ? 'text-gold-primary' : 'text-gray-400'}`}>Cart</span>
-          </Link>
+            <span className={`text-[10px] font-bold mt-1.5 tracking-wide ${isCartOpen ? 'text-gold-primary' : 'text-gray-400'}`}>Cart</span>
+          </button>
         </div>
 
         <Link href="/account/orders" className={`flex flex-col items-center justify-center flex-1 h-full transition-all duration-300 ${pathname?.startsWith('/account/orders') ? 'text-gold-primary -translate-y-1' : 'text-gray-400 hover:text-gray-600'}`}>
@@ -391,6 +399,8 @@ export default function Navbar() {
         </Link>
         
       </div>
+      
+      <CartDrawer isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} />
     </>
   );
 }
