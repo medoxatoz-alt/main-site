@@ -118,7 +118,7 @@ export default function MegaMenu() {
         onMouseLeave={handleMouseLeaveMenu}
       >
         {/* Nav strip */}
-        <div className="max-w-[1500px] mx-auto px-4 lg:px-8 relative group">
+        <div className="max-w-[1500px] mx-auto px-2 lg:px-2 relative group">
           {showLeftScroll && (
             <button
               onClick={() => scrollByAmount(-300)}
@@ -131,7 +131,7 @@ export default function MegaMenu() {
           <ul 
             ref={scrollContainerRef}
             onScroll={checkScroll}
-            className="flex items-center overflow-x-auto overflow-y-hidden custom-scrollbar" 
+            className="flex items-stretch overflow-x-auto overflow-y-hidden custom-scrollbar" 
             style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
           >
             {mainCategories.map((mainCat) => {
@@ -146,7 +146,7 @@ export default function MegaMenu() {
                 >
                   <Link
                     href={getCatUrl(mainCat)}
-                    className={`flex items-center gap-1.5 px-2 py-3.5 text-[0.6rem] font-semibold uppercase tracking-wider transition-all duration-200 whitespace-nowrap border-b-2 ${
+                    className={`h-full flex flex-row items-center justify-center gap-1 px-2 py-3 text-[11px] font-bold uppercase tracking-wide transition-all duration-200 border-b-2 ${
                       isHovered
                         ? 'text-gold-primary border-gold-primary bg-white/[0.03]'
                         : isCurrentPage
@@ -154,9 +154,11 @@ export default function MegaMenu() {
                           : 'text-white/70 hover:text-white border-transparent hover:bg-white/[0.03]'
                     }`}
                   >
-                    {mainCat.name}
+                    <span className="whitespace-normal text-center leading-[1.2] max-w-[180px]">
+                      {mainCat.name}
+                    </span>
                     {subs.length > 0 && (
-                      <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${isHovered ? 'rotate-180 text-gold-primary' : 'text-white/30'}`} />
+                      <ChevronDown className={`w-3 h-3 flex-shrink-0 transition-transform duration-200 ${isHovered ? 'rotate-180 text-gold-primary' : 'text-white/30'}`} />
                     )}
                   </Link>
                 </li>

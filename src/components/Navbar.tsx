@@ -139,7 +139,7 @@ export default function Navbar() {
           {/* Logo */}
           <div className="order-1">
             <Link href="/" className="flex items-center gap-2 transition-transform duration-300 hover:scale-105">
-              <img src="/logo.webp" alt="MedoxAtoZ Logo" className="h-14 md:h-16 w-auto object-contain" />
+              <img src="/logo.webp" alt="MedoxAtoZ Logo" className="h-16 md:h-20 w-auto object-contain" />
             </Link>
           </div>
           

@@ -30,7 +30,7 @@ export default function Footer() {
 
         {/* Brand Column */}
         <div className="col-span-2">
-          <img src="/logo-footer.webp" alt="MedoxAtoZ" className="h-16 object-contain mb-6 drop-shadow-md" />
+          <img src="/logo-footer.webp" alt="MedoxAtoZ" className="h-28 object-contain mb-6 drop-shadow-md" />
           <p className="text-[#a0aab5] text-[14px] leading-relaxed mb-6 pr-10">
             India's premier B2B marketplace for premium medical and diagnostic supplies. Engineering the clinical supply chain with clinical precision.
           </p>
