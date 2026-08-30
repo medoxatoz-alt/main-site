@@ -11,6 +11,8 @@ import EmptyState from '@/components/EmptyState';
 import ErrorState from '@/components/ErrorState';
 import Link from 'next/link';
 
+const inputCls = "w-full px-3.5 py-2.5 border border-gray-200 bg-gray-50/50 rounded-xl text-sm outline-none transition-all focus:border-gold-primary focus:ring-2 focus:ring-gold-primary/20 hover:border-gray-300 disabled:opacity-70 disabled:bg-gray-100 disabled:cursor-not-allowed";
+
 export default function Account() {
   const { user, loading: authLoading } = useAuth();
   const [addresses, setAddresses] = useState<any[]>([]);
@@ -22,6 +24,36 @@ export default function Account() {
   const [newAddress, setNewAddress] = useState({ fullName: '', phone: '', address: '', city: '', state: '', pincode: '' });
   const [savingAddress, setSavingAddress] = useState(false);
   const [detectingAddrLoc, setDetectingAddrLoc] = useState(false);
+  const [pincodeLoading, setPincodeLoading] = useState(false);
+
+  // Auto-fetch City and State from Pincode
+  useEffect(() => {
+    const fetchPincode = async () => {
+      const pin = newAddress.pincode.replace(/\D/g, '');
+      if (pin.length === 6) {
+        setPincodeLoading(true);
+        try {
+          const res = await fetch(`https://api.postalpincode.in/pincode/${pin}`);
+          const data = await res.json();
+          if (data && data[0]?.Status === 'Success') {
+            const postOffice = data[0].PostOffice[0];
+            setNewAddress(prev => ({
+              ...prev,
+              city: postOffice.District || postOffice.Block || prev.city,
+              state: postOffice.State || prev.state
+            }));
+          } else {
+            toast.error('Invalid Pincode entered');
+          }
+        } catch (err) {
+          console.error('Failed to fetch pincode data', err);
+        } finally {
+          setPincodeLoading(false);
+        }
+      }
+    };
+    fetchPincode();
+  }, [newAddress.pincode]);
 
   const autoFillAddressLocation = () => {
     if (!navigator.geolocation) {
@@ -159,6 +191,11 @@ export default function Account() {
 
   const handleSaveAddress = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!/^\d{6}$/.test(newAddress.pincode.trim())) {
+      toast.error('Please enter a valid 6-digit Pincode.');
+      return;
+    }
+    
     setSavingAddress(true);
     try {
       await api.post('/user/addresses', newAddress);
@@ -310,8 +347,8 @@ export default function Account() {
               <textarea required placeholder="Full Address (House/Flat No., Street, Landmark)" value={newAddress.address} onChange={e => setNewAddress({ ...newAddress, address: e.target.value })} className={`${inputCls} col-span-full resize-none`} rows={2} />
               <input required placeholder="City" value={newAddress.city} onChange={e => setNewAddress({ ...newAddress, city: e.target.value })} className={inputCls} />
               <div className="flex gap-3">
-                <input required placeholder="State" value={newAddress.state} onChange={e => setNewAddress({ ...newAddress, state: e.target.value })} className={`${inputCls} w-1/2`} />
-                <input required placeholder="Pincode" value={newAddress.pincode} onChange={e => setNewAddress({ ...newAddress, pincode: e.target.value })} className={`${inputCls} w-1/2`} />
+                <input required placeholder="State" value={newAddress.state} readOnly={pincodeLoading} onChange={e => setNewAddress({ ...newAddress, state: e.target.value })} className={`${inputCls} w-1/2`} />
+                <input required placeholder="Pincode (6 digits)" maxLength={6} pattern="\d{6}" title="6-digit Pincode" value={newAddress.pincode} onChange={e => setNewAddress({ ...newAddress, pincode: e.target.value.replace(/\D/g, '') })} className={`${inputCls} w-1/2`} />
               </div>
               <div className="col-span-full flex justify-end gap-3 mt-2">
                 <button type="button" onClick={() => setShowAddForm(false)} className="px-5 py-3 text-sm font-bold text-gray-600 hover:text-gray-900 active:bg-gray-100 rounded-xl transition-all">

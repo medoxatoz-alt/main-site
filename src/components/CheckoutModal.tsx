@@ -18,13 +18,60 @@ export default function CheckoutModal({ isOpen, onClose }: { isOpen: boolean; on
   const [addresses, setAddresses] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [invoicePdfUrl, setInvoicePdfUrl] = useState<string | null>(null);
-  const [placingOrder, setPlacingOrder] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState<'CASHFREE' | 'COD'>('CASHFREE');
   const [useNewAddress, setUseNewAddress] = useState(false);
+  const [placingOrder, setPlacingOrder] = useState(false);
+  const [pincodeLoading, setPincodeLoading] = useState(false);
   const [detectingLoc, setDetectingLoc] = useState(false);
-  
-  // Payment Method Selection
-  const [paymentMethod, setPaymentMethod] = useState<'CASHFREE'>('CASHFREE');
   const [cashfree, setCashfree] = useState<any>(null);
+
+  const [shipping, setShipping] = useState<{
+    id?: string;
+    fullName: string;
+    email: string;
+    phone: string;
+    address: string;
+    city: string;
+    state: string;
+    pincode: string;
+  }>({
+    fullName: '',
+    email: '',
+    phone: '',
+    address: '',
+    city: '',
+    state: '',
+    pincode: ''
+  });
+
+  // Auto-fetch City and State from Pincode
+  useEffect(() => {
+    const fetchPincode = async () => {
+      const pin = shipping.pincode?.replace(/\D/g, '');
+      if (useNewAddress && pin?.length === 6) {
+        setPincodeLoading(true);
+        try {
+          const res = await fetch(`https://api.postalpincode.in/pincode/${pin}`);
+          const data = await res.json();
+          if (data && data[0]?.Status === 'Success') {
+            const postOffice = data[0].PostOffice[0];
+            setShipping(prev => ({
+              ...prev,
+              city: postOffice.District || postOffice.Block || prev.city,
+              state: postOffice.State || prev.state
+            }));
+          } else {
+            toast.error('Invalid Pincode entered');
+          }
+        } catch (err) {
+          console.error('Failed to fetch pincode data', err);
+        } finally {
+          setPincodeLoading(false);
+        }
+      }
+    };
+    fetchPincode();
+  }, [shipping.pincode, useNewAddress]);
 
   // Initialize Cashfree SDK
   useEffect(() => {
@@ -86,24 +133,6 @@ export default function CheckoutModal({ isOpen, onClose }: { isOpen: boolean; on
     );
   };
 
-  const [shipping, setShipping] = useState<{
-    id?: string;
-    fullName: string;
-    email: string;
-    phone: string;
-    address: string;
-    city: string;
-    state: string;
-    pincode: string;
-  }>({
-    fullName: '',
-    email: '',
-    phone: '',
-    address: '',
-    city: '',
-    state: '',
-    pincode: ''
-  });
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -173,6 +202,11 @@ export default function CheckoutModal({ isOpen, onClose }: { isOpen: boolean; on
 
     if (!shipping.fullName?.trim() || !shipping.phone?.trim() || !shipping.address?.trim() || !shipping.city?.trim() || !shipping.state?.trim() || !shipping.pincode?.trim()) {
       toast.error('Please fill in all shipping details.');
+      return;
+    }
+
+    if (!/^\d{6}$/.test(shipping.pincode.trim())) {
+      toast.error('Please enter a valid 6-digit Pincode.');
       return;
     }
 
@@ -417,9 +451,10 @@ export default function CheckoutModal({ isOpen, onClose }: { isOpen: boolean; on
                       <input
                         type="text"
                         required
+                        readOnly={pincodeLoading}
                         value={shipping.state}
                         onChange={e => setShipping({...shipping, state: e.target.value})}
-                        className="w-full px-3.5 py-2.5 border border-gray-300 rounded-lg text-sm outline-none transition-all focus:border-gold-primary focus:ring-2 focus:ring-gold-primary/20"
+                        className="w-full px-3.5 py-2.5 border border-gray-300 rounded-lg text-sm outline-none transition-all focus:border-gold-primary focus:ring-2 focus:ring-gold-primary/20 disabled:bg-gray-100"
                       />
                     </div>
                     <div className="flex-1">
@@ -427,8 +462,11 @@ export default function CheckoutModal({ isOpen, onClose }: { isOpen: boolean; on
                       <input
                         type="text"
                         required
+                        maxLength={6}
+                        pattern="\d{6}"
+                        title="6-digit Pincode"
                         value={shipping.pincode}
-                        onChange={e => setShipping({...shipping, pincode: e.target.value})}
+                        onChange={e => setShipping({...shipping, pincode: e.target.value.replace(/\D/g, '')})}
                         className="w-full px-3.5 py-2.5 border border-gray-300 rounded-lg text-sm outline-none transition-all focus:border-gold-primary focus:ring-2 focus:ring-gold-primary/20"
                       />
                     </div>
