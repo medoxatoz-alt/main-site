@@ -113,12 +113,14 @@ export default function CheckoutModal({ isOpen, onClose, buyNowItem }: { isOpen:
 
 
   useEffect(() => {
-    if (!authLoading && !user) {
-      router.push('/signin');
-    } else if (user) {
-      setShipping(s => ({ ...s, email: user.email }));
+    if (isOpen) {
+      if (!authLoading && !user) {
+        router.push('/signin');
+      } else if (user) {
+        setShipping(s => ({ ...s, email: user.email }));
+      }
     }
-  }, [user, authLoading, router]);
+  }, [isOpen, user, authLoading, router]);
 
   const fetchData = useCallback(async () => {
     try {

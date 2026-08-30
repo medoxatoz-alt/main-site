@@ -197,8 +197,19 @@ function SignUpContent() {
       </div>
 
       {/* Right side: Form (full width on mobile, half width on lg) */}
-      <div className="flex-1 flex flex-col justify-center items-center py-6 px-4 sm:py-12 sm:px-6 lg:px-8">
-        <div className="w-full flex flex-col px-2 pt-0 pb-6 sm:bg-white sm:p-10 sm:rounded-2xl sm:shadow-[var(--shadow-soft)] sm:max-w-[440px] sm:border sm:border-gray-100">
+      <div className="flex-1 flex flex-col justify-center items-center py-6 px-4 sm:py-12 sm:px-6 lg:px-8 relative">
+        <a 
+          href="/" 
+          className="absolute top-4 right-4 sm:top-8 sm:right-8 text-sm font-semibold text-gray-500 hover:text-gold-primary transition-colors flex items-center gap-1.5"
+        >
+          Sign in Later
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+            <polyline points="12 5 19 12 12 19"></polyline>
+          </svg>
+        </a>
+
+        <div className="w-full flex flex-col px-2 pt-0 pb-6 sm:max-w-[440px] mt-8 sm:mt-0">
           <div className="text-center mb-5 sm:mb-6 flex flex-col items-center">
             {/* Logo visible only on small screens because left side has it on large */}
             <a href="/" className="inline-block mb-3 lg:hidden">
@@ -347,6 +358,13 @@ function SignUpContent() {
             <Link href="/signin" className="text-[#007185] hover:text-[#c7511f] hover:underline font-bold">
               Sign In
             </Link>
+          </div>
+
+          <div className="mt-5 text-xs text-center text-gray-400 leading-normal">
+            By continuing, you agree to MedoxAtoZ's{' '}
+            <Link href="/terms" className="text-gold-primary hover:underline">Conditions of Use</Link>
+            {' '}and{' '}
+            <Link href="/privacy-policy" className="text-gold-primary hover:underline">Privacy Notice</Link>.
           </div>
         </div>
         </div>

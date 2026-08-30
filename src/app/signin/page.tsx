@@ -165,6 +165,7 @@ function SignInContent() {
         </div>
         
         <div className="relative z-10 max-w-xl">
+   
           <img src="/logo.webp" alt="MedoxAtoZ Logo" className="h-24 w-auto object-contain mb-8 filter " />
           <h1 className="text-4xl md:text-5xl font-extrabold mb-6 leading-tight">
             Your Trusted Health Partner
@@ -190,11 +191,22 @@ function SignInContent() {
       </div>
 
       {/* Right side: Form (full width on mobile, half width on lg) */}
-      <div className="flex-1 flex flex-col justify-center items-center py-6 px-4 sm:py-12 sm:px-6 lg:px-8">
-        <div className="w-full flex flex-col px-2 pt-0 pb-6 sm:bg-white sm:p-10 sm:rounded-2xl sm:shadow-[var(--shadow-soft)] sm:max-w-[440px] sm:border sm:border-gray-100">
+      <div className="flex-1 flex flex-col justify-center items-center py-6 px-4 sm:py-12 sm:px-6 lg:px-8 relative">
+        <a 
+          href="/" 
+          className="absolute top-4 right-4 sm:top-8 sm:right-8 text-sm font-semibold text-gray-500 hover:text-gold-primary transition-colors flex items-center gap-1.5"
+        >
+          Sign in Later
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+            <polyline points="12 5 19 12 12 19"></polyline>
+          </svg>
+        </a>
+
+        <div className="w-full flex flex-col px-2 pt-0 pb-6 sm:max-w-[440px] mt-8 sm:mt-0">
           <div className="text-center mb-5 sm:mb-8 flex flex-col items-center">
             {/* Logo visible only on small screens because left side has it on large */}
-            <a href="/" className="inline-block mb-3 lg:hidden">
+            <a href="/" className="cursor-pointer inline-block mb-3 lg:hidden">
               <img src="/logo.webp" alt="MedoxAtoZ Logo" className="h-14 w-auto object-contain" />
             </a>
             <h2 className="text-2xl sm:text-3xl font-extrabold text-gray-900 tracking-tight">Welcome back</h2>
@@ -219,7 +231,12 @@ function SignInContent() {
             </div>
 
             <div>
-              <label className="block text-xs sm:text-sm font-bold text-gray-700 mb-1 sm:mb-2">Password</label>
+              <div className="flex justify-between items-center mb-1 sm:mb-2">
+                <label className="block text-xs sm:text-sm font-bold text-gray-700">Password</label>
+                <Link href="/forgot-password" className="text-xs sm:text-sm font-semibold text-[#007185] hover:text-[#c7511f] hover:underline">
+                  Forgot Password?
+                </Link>
+              </div>
               <input
                 type="password"
                 value={password}
@@ -315,7 +332,10 @@ function SignInContent() {
         </div>
 
         <div className="mt-5 text-xs text-center text-gray-400 leading-normal">
-          By continuing, you agree to MedoxAtoZ's Conditions of Use and Privacy Notice.
+          By continuing, you agree to MedoxAtoZ's{' '}
+          <Link href="/terms" className="text-gold-primary hover:underline">Conditions of Use</Link>
+          {' '}and{' '}
+          <Link href="/privacy-policy" className="text-gold-primary hover:underline">Privacy Notice</Link>.
         </div>
         </div>
       </div>
