@@ -29,7 +29,7 @@ interface NavItem {
 
 const NAV_ITEMS: NavItem[] = [
   { id: 'vendors',         label: 'Vendors',          icon: <Users className="w-4 h-4" />,        accent: 'blue' },
-  { id: 'subcategories',   label: 'Subcategories',    icon: <FolderTree className="w-4 h-4" />,   accent: 'teal' },
+  { id: 'subcategories',   label: 'Subcategories',    icon: <FolderTree className="w-4 h-4" />,   accent: 'emerald' },
   { id: 'products',        label: 'My Products',      icon: <Package className="w-4 h-4" />,      accent: 'gold' },
   { id: 'orders',          label: 'My Orders',        icon: <ShoppingBag className="w-4 h-4" />,  accent: 'gold', dividerBefore: true },
   { id: 'all-orders',      label: 'All Orders',        icon: <LayoutDashboard className="w-4 h-4" />, accent: 'blue' },

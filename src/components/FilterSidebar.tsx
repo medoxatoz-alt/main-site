@@ -167,7 +167,7 @@ export default function FilterSidebar({
               {filteredBrands.length > 8 && (
                 <button 
                   onClick={() => setShowAllBrands(!showAllBrands)}
-                  className="text-[13px] font-medium text-pink-500 hover:text-pink-600 mt-2 text-left w-full pl-7"
+                  className="text-[13px] font-medium text-gold-primary hover:text-gold-hover mt-2 text-left w-full pl-7"
                 >
                   {showAllBrands ? '- Show less' : `+ ${filteredBrands.length - 8} more`}
                 </button>
@@ -197,9 +197,9 @@ export default function FilterSidebar({
                 step="50"
                 value={filters.priceRange[1]}
                 onChange={(e) => onFilterChange({ ...filters, priceRange: [0, parseInt(e.target.value)] })}
-                className="w-full h-1 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-pink-500"
+                className="w-full h-1 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-gold-primary"
                 style={{
-                   background: `linear-gradient(to right, #ec4899 ${(filters.priceRange[1] / maxPrice) * 100}%, #e5e7eb ${(filters.priceRange[1] / maxPrice) * 100}%)`
+                   background: `linear-gradient(to right, #d4af37 ${(filters.priceRange[1] / maxPrice) * 100}%, #e5e7eb ${(filters.priceRange[1] / maxPrice) * 100}%)`
                 }}
               />
               <div className="flex items-center justify-between mt-4">
