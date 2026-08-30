@@ -23,6 +23,10 @@ export default function AddProductModal({ isOpen, onClose, onSuccess }: AddProdu
   const [newMainCategoryId, setNewMainCategoryId] = useState('');
   const [newSubCategoryId, setNewSubCategoryId] = useState('');
   const [newStock, setNewStock] = useState('10');
+  const [newWeight, setNewWeight] = useState('0.5');
+  const [newLength, setNewLength] = useState('10');
+  const [newBreadth, setNewBreadth] = useState('10');
+  const [newHeight, setNewHeight] = useState('10');
   const [newDescription, setNewDescription] = useState('');
   const [imageFiles, setImageFiles] = useState<File[]>([]);
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
@@ -123,19 +127,25 @@ export default function AddProductModal({ isOpen, onClose, onSuccess }: AddProdu
       // thumbnail = first image
       const thumbnail = uploadedUrls[0] || 'https://via.placeholder.com/200?text=No+Image';
 
-      await api.post('/products', {
+      const payload = {
         title: newTitle,
         brand: newBrand,
-        price: Number(newPrice),
-        mrp: newMrp ? Number(newMrp) : undefined,
+        price: parseFloat(newPrice),
+        mrp: newMrp ? parseFloat(newMrp) : undefined,
         mainCategoryId: newMainCategoryId,
         subCategoryId: newSubCategoryId || undefined,
-        stock: Number(newStock),
+        stock: parseInt(newStock) || 0,
+        weight: parseFloat(newWeight) || 0.5,
+        length: parseFloat(newLength) || 10,
+        breadth: parseFloat(newBreadth) || 10,
+        height: parseFloat(newHeight) || 10,
         description: newDescription,
         images: uploadedUrls,
         image: thumbnail,   // backwards-compat alias
         thumbnail,
-      });
+      };
+
+      await api.post('/products', payload);
 
       toast.success('Product added successfully!');
       resetForm();
@@ -210,6 +220,41 @@ export default function AddProductModal({ isOpen, onClose, onSuccess }: AddProdu
                   type="number" min="0" value={newStock} onChange={e => setNewStock(e.target.value)}
                   className="w-full px-3.5 py-2.5 border border-gray-300 rounded-xl text-sm outline-none transition-all focus:border-gold-primary focus:ring-2 focus:ring-gold-primary/20"
                 />
+              </div>
+            </div>
+
+            {/* Packaging Details */}
+            <div>
+              <label className="block text-sm font-bold text-gray-700 mb-2">Package Details (for Shipping)</label>
+              <div className="grid grid-cols-4 gap-4 p-4 bg-gray-50 border border-gray-200 rounded-xl">
+                <div>
+                  <label className="block text-xs font-bold text-gray-500 mb-1">Weight (kg)</label>
+                  <input
+                    type="number" step="0.01" min="0.1" value={newWeight} onChange={e => setNewWeight(e.target.value)} required
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none transition-all focus:border-gold-primary"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-500 mb-1">Length (cm)</label>
+                  <input
+                    type="number" step="0.1" min="1" value={newLength} onChange={e => setNewLength(e.target.value)} required
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none transition-all focus:border-gold-primary"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-500 mb-1">Breadth (cm)</label>
+                  <input
+                    type="number" step="0.1" min="1" value={newBreadth} onChange={e => setNewBreadth(e.target.value)} required
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none transition-all focus:border-gold-primary"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-500 mb-1">Height (cm)</label>
+                  <input
+                    type="number" step="0.1" min="1" value={newHeight} onChange={e => setNewHeight(e.target.value)} required
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none transition-all focus:border-gold-primary"
+                  />
+                </div>
               </div>
             </div>
 

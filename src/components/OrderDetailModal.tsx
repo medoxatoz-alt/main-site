@@ -82,17 +82,16 @@ export default function OrderDetailModal({
 }: OrderDetailModalProps) {
   const [showDeliveredConfirm, setShowDeliveredConfirm] = useState(false);
   const [showRejectConfirm, setShowRejectConfirm] = useState(false);
+  const [showCancelRequestConfirm, setShowCancelRequestConfirm] = useState(false);
+  const [showAcceptCancelConfirm, setShowAcceptCancelConfirm] = useState(false);
   const [viewVendorUid, setViewVendorUid] = useState<string | null>(null);
   const [isUpdating, setIsUpdating] = useState(false);
   const [showApproveForm, setShowApproveForm] = useState(false);
   const [trackingId, setTrackingId] = useState('');
   const [trackingLink, setTrackingLink] = useState('');
 
-  const isOwner = viewerRole === 'admin'
-    ? (order.vendorId === 'admin' || !order.vendorId)
-    : (order.vendorId === viewerUid);
-
-  const canAct = isOwner && (viewerRole === 'admin' || viewerRole === 'vendor');
+  const isOwner = order.vendorId === viewerUid;
+  const canAct = viewerRole === 'admin' || (viewerRole === 'vendor' && isOwner);
 
   const handleApproveSubmit = async () => {
     if (!trackingId.trim() || !trackingLink.trim()) {
@@ -131,6 +130,36 @@ export default function OrderDetailModal({
     } finally {
       setIsUpdating(false);
       setShowDeliveredConfirm(false);
+    }
+  };
+
+  const handleRequestCancel = async () => {
+    setIsUpdating(true);
+    try {
+      await api.post(`/orders/${order.id}/request-cancel`);
+      toast.success('Cancellation requested successfully');
+      onStatusChange?.();
+      onClose();
+    } catch (err: any) {
+      toast.error(err?.response?.data?.error || 'Failed to request cancellation');
+    } finally {
+      setIsUpdating(false);
+      setShowCancelRequestConfirm(false);
+    }
+  };
+
+  const handleAcceptCancel = async () => {
+    setIsUpdating(true);
+    try {
+      await api.post(`/orders/${order.id}/cancel`);
+      toast.success('Cancellation accepted and refund initiated');
+      onStatusChange?.();
+      onClose();
+    } catch (err: any) {
+      toast.error(err?.response?.data?.error || 'Failed to cancel order');
+    } finally {
+      setIsUpdating(false);
+      setShowAcceptCancelConfirm(false);
     }
   };
 
@@ -358,6 +387,37 @@ export default function OrderDetailModal({
             </section>
           </div>
 
+          {/* Action Footer for Cancellations */}
+          {(order.status === 'Approved' || order.status === 'Cancellation Requested') && (
+            <div className="p-4 border-t border-gray-100 bg-gray-50 flex justify-end gap-3 rounded-b-[2rem] sm:rounded-b-2xl">
+              {order.status === 'Approved' && (!viewerRole || viewerRole === 'buyer') && (new Date().getTime() - new Date(order.createdAt).getTime()) < 48 * 60 * 60 * 1000 && (
+                <button
+                  onClick={() => setShowCancelRequestConfirm(true)}
+                  className="px-4 py-2 bg-red-50 text-red-600 hover:bg-red-100 font-bold text-sm rounded-xl transition-all border border-red-200"
+                >
+                  Request Cancellation
+                </button>
+              )}
+
+              {order.status === 'Approved' && canAct && (
+                <button
+                  onClick={() => setShowAcceptCancelConfirm(true)}
+                  className="px-4 py-2 bg-red-500 text-white hover:bg-red-600 font-bold text-sm rounded-xl transition-all flex items-center gap-1.5"
+                >
+                  <XCircle className="w-4 h-4" /> Cancel Order
+                </button>
+              )}
+              
+              {order.status === 'Cancellation Requested' && canAct && (
+                <button
+                  onClick={() => setShowAcceptCancelConfirm(true)}
+                  className="px-4 py-2 bg-orange-500 text-white hover:bg-orange-600 font-bold text-sm rounded-xl transition-all flex items-center gap-1.5"
+                >
+                  <XCircle className="w-4 h-4" /> Accept Cancellation
+                </button>
+              )}
+            </div>
+          )}
 
         </div>
       </div>
@@ -397,6 +457,45 @@ export default function OrderDetailModal({
           actionButtonLabelAnyway="Reject Order Anyway"
           onConfirm={() => updateStatus('Rejected')}
           onCancel={() => setShowRejectConfirm(false)}
+          isLoading={isUpdating}
+          variant="danger"
+        />
+      )}
+
+      {showCancelRequestConfirm && (
+        <ConfirmActionModal
+          title="Request Cancellation?"
+          description={`Order #${order.orderId}`}
+          warningText="⚠️ Your order will be paused while the seller reviews the cancellation."
+          warningPoints={[
+            "The seller must approve the cancellation",
+            "If approved, your refund will be initiated automatically",
+            "Shipment tracking will be disabled"
+          ]}
+          confirmWord="CANCEL"
+          actionButtonLabel="Request Cancellation"
+          onConfirm={handleRequestCancel}
+          onCancel={() => setShowCancelRequestConfirm(false)}
+          isLoading={isUpdating}
+          variant="danger"
+        />
+      )}
+
+      {showAcceptCancelConfirm && (
+        <ConfirmActionModal
+          title="Accept Cancellation & Refund?"
+          description={`Order #${order.orderId}`}
+          warningText="⚠️ Accepting this cancellation is permanent."
+          warningPoints={[
+            "The Shiprocket shipment will be cancelled",
+            order.paymentMethod !== 'COD' ? "A full Cashfree refund will be initiated immediately" : "Order is COD, no refund required",
+            "The customer will be notified",
+            "Stock will be restored"
+          ]}
+          confirmWord="CONFIRM"
+          actionButtonLabel="Accept Cancellation"
+          onConfirm={handleAcceptCancel}
+          onCancel={() => setShowAcceptCancelConfirm(false)}
           isLoading={isUpdating}
           variant="danger"
         />

@@ -285,13 +285,7 @@ export default function Navbar() {
                     {!user || user.role === 'buyer' ? (
                       <>
                         <div className="font-bold mb-2 md:mb-3 text-[15px] text-black mt-4 md:mt-6">Sellers</div>
-                        <ul className="list-none p-0 m-0 space-y-1">
-                          <li>
-                            <Link href="/vendor/register" onClick={() => setIsDropdownOpen(false)} className="block py-1 text-[#555] hover:text-gold-primary hover:underline hover:pl-1 transition-all duration-300 text-[13px] text-left w-full">
-                              Register as a Seller
-                            </Link>
-                          </li>
-                        </ul>
+            
                         {isInstallable && (
                           <>
                             <div className="font-bold mb-2 mt-4 text-[15px] text-black">Get the App</div>

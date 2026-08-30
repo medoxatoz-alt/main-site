@@ -11,11 +11,12 @@ import EditProductModal from '@/components/EditProductModal';
 import ProductsTab from '@/sections/admin/ProductsTab';
 import OrdersTab from '@/sections/admin/OrdersTab';
 
-type Tab = 'products' | 'orders' | 'rejected-orders';
+type Tab = 'products' | 'orders' | 'cancellation-requests' | 'rejected-orders';
 
 const TAB_LABELS: Record<Tab, string> = {
   products: 'My Products',
   orders: 'My Orders',
+  'cancellation-requests': 'Cancellation Requests',
   'rejected-orders': 'Rejected Orders',
 };
 
@@ -58,7 +59,7 @@ export default function VendorDashboard() {
       if (activeTab === 'products') {
         const res = await api.get(`/products/vendor/${user.uid}`);
         setProducts(res.data);
-      } else if (activeTab === 'orders' || activeTab === 'rejected-orders') {
+      } else if (activeTab === 'orders' || activeTab === 'rejected-orders' || activeTab === 'cancellation-requests') {
         const res = await api.get('/orders/vendor');
         setOrders(res.data);
       }
@@ -94,6 +95,7 @@ export default function VendorDashboard() {
   const sidebarLinks: { id: Tab; label: string; color?: string }[] = [
     { id: 'products', label: 'My Products' },
     { id: 'orders', label: 'My Orders' },
+    { id: 'cancellation-requests', label: 'Cancellation Requests', color: 'red' },
     { id: 'rejected-orders', label: 'Rejected Orders', color: 'red' },
   ];
 
@@ -174,8 +176,31 @@ export default function VendorDashboard() {
         {activeTab === 'orders' && (
           <OrdersTab orders={orders} isFetching={isFetching} fetchError={fetchError} viewerUid={user.uid} viewerRole="vendor" onRefresh={fetchData} emptyMessage="No orders yet." />
         )}
+        {activeTab === 'cancellation-requests' && (
+          <OrdersTab
+            orders={orders}
+            isFetching={isFetching}
+            fetchError={fetchError}
+            viewerUid={user.uid}
+            viewerRole="vendor"
+            filter={o => o.status === 'Cancellation Requested'}
+            onRefresh={fetchData}
+            emptyMessage="No cancellation requests."
+            headerBg="from-red-50 to-white"
+          />
+        )}
         {activeTab === 'rejected-orders' && (
-          <OrdersTab orders={orders} isFetching={isFetching} fetchError={fetchError} viewerUid={user.uid} viewerRole="vendor" filter={o => o.status === 'Rejected'} onRefresh={fetchData} emptyMessage="No rejected orders." headerBg="from-red-50/60 to-white" />
+          <OrdersTab
+            orders={orders}
+            isFetching={isFetching}
+            fetchError={fetchError}
+            viewerUid={user.uid}
+            viewerRole="vendor"
+            filter={o => o.status === 'Rejected'}
+            onRefresh={fetchData}
+            emptyMessage="No rejected orders."
+            headerBg="from-red-50/60 to-white"
+          />
         )}
       </div>
     </div>
