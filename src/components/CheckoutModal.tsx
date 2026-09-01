@@ -245,10 +245,11 @@ export default function CheckoutModal({ isOpen, onClose, buyNowItem }: { isOpen:
             toast.error(result.error.message || 'Payment failed or cancelled.');
             setPlacingOrder(false);
           } else if (result.redirect) {
-            // Handled by Cashfree SDK natively (if user clicks UPIDent/Wallet etc.)
+            // Handled by Cashfree SDK natively
           } else if (result.paymentDetails) {
-            // Success in modal
-            console.log('Payment success:', result.paymentDetails);
+            // Because redirectTarget is '_self', the browser should automatically 
+            // redirect to our return_url (/checkout/status) upon success.
+            console.log('redirect...');
           }
         });
       }
