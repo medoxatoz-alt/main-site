@@ -29,6 +29,7 @@ function SignUpContent() {
   const [phoneNumber, setPhoneNumber] = useState('');
   const [otp, setOtp] = useState('');
   const [loading, setLoading] = useState(false);
+  const [loginMethod, setLoginMethod] = useState<'initial' | 'email' | 'phone'>('initial');
   const [otpStep, setOtpStep] = useState(false); // false = enter phone, true = enter OTP
   const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null);
 
@@ -253,136 +254,161 @@ function SignUpContent() {
         {/* Hidden recaptcha container for phone auth */}
         <div id="recaptcha-container"></div>
 
-        <div className="flex flex-col gap-3.5">
-          {/* Full Name input is always visible at the top */}
-          <div>
-            <label className="block text-xs sm:text-sm font-bold text-gray-700 mb-1 sm:mb-1.5">Full Name</label>
-            <input 
-              type="text" 
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Dr. Name / Store Name"
-              required
-              disabled={otpStep}
-              className="w-full px-3 py-2 sm:px-3.5 sm:py-2.5 border border-gray-300 rounded-lg text-sm sm:text-[15px] outline-none transition-all focus:border-gold-primary focus:ring-2 focus:ring-gold-primary/20"
-            />
-          </div>
+        {!otpStep ? (
+          <>
+            <div className="w-full mb-4">
+              <input 
+                type="text" 
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Full Name (e.g. Dr. John Doe)"
+                required
+                className="w-full px-4 py-3.5 border border-gray-300 rounded-[32px] text-[15px] outline-none transition-all focus:border-black focus:ring-1 focus:ring-black"
+              />
+            </div>
 
-          {!otpStep ? (
-            <form onSubmit={handleEmailSignUp} className="flex flex-col gap-3.5">
-              <div>
-                <label className="block text-xs sm:text-sm font-bold text-gray-700 mb-1 sm:mb-1.5">Email</label>
+            {loginMethod === 'initial' && (
+              <div className="flex flex-col gap-3 w-full">
+                <button
+                  onClick={handleGoogleSignUp}
+                  disabled={loading}
+                  type="button"
+                  className="w-full py-3 sm:py-3.5 bg-white text-gray-800 border border-gray-300 font-semibold rounded-full transition-all flex items-center justify-center gap-3 shadow-sm hover:bg-gray-50 active:scale-[0.98] disabled:opacity-50"
+                >
+                  <img src="https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_%22G%22_logo.svg" alt="Google" className="w-[18px]" />
+                  <span className="text-[15px]">Continue with Google</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setLoginMethod('phone')}
+                  className="w-full py-3 sm:py-3.5 bg-white text-gray-800 border border-gray-300 font-semibold rounded-full transition-all flex items-center justify-center gap-3 shadow-sm hover:bg-gray-50 active:scale-[0.98]"
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
+                  </svg>
+                  <span className="text-[15px]">Continue with phone</span>
+                </button>
+
+                <div className="flex items-center my-4 w-full">
+                  <div className="flex-1 h-[1px] bg-gray-200"></div>
+                  <div className="px-4 text-gray-500 text-xs font-semibold">OR</div>
+                  <div className="flex-1 h-[1px] bg-gray-200"></div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setLoginMethod('email')}
+                  className="w-full py-3 sm:py-3.5 bg-white text-gray-800 border border-gray-300 font-semibold rounded-full transition-all flex items-center justify-center gap-3 shadow-sm hover:bg-gray-50 active:scale-[0.98]"
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+                    <polyline points="22,6 12,13 2,6"></polyline>
+                  </svg>
+                  <span className="text-[15px]">Continue with email</span>
+                </button>
+              </div>
+            )}
+
+            {loginMethod === 'email' && (
+              <form onSubmit={handleEmailSignUp} className="flex flex-col gap-4 w-full">
                 <input 
                   type="email" 
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="Enter your email"
+                  placeholder="Email address"
                   required
-                  className="w-full px-3 py-2 sm:px-3.5 sm:py-2.5 border border-gray-300 rounded-lg text-sm sm:text-[15px] outline-none transition-all focus:border-gold-primary focus:ring-2 focus:ring-gold-primary/20"
+                  className="w-full px-4 py-3.5 border border-gray-300 rounded-[32px] text-[15px] outline-none transition-all focus:border-black focus:ring-1 focus:ring-black"
                 />
-              </div>
-              
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs sm:text-sm font-bold text-gray-700 mb-1 sm:mb-1.5">Password</label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <input 
                     type="password" 
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    placeholder="At least 6 chars"
+                    placeholder="Password"
                     required
-                    className="w-full px-3 py-2 sm:px-3.5 sm:py-2.5 border border-gray-300 rounded-lg text-sm sm:text-[15px] outline-none transition-all focus:border-gold-primary focus:ring-2 focus:ring-gold-primary/20"
+                    className="w-full px-4 py-3.5 border border-gray-300 rounded-[32px] text-[15px] outline-none transition-all focus:border-black focus:ring-1 focus:ring-black"
                   />
-                </div>
-                <div>
-                  <label className="block text-xs sm:text-sm font-bold text-gray-700 mb-1 sm:mb-1.5">Confirm</label>
                   <input 
                     type="password" 
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
-                    placeholder="Repeat password"
+                    placeholder="Confirm Password"
                     required
-                    className="w-full px-3 py-2 sm:px-3.5 sm:py-2.5 border border-gray-300 rounded-lg text-sm sm:text-[15px] outline-none transition-all focus:border-gold-primary focus:ring-2 focus:ring-gold-primary/20"
+                    className="w-full px-4 py-3.5 border border-gray-300 rounded-[32px] text-[15px] outline-none transition-all focus:border-black focus:ring-1 focus:ring-black"
                   />
                 </div>
-              </div>
-
-              <button 
-                type="submit" 
-                disabled={loading}
-                className="w-full py-3 sm:py-3.5 bg-[#2b3036] hover:bg-[#1e2226] text-white hover:text-gold-primary border border-transparent hover:border-gold-primary font-bold rounded-xl transition-all duration-200 shadow-md active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:text-white disabled:hover:border-transparent mt-0.5 sm:mt-1 cursor-pointer"
-              >
-                {loading ? 'Registering...' : 'Register with Email'}
-              </button>
-            </form>
-          ) : (
-            <form onSubmit={verifyOTP} className="flex flex-col gap-3.5">
-               <div>
-                <label className="block text-xs sm:text-sm font-bold text-gray-700 mb-1 sm:mb-1.5">Enter OTP</label>
-                <input 
-                  type="text" 
-                  value={otp}
-                  onChange={(e) => setOtp(e.target.value)}
-                  placeholder="6-digit code"
-                  required
-                  className="w-full px-3 py-2 sm:px-3.5 sm:py-2.5 border border-gray-300 rounded-lg text-sm sm:text-[15px] outline-none transition-all focus:border-gold-primary focus:ring-2 focus:ring-gold-primary/20 text-center tracking-[5px]"
-                />
-              </div>
-              <button 
-                type="submit" 
-                disabled={loading}
-                className="w-full py-3 sm:py-3.5 bg-[#2b3036] hover:bg-[#1e2226] text-white hover:text-gold-primary border border-transparent hover:border-gold-primary font-bold rounded-xl transition-all duration-200 shadow-md active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:text-white disabled:hover:border-transparent cursor-pointer"
-              >
-                {loading ? 'Verifying...' : 'Verify OTP & Register'}
-              </button>
-              <button 
-                type="button" 
-                onClick={() => setOtpStep(false)}
-                className="bg-transparent border-none text-[#007185] hover:text-[#c7511f] hover:underline cursor-pointer text-sm font-semibold transition-colors mt-1"
-              >
-                Back to Email Signup
-              </button>
-            </form>
-          )}
-
-          {!otpStep && (
-            <>
-              <div className="flex items-center my-3 sm:my-3.5">
-                <div className="flex-1 h-[1px] bg-gray-200"></div>
-                <div className="px-2.5 text-gray-400 text-xs font-semibold">OR</div>
-                <div className="flex-1 h-[1px] bg-gray-200"></div>
-              </div>
-
-              <div className="flex flex-col gap-3">
-                <form onSubmit={requestOTP} className="flex gap-2">
-                  <input 
-                    type="tel"
-                    placeholder="Phone No (e.g. 9876543210)"
-                    value={phoneNumber}
-                    onChange={e => setPhoneNumber(e.target.value)}
-                    required
-                    className="flex-1 px-3 py-2 sm:px-3.5 sm:py-2.5 border border-gray-300 rounded-lg text-sm sm:text-base outline-none focus:border-gold-primary focus:ring-2 focus:ring-gold-primary/20"
-                  />
-                  <button 
-                    type="submit"
-                    disabled={loading}
-                    className="px-4 py-2 sm:px-4.5 sm:py-2.5 bg-white text-gray-700 hover:bg-gray-50 border border-gray-300 hover:border-gray-400 font-bold rounded-xl transition-all text-sm cursor-pointer whitespace-nowrap active:scale-[0.97]"
-                  >
-                    Send OTP
-                  </button>
-                </form>
 
                 <button 
-                  onClick={handleGoogleSignUp}
+                  type="submit" 
                   disabled={loading}
-                  className="w-full py-3 sm:py-3.5 bg-white hover:bg-gray-50 text-gray-700 border border-gray-300 hover:border-gray-400 font-bold rounded-xl transition-all duration-200 flex items-center justify-center gap-2 sm:gap-2.5 cursor-pointer shadow-sm active:scale-[0.98]"
+                  className="w-full py-3.5 bg-[#0d1117] hover:bg-black text-white font-bold rounded-full transition-all mt-1 active:scale-[0.98] disabled:opacity-50 text-[15px]"
                 >
-                  <img src="https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_%22G%22_logo.svg" alt="Google" className="w-[18px]" />
-                  <span>Sign up with Google</span>
+                  {loading ? 'Registering...' : 'Continue'}
                 </button>
-              </div>
-            </>
-          )}
+                <button
+                  type="button"
+                  onClick={() => setLoginMethod('initial')}
+                  className="text-sm font-semibold text-gray-600 hover:text-black mt-1"
+                >
+                  Back to options
+                </button>
+              </form>
+            )}
+
+            {loginMethod === 'phone' && (
+              <form onSubmit={requestOTP} className="flex flex-col gap-4 w-full">
+                <input
+                  type="tel"
+                  placeholder="Phone No (e.g. 9876543210)"
+                  value={phoneNumber}
+                  onChange={e => setPhoneNumber(e.target.value)}
+                  required
+                  className="w-full px-4 py-3.5 border border-gray-300 rounded-[32px] text-[15px] outline-none transition-all focus:border-black focus:ring-1 focus:ring-black"
+                />
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full py-3.5 bg-[#0d1117] hover:bg-black text-white font-bold rounded-full transition-all mt-1 active:scale-[0.98] disabled:opacity-50 text-[15px]"
+                >
+                  {loading ? 'Sending...' : 'Send OTP'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setLoginMethod('initial')}
+                  className="text-sm font-semibold text-gray-600 hover:text-black mt-1"
+                >
+                  Back to options
+                </button>
+              </form>
+            )}
+          </>
+        ) : (
+          <form onSubmit={verifyOTP} className="flex flex-col gap-5 w-full">
+            <input 
+              type="text" 
+              value={otp}
+              onChange={(e) => setOtp(e.target.value)}
+              placeholder="6-digit code"
+              required
+              className="w-full px-4 py-3.5 border border-gray-300 rounded-[32px] text-[15px] outline-none transition-all focus:border-black focus:ring-1 focus:ring-black text-center tracking-[4px]"
+            />
+            <button 
+              type="submit" 
+              disabled={loading}
+              className="w-full py-3.5 bg-[#0d1117] hover:bg-black text-white font-bold rounded-full transition-all active:scale-[0.98] disabled:opacity-50 text-[15px]"
+            >
+              {loading ? 'Verifying...' : 'Verify OTP & Register'}
+            </button>
+            <button 
+              type="button" 
+              onClick={() => { setOtpStep(false); setOtp(''); }}
+              className="text-sm font-semibold text-gray-600 hover:text-black"
+            >
+              Back
+            </button>
+          </form>
+        )}
 
           <div className="mt-4 sm:mt-5 text-xs text-center text-gray-500">
             Already have an account?{' '}
@@ -397,7 +423,6 @@ function SignUpContent() {
             {' '}and{' '}
             <Link href="/privacy-policy" className="text-gold-primary hover:underline">Privacy Notice</Link>.
           </div>
-        </div>
         </div>
       </div>
     </div>
