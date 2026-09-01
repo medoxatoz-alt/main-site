@@ -12,6 +12,8 @@ import Link from 'next/link';
 import { auth } from '@/firebase';
 import {
   signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
   GoogleAuthProvider,
   RecaptchaVerifier,
   signInWithPhoneNumber,
@@ -75,6 +77,24 @@ function SignInContent() {
     }
   };
 
+  useEffect(() => {
+    const checkRedirect = async () => {
+      try {
+        const result = await getRedirectResult(auth);
+        if (result) {
+          setLoading(true);
+          const idToken = await result.user.getIdToken();
+          await completeLoginWithBackend(idToken);
+        }
+      } catch (err: any) {
+        console.error(err);
+        toast.error(err.message || 'Google Login failed.');
+        setLoading(false);
+      }
+    };
+    checkRedirect();
+  }, []);
+
   const handleEmailLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -101,9 +121,7 @@ function SignInContent() {
     setLoading(true);
     try {
       const provider = new GoogleAuthProvider();
-      const result = await signInWithPopup(auth, provider);
-      const idToken = await result.user.getIdToken();
-      await completeLoginWithBackend(idToken);
+      await signInWithRedirect(auth, provider);
     } catch (err: any) {
       console.error(err);
       toast.error(err.message || 'Google Login failed.');

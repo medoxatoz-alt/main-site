@@ -12,6 +12,8 @@ import Link from 'next/link';
 import { auth } from '@/firebase';
 import { 
   signInWithPopup, 
+  signInWithRedirect,
+  getRedirectResult,
   GoogleAuthProvider, 
   RecaptchaVerifier, 
   signInWithPhoneNumber, 
@@ -74,6 +76,36 @@ function SignUpContent() {
     }
   };
 
+  useEffect(() => {
+    const checkRedirect = async () => {
+      try {
+        const result = await getRedirectResult(auth);
+        if (result) {
+          setLoading(true);
+          const idToken = await result.user.getIdToken();
+          const savedName = sessionStorage.getItem('signup_name') || 'Google User';
+          sessionStorage.removeItem('signup_name');
+          try {
+            await api.post('/auth/verify', { idToken, name: savedName, isSignup: true });
+            await refreshUser();
+            await signOut(auth);
+            toast.success('Account created successfully!');
+            router.push('/account');
+          } catch (err: any) {
+            toast.error(err.response?.data?.error || 'Authentication failed on server.');
+          } finally {
+            setLoading(false);
+          }
+        }
+      } catch (err: any) {
+        console.error(err);
+        toast.error(err.message || 'Google signup failed.');
+        setLoading(false);
+      }
+    };
+    checkRedirect();
+  }, [refreshUser, router]);
+
   const handleEmailSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) {
@@ -104,10 +136,9 @@ function SignUpContent() {
     }
     setLoading(true);
     try {
+      sessionStorage.setItem('signup_name', name.trim());
       const provider = new GoogleAuthProvider();
-      const result = await signInWithPopup(auth, provider);
-      const idToken = await result.user.getIdToken();
-      await completeSignupWithBackend(idToken);
+      await signInWithRedirect(auth, provider);
     } catch (err: any) {
       console.error(err);
       toast.error(err.message || 'Google signup failed.');
