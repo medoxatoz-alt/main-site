@@ -32,6 +32,7 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
   const [productDetails, setProductDetails] = useState<Record<string, Product>>({});
   const [loading, setLoading] = useState(true);
   const [isUpdating, setIsUpdating] = useState<string | null>(null);
+  const [isRemoving, setIsRemoving] = useState<string | null>(null);
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
   const [buyNowItem, setBuyNowItem] = useState<{ productId: string, quantity: number } | null>(null);
 
@@ -145,6 +146,7 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
   };
 
   const handleRemove = async (productId: string) => {
+    setIsRemoving(productId);
     setIsUpdating(productId);
     try {
       await api.delete(`/cart/${productId}`);
@@ -155,6 +157,7 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
       toast.error('Failed to remove item');
       await fetchCartAndProducts();
     } finally {
+      setIsRemoving(null);
       setIsUpdating(null);
     }
   };
@@ -195,7 +198,7 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
       />
       
       {/* Drawer */}
-      <div className="absolute pt-2 right-0 top-0 bottom-0 w-full sm:w-[450px] max-w-[100vw] bg-white shadow-2xl flex flex-col animate-in slide-in-from-right duration-300">
+      <div className="absolute pt-4 right-0 top-0 bottom-0 w-full sm:w-[450px] max-w-[100vw] bg-white shadow-2xl flex flex-col animate-in slide-in-from-right duration-300">
         
         {/* Header */}
         <div className="text-[#0d1117]  px-5 py-4 flex items-center justify-between shrink-0  ">
@@ -262,6 +265,7 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
                 const price = typeof p.price === 'string' ? parseFloat(p.price.replace(/,/g, '')) : Number(p.price);
                 const img = Array.isArray(p.image) ? p.image[0] : (p.image || 'https://via.placeholder.com/150');
                 const isItemUpdating = isUpdating === item.productId;
+                const isItemRemoving = isRemoving === item.productId;
 
                 return (
                   <div
@@ -302,13 +306,12 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
                           </button>
                         </div>
 
-                        {/* Remove */}
                         <button
                           onClick={() => handleRemove(item.productId)}
                           className="text-red-500 hover:text-red-700 p-1.5 rounded-full hover:bg-red-50 transition-colors cursor-pointer border-none bg-transparent"
                           aria-label="Remove item"
                         >
-                          <Trash2 className="w-4 h-4" />
+                          {isItemRemoving ? <Loader2 className="w-4 h-4 animate-spin text-red-500" /> : <Trash2 className="w-4 h-4" />}
                         </button>
                       </div>
                     </div>

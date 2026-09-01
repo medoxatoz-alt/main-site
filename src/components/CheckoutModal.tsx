@@ -270,14 +270,22 @@ export default function CheckoutModal({ isOpen, onClose, buyNowItem }: { isOpen:
 
   if (!user.phone) {
     return (
-      <div className="fixed inset-0 z-[3000] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 sm:p-6 animate-in fade-in duration-200">
-        <div className="bg-white w-full max-w-xl rounded-2xl flex flex-col relative shadow-2xl overflow-hidden">
-          <div className="flex justify-end   bg-white">
-             <button onClick={onClose} className="relative p-2 text-gray-400 hover:text-gray-900 hover:bg-gray-100 rounded-full transition-colors bg-transparent border-none cursor-pointer relative z-10">
-               <X className="w-5 h-5" />
+      <div className="fixed inset-0 z-[3000] flex md:items-center md:justify-center">
+        {/* Backdrop */}
+        <div className="absolute inset-0 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200" onClick={onClose} />
+        
+        {/* Modal / Bottom Sheet */}
+        <div className="bg-white w-full md:w-auto md:min-w-[450px] md:max-w-xl absolute bottom-0 md:relative md:bottom-auto rounded-t-3xl md:rounded-2xl flex flex-col shadow-[0_-10px_40px_rgba(0,0,0,0.1)] md:shadow-2xl overflow-hidden animate-in slide-in-from-bottom md:slide-in-from-bottom-0 md:zoom-in-95 duration-300 pb-safe z-10">
+          
+          <div className="flex justify-end px-4 py-3 md:p-4 pb-0 bg-white relative">
+             {/* Mobile Grabber */}
+             <div className="md:hidden absolute left-1/2 -translate-x-1/2 top-3 w-12 h-1.5 bg-gray-200 rounded-full" />
+             <button onClick={onClose} className="p-2 text-gray-400 hover:text-gray-900 hover:bg-gray-100 rounded-full transition-colors bg-transparent border-none cursor-pointer">
+               <X className="w-5 h-5 md:w-5 md:h-5" />
              </button>
           </div>
-          <div className=" ">
+          
+          <div className="px-2 pb-6 md:px-0 md:pb-0">
             <PhoneVerification onVerified={() => fetchData()} />
           </div>
         </div>

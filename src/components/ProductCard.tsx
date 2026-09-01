@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
+import { Loader2 } from 'lucide-react';
 
 interface Product {
   id: string;
@@ -15,7 +16,7 @@ interface Product {
 interface ProductCardProps {
   product: Product;
   /** Callback fired when the user clicks the add to cart button */
-  onAddToCart?: (product: Product) => void;
+  onAddToCart?: (product: Product) => void | Promise<void>;
 }
 
 // ----------------------------------------------------------------------
@@ -57,6 +58,7 @@ const parsePrice = (val: number | string | undefined): number => {
 export default function ProductCard({ product, onAddToCart }: ProductCardProps) {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [isHovered, setIsHovered] = useState(false);
+  const [isAdding, setIsAdding] = useState(false);
 
   // Parse data
   const images = useMemo(() => {
@@ -98,12 +100,17 @@ export default function ProductCard({ product, onAddToCart }: ProductCardProps) 
     return null;
   }
 
-  const handleAddToCart = (e: React.MouseEvent) => {
+  const handleAddToCart = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    if (isOutOfStock) return;
+    if (isOutOfStock || isAdding) return;
     if (onAddToCart) {
-      onAddToCart(product);
+      setIsAdding(true);
+      try {
+        await onAddToCart(product);
+      } finally {
+        setIsAdding(false);
+      }
     } else {
       console.warn('onAddToCart prop is not provided for ProductCard');
     }
@@ -113,7 +120,7 @@ export default function ProductCard({ product, onAddToCart }: ProductCardProps) 
     <div
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
-      className="bg-white p-3 sm:p-5 rounded-lg flex flex-col justify-between relative border border-gray-200 transition-all duration-300 hover:shadow-xl hover:-translate-y-1 hover:border-gold-primary/50 active:scale-[0.98] sm:active:scale-100 focus-within:ring-2 focus-within:ring-gold-primary group"
+      className="bg-white p-3 sm:p-5 rounded-lg flex flex-col justify-between relative border border-gray-200 transition-all duration-300 hover:shadow-xl hover:-translate-y-1 hover:border-gold-primary/50 active:scale-[0.98] sm:active:scale-100 group"
     >
       {/* Badges Container */}
       <div className="absolute top-2 left-2 sm:top-3 sm:left-3 z-20 flex flex-col gap-1.5">
@@ -201,21 +208,25 @@ export default function ProductCard({ product, onAddToCart }: ProductCardProps) 
           {/* Add to Cart Button */}
           <button
             onClick={handleAddToCart}
-            disabled={isOutOfStock}
+            disabled={isOutOfStock || isAdding}
             className={`relative z-10 px-2.5 py-1.5 sm:px-4 sm:py-2 text-[10px] sm:text-[13px] font-bold rounded-full transition-all duration-200 flex items-center gap-1 ${
               isOutOfStock
                 ? 'bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed shadow-none'
-                : 'text-[#2b3036] bg-gold-primary hover:bg-gold-hover active:scale-95 shadow-md shadow-amber-500/10 cursor-pointer'
+                : 'text-[#2b3036] bg-gold-primary hover:bg-gold-hover active:scale-95 shadow-md shadow-amber-500/10 cursor-pointer disabled:opacity-50'
             }`}
             aria-label={isOutOfStock ? `${product.title} is out of stock` : `Add ${product.title} to cart`}
           >
             <span>{isOutOfStock ? 'Sold Out' : 'Add'}</span>
             {!isOutOfStock && (
-              <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-current fill-none stroke-2" viewBox="0 0 24 24">
-                <circle cx="9" cy="21" r="1"></circle>
-                <circle cx="20" cy="21" r="1"></circle>
-                <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
-              </svg>
+              isAdding ? (
+                <Loader2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-2 animate-spin" />
+              ) : (
+                <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-current fill-none stroke-2" viewBox="0 0 24 24">
+                  <circle cx="9" cy="21" r="1"></circle>
+                  <circle cx="20" cy="21" r="1"></circle>
+                  <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
+                </svg>
+              )
             )}
           </button>
 

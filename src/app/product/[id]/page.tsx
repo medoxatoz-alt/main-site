@@ -137,7 +137,6 @@ export default function ProductDetail({ params }: { params: Promise<{ id: string
           text: `Check out ${product?.title || 'this medical product'} on MedoxAtoZ!`,
           url: window.location.href,
         });
-        toast.success('Shared successfully!');
       } catch (err: any) {
         if (err.name !== 'AbortError') {
           toast.error('Failed to share.');
@@ -234,9 +233,30 @@ export default function ProductDetail({ params }: { params: Promise<{ id: string
     return (
       <div className="min-h-screen bg-[var(--bg-page)] flex flex-col">
         <Navbar />
-        <div className="flex flex-col items-center justify-center flex-1 py-20 animate-pulse">
-          <Loader2 className="w-12 h-12 text-gold-primary animate-spin" />
-          <p className="mt-4 text-gray-500 font-semibold tracking-wide">Loading premium medical supplies...</p>
+        <div className="max-w-[1500px] w-full mx-auto lg:px-8 py-0 lg:py-12 lg:pt-5 animate-pulse mt-4">
+          <div className="grid grid-cols-1 lg:grid-cols-12 lg:gap-10 items-start px-4 lg:px-0">
+            {/* Left: Image Skeleton */}
+            <div className="lg:col-span-7 w-full flex flex-col gap-4">
+              <div className="w-full aspect-square lg:aspect-[4/3] bg-gray-200 rounded-2xl"></div>
+              <div className="hidden lg:flex gap-3">
+                {[1,2,3,4].map(i => <div key={i} className="w-24 h-24 bg-gray-200 rounded-xl shrink-0"></div>)}
+              </div>
+            </div>
+            {/* Right: Details Skeleton */}
+            <div className="lg:col-span-5 flex flex-col gap-6 mt-6 lg:mt-0 w-full">
+              <div className="w-20 h-6 bg-gray-200 rounded-md"></div>
+              <div className="w-3/4 h-10 bg-gray-200 rounded-lg"></div>
+              <div className="w-1/3 h-10 bg-gray-200 rounded-lg mt-2"></div>
+              
+              <div className="grid grid-cols-2 gap-3 mt-2">
+                <div className="h-16 bg-gray-200 rounded-xl"></div>
+                <div className="h-16 bg-gray-200 rounded-xl"></div>
+              </div>
+
+              <div className="h-24 bg-gray-200 rounded-2xl mt-4"></div>
+              <div className="h-40 bg-gray-200 rounded-2xl"></div>
+            </div>
+          </div>
         </div>
       </div>
     );
@@ -494,12 +514,12 @@ export default function ProductDetail({ params }: { params: Promise<{ id: string
               </div>
             </div>
 
-            {/* Desktop Inline Checkout Actions (Hidden on Mobile) */}
+            {/* Inline Checkout Actions (All Devices) */}
             {(() => {
               const stock = Number(product.stock) || 0;
               const isOutOfStock = stock <= 0;
               return (
-                <div className="hidden lg:flex flex-col gap-5 border-y border-gray-100 py-6">
+                <div className="flex flex-col gap-5 border-y border-gray-100 py-6">
                   <div className="flex items-center justify-between">
                     <div className="flex flex-col gap-0.5">
                       <div className={isOutOfStock ? "text-red-600 font-bold text-sm" : "text-emerald-600 font-bold text-sm"}>
@@ -536,11 +556,11 @@ export default function ProductDetail({ params }: { params: Promise<{ id: string
                       className={`flex-1 py-4 font-extrabold rounded-full transition-all duration-200 cursor-pointer flex items-center justify-center gap-2 ${
                         isOutOfStock 
                           ? 'bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed' 
-                          : 'bg-white text-gray-900 border-2 border-gray-900 hover:bg-gray-50 active:scale-[0.98] disabled:opacity-50'
+                          : 'bg-white text-gray-900 border-2 border-gray-900 hover:bg-gray-50 active:scale-95 disabled:opacity-50'
                       }`}
                     >
-                      <ShoppingBag className="w-4 h-4 stroke-2" />
-                      <span>{isOutOfStock ? 'Out of Stock' : addingToCart ? 'Adding...' : 'Add to Cart'}</span>
+                      {addingToCart ? <Loader2 className="w-4 h-4 stroke-2 animate-spin" /> : <ShoppingBag className="w-4 h-4 stroke-2" />}
+                      <span>{isOutOfStock ? 'Out of Stock' : 'Add to Cart'}</span>
                     </button>
                     
                     <button 
@@ -549,7 +569,7 @@ export default function ProductDetail({ params }: { params: Promise<{ id: string
                       className={`flex-1 py-4 font-extrabold rounded-full transition-all duration-200 cursor-pointer flex items-center justify-center ${
                         isOutOfStock 
                           ? 'hidden' 
-                          : 'bg-gold-primary hover:bg-gold-hover text-[#2b3036] active:scale-[0.98] disabled:opacity-50'
+                          : 'bg-gold-primary hover:bg-gold-hover text-[#2b3036] active:scale-95 disabled:opacity-50'
                       }`}
                     >
                       <span>Buy Now</span>
@@ -620,58 +640,6 @@ export default function ProductDetail({ params }: { params: Promise<{ id: string
           </div>
         </div>
       </div>
-
-      {/* Mobile Sticky Bottom Action Bar */}
-      {(() => {
-        const stock = Number(product.stock) || 0;
-        const isOutOfStock = stock <= 0;
-        return (
-          <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 pb-6 flex gap-3 z-50 shadow-[0_-10px_20px_rgba(0,0,0,0.05)]">
-            <div className="flex items-center gap-3 bg-gray-100 border border-gray-200 rounded-xl p-1 shrink-0">
-              <button
-                onClick={() => setQuantity(q => Math.max(1, q - 1))}
-                disabled={isOutOfStock || quantity <= 1}
-                className="p-2 active:scale-90 text-gray-600 disabled:opacity-40"
-              >
-                <Minus className="w-4 h-4 stroke-2" />
-              </button>
-              <span className="text-sm font-extrabold text-gray-800 w-4 text-center">{quantity}</span>
-              <button
-                onClick={() => setQuantity(q => Math.min(Math.min(10, stock), q + 1))}
-                disabled={isOutOfStock || quantity >= Math.min(10, stock)}
-                className="p-2 active:scale-90 text-gray-600 disabled:opacity-40"
-              >
-                <Plus className="w-4 h-4 stroke-2" />
-              </button>
-            </div>
-
-            <button 
-              onClick={handleAddToCart}
-              disabled={isOutOfStock || addingToCart}
-              className={`flex-1 py-3.5 px-2 font-extrabold rounded-xl transition-all shadow-sm flex items-center justify-center gap-1.5 ${
-                isOutOfStock 
-                  ? 'bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed' 
-                  : 'bg-gray-900 text-white active:scale-[0.98] disabled:opacity-50'
-              }`}
-            >
-              <ShoppingBag className="w-4 h-4" />
-              <span className="text-[13px]">{isOutOfStock ? 'Out of Stock' : addingToCart ? 'Adding...' : 'Add to Cart'}</span>
-            </button>
-            
-            <button 
-              onClick={handleBuyNow}
-              disabled={isOutOfStock || addingToCart}
-              className={`flex-1 py-3.5 px-2 font-extrabold rounded-xl transition-all shadow-sm flex items-center justify-center ${
-                isOutOfStock 
-                  ? 'hidden' 
-                  : 'bg-gold-primary text-[#2b3036] active:scale-[0.98] disabled:opacity-50'
-              }`}
-            >
-              <span className="text-[13px]">Buy Now</span>
-            </button>
-          </div>
-        );
-      })()}
 
     </main>
   );
