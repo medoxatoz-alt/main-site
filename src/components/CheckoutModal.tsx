@@ -301,22 +301,23 @@ export default function CheckoutModal({ isOpen, onClose, buyNowItem }: { isOpen:
   }, 0);
 
   return (
-    <div className="fixed inset-0 z-[3000] bg-black/60 backdrop-blur-sm flex flex-col items-center justify-center p-0 md:p-6 animate-in fade-in duration-200">
-      <div className="bg-[#f8f9fa] w-full h-full md:h-auto md:max-h-[90vh] md:max-w-6xl md:rounded-2xl shadow-2xl flex flex-col relative overflow-hidden flex-1">
+    <div className="fixed inset-0 z-[3000] flex md:items-center md:justify-center p-0 md:p-6">
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200" onClick={onClose} />
+      
+      <div className="bg-[#f8f9fa] w-full h-full md:h-auto md:max-h-[90vh] md:max-w-6xl md:rounded-2xl shadow-2xl flex flex-col absolute bottom-0 md:relative animate-in slide-in-from-bottom md:slide-in-from-bottom-0 md:zoom-in-95 duration-300 overflow-hidden z-10 pb-safe">
         
         {/* Header with Close Button */}
-        <div className=" border-b border-gray-100 px-4 md:px-6 py-4 flex justify-between items-center shrink-0">
+        <div className="bg-white border-b border-gray-100 px-4 md:px-6 py-4 flex justify-between items-center shrink-0 z-20">
           <h2 className="text-xl md:text-2xl font-extrabold text-gray-900 flex items-center gap-3">
-            
             Secure Checkout
           </h2>
           <button onClick={onClose} className="p-2 text-gray-400 hover:text-gray-900 hover:bg-gray-100 rounded-full transition-colors bg-transparent border-none cursor-pointer">
-            <X className="w-6 h-6" />
+            <X className="w-6 h-6 md:w-5 md:h-5" />
           </button>
         </div>
 
         {/* Scrollable Content */}
-        <div className="flex-1 overflow-y-auto custom-scrollbar relative p-4 md:p-6">
+        <div className="flex-1 overflow-y-auto custom-scrollbar relative p-0 md:p-6 pb-32 md:pb-6">
 
       <div className="flex flex-col lg:flex-row gap-6 md:gap-8 items-start">
         {/* Shipping Form Card */}
@@ -508,29 +509,54 @@ export default function CheckoutModal({ isOpen, onClose, buyNowItem }: { isOpen:
               <span className="text-2xl text-red-700">₹{totalAmount.toLocaleString('en-IN')}</span>
             </div>
 
-            <button
-              type="submit"
-              form="checkoutForm"
-              disabled={placingOrder || !shipping.address}
-              className="w-full py-4 bg-gold-primary hover:bg-gold-hover text-text-main font-bold rounded-lg transition-all duration-300 shadow-md shadow-amber-500/10 hover:shadow-lg active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none cursor-pointer flex items-center justify-center gap-2"
-            >
-              {placingOrder ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  <span>Initiating Payment...</span>
-                </>
-              ) : (
-                <span>{`Pay ₹${totalAmount.toLocaleString('en-IN')}`}</span>
-              )}
-            </button>
+            <div className="hidden md:block">
+              <button
+                type="submit"
+                form="checkoutForm"
+                disabled={placingOrder || !shipping.address}
+                className="w-full py-4 bg-gold-primary hover:bg-gold-hover text-text-main font-bold rounded-lg transition-all duration-300 shadow-md shadow-amber-500/10 hover:shadow-lg active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none cursor-pointer flex items-center justify-center gap-2"
+              >
+                {placingOrder ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>Initiating Payment...</span>
+                  </>
+                ) : (
+                  <span>{`Pay ₹${totalAmount.toLocaleString('en-IN')}`}</span>
+                )}
+              </button>
 
-            <p className="text-xs text-gray-400 text-center mt-3 flex items-center justify-center gap-1">
-              <Lock className="w-3 h-3" />
-              100% Secure Checkout
-            </p>
+              <p className="text-xs text-gray-400 text-center mt-3 flex items-center justify-center gap-1">
+                <Lock className="w-3 h-3" />
+                100% Secure Checkout
+              </p>
+            </div>
           </div>
         </div>
       </div>
+      </div>
+
+      {/* Mobile Sticky Footer */}
+      <div className="md:hidden bg-white border-t border-gray-100 p-4 shrink-0 shadow-[0_-10px_20px_rgba(0,0,0,0.05)] z-20 pb-safe">
+        <div className="flex items-center justify-between mb-3 px-1">
+          <span className="text-sm font-bold text-gray-600">Total</span>
+          <span className="text-xl font-extrabold text-red-700">₹{totalAmount.toLocaleString('en-IN')}</span>
+        </div>
+        <button
+          type="submit"
+          form="checkoutForm"
+          disabled={placingOrder || !shipping.address}
+          className="w-full py-3.5 bg-gold-primary hover:bg-gold-hover text-[#2b3036] font-extrabold rounded-full transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-sm cursor-pointer border-none"
+        >
+          {placingOrder ? (
+            <>
+              <Loader2 className="w-5 h-5 animate-spin" />
+              <span>Processing...</span>
+            </>
+          ) : (
+            <span>Swipe to Pay</span>
+          )}
+        </button>
       </div>
     </div>
     </div>
