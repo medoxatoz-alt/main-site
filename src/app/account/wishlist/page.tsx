@@ -5,7 +5,7 @@ import Navbar from '@/components/Navbar';
 import api from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
-import { Loader2, ArrowLeft, Heart, Trash2 } from 'lucide-react';
+import { Loader2, ChevronLeft, Heart, Trash2 } from 'lucide-react';
 import ProductCard from '@/components/ProductCard';
 import Pagination from '@/components/Pagination';
 import EmptyState from '@/components/EmptyState';
@@ -21,6 +21,32 @@ export default function WishlistPage() {
   const [fetchError, setFetchError] = useState(false);
   const [removingId, setRemovingId] = useState<string | null>(null);
   const router = useRouter();
+
+  const [navHeight, setNavHeight] = useState(112);
+
+  useEffect(() => {
+    const updateHeight = () => {
+      const header = document.querySelector('header');
+      if (header) {
+        setNavHeight(header.getBoundingClientRect().height);
+      }
+    };
+    
+    updateHeight();
+    window.addEventListener('resize', updateHeight);
+    
+    const header = document.querySelector('header');
+    let observer: ResizeObserver | null = null;
+    if (header && window.ResizeObserver) {
+      observer = new ResizeObserver(updateHeight);
+      observer.observe(header);
+    }
+    
+    return () => {
+      window.removeEventListener('resize', updateHeight);
+      if (observer) observer.disconnect();
+    };
+  }, []);
 
   useEffect(() => {
     if (!authLoading && !user) router.push('/signin');
@@ -86,16 +112,15 @@ export default function WishlistPage() {
   return (
     <main className="bg-[var(--bg-page)] min-h-screen pb-20">
       <Navbar />
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-10">
+ 
+
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-10">
 
         {/* Header */}
-        <div className="flex items-center gap-4 mb-8">
-          <Link href="/account" className="p-2 rounded-xl hover:bg-gray-100 text-gray-500 hover:text-gray-700 transition-colors cursor-pointer">
-            <ArrowLeft className="w-5 h-5" />
-          </Link>
-          <Heart className="w-6 h-6 text-red-400 fill-red-400" />
+        <div className="flex items-center gap-3 mb-6 sm:mb-8">
+          <Heart className="w-6 h-6 sm:w-7 sm:h-7 text-red-400 fill-red-400" />
           <h1 className="text-2xl md:text-3xl font-extrabold text-gray-900">My Wishlist</h1>
-          <span className="ml-auto text-sm text-gray-500 font-medium">
+          <span className="ml-auto text-sm text-gray-500 font-medium bg-gray-100 sm:bg-transparent px-2.5 py-1 sm:p-0 rounded-lg">
             {wishlistIds.length}/10 saved
           </span>
         </div>
@@ -103,7 +128,7 @@ export default function WishlistPage() {
         {fetchError ? (
           <ErrorState message="Failed to load wishlist. Please try again." />
         ) : products.length === 0 ? (
-          <div className="text-center py-20">
+          <div className="text-center py-10">
             <EmptyState message="Your wishlist is empty." />
             <Link href="/" className="mt-6 inline-block px-6 py-3 bg-gold-primary hover:bg-gold-hover text-text-main font-bold rounded-xl transition-all">
               Explore Products

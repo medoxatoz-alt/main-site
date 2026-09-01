@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, use } from 'react';
+import { useEffect, useState, use, useRef } from 'react';
 import Navbar from '@/components/Navbar';
 import api from '@/lib/api';
 import toast from 'react-hot-toast';
@@ -19,7 +19,9 @@ import {
   Award,
   Heart,
   Share2,
-  MessageSquare
+  MessageSquare,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 import EmptyState from '@/components/EmptyState';
 import ErrorState from '@/components/ErrorState';
@@ -41,12 +43,51 @@ const parseImages = (imageProp: any): string[] => {
 export default function ProductDetail({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const [product, setProduct] = useState<any>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [showThumbArrows, setShowThumbArrows] = useState(false);
   const [loading, setLoading] = useState(true);
   const [addingToCart, setAddingToCart] = useState(false);
   const [activeImgIdx, setActiveImgIdx] = useState(0);
   const [quantity, setQuantity] = useState(1);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   
+  const [navHeight, setNavHeight] = useState(112); // fallback desktop height
+
+  useEffect(() => {
+    const updateHeight = () => {
+      const header = document.querySelector('header');
+      if (header) {
+        setNavHeight(header.getBoundingClientRect().height);
+      }
+    };
+    
+    updateHeight();
+    window.addEventListener('resize', updateHeight);
+    
+    const header = document.querySelector('header');
+    let observer: ResizeObserver | null = null;
+    if (header && window.ResizeObserver) {
+      observer = new ResizeObserver(updateHeight);
+      observer.observe(header);
+    }
+    
+    return () => {
+      window.removeEventListener('resize', updateHeight);
+      if (observer) observer.disconnect();
+    };
+  }, []);
+
+  useEffect(() => {
+    const checkOverflow = () => {
+      if (scrollRef.current) {
+        setShowThumbArrows(scrollRef.current.scrollWidth > scrollRef.current.clientWidth);
+      }
+    };
+    checkOverflow();
+    window.addEventListener('resize', checkOverflow);
+    return () => window.removeEventListener('resize', checkOverflow);
+  }, [product]);
+
   const { user } = useAuth();
   const router = useRouter();
 
@@ -231,67 +272,210 @@ export default function ProductDetail({ params }: { params: Promise<{ id: string
   const mrp = product.mrp ? (typeof product.mrp === 'string' ? parseFloat(product.mrp.replace(/,/g, '')) : Number(product.mrp)) : null;
   const discountPercentage = mrp && mrp > price ? Math.round(((mrp - price) / mrp) * 100) : 0;
 
+
   return (
-    <main className="bg-[var(--bg-page)] min-h-screen pb-20 ">
+    <main className="bg-white lg:bg-[var(--bg-page)] min-h-screen pb-28 lg:pb-20">
       <Navbar />
       
-      <div className="max-w-[1500px] mx-auto px-4 sm:px-6 lg:px-8 py-8 pt-5">
-        
-        {/* Navigation Breadcrumb */}
-        <div className="text-xs text-gray-500 mb-6 flex items-center gap-1.5 font-medium">
-          <span className="hover:text-gold-primary cursor-pointer transition-colors" onClick={() => router.push('/')}>Home</span>
-          <span>/</span>
-          <span className="text-gray-400 capitalize">{product.category}</span>
-          <span>/</span>
-          <span className="text-gray-800 font-semibold truncate max-w-[200px] sm:max-w-xs">{product.title}</span>
+      {/* Sticky Back Button Bar - Merges with Navbar */}
+      <div
+        className="sticky z-[990] bg-[#0d1117] border-b border-white/10 px-3.5 md:px-5 py-2 md:py-2.5 shadow-sm -mt-[2px]"
+        style={{ top: `${navHeight - 1}px` }}
+      >
+        <div className="max-w-[1500px] mx-auto lg:px-4 flex items-center">
+          <button 
+            onClick={() => router.back()}
+            className="flex items-center gap-1 md:gap-1.5 text-[13px] md:text-sm font-semibold text-white/80 hover:text-white transition-colors cursor-pointer w-fit group border-none bg-transparent outline-none p-0"
+          >
+            <ChevronLeft className="w-4 h-4 md:w-4 md:h-4 group-hover:-translate-x-1 transition-transform" />
+            <span className="tracking-wide">Back</span>
+          </button>
         </div>
+      </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+      <div className="max-w-[1500px] mx-auto lg:px-8 py-0 lg:py-12 lg:pt-5">
+        
+   
+        <div className="grid grid-cols-1 lg:grid-cols-12 lg:gap-10 items-start">
           
-          {/* Left Column: Image Area (lg:col-span-5) */}
-          <div className="lg:col-span-5 flex flex-col">
-            <div className="bg-white p-5 rounded-2xl border border-gray-200/60 shadow-[var(--shadow-soft)] flex justify-center items-center overflow-hidden relative group h-[340px] sm:h-[450px]">
+          {/* Left Column: Image Gallery (lg:col-span-7) */}
+          <div className="lg:col-span-7 w-full">
+            {/* Mobile View: Horizontal Snap Scroll */}
+            <div className="lg:hidden relative">
+              <div 
+                className="flex overflow-x-auto snap-x snap-mandatory no-scrollbar bg-gray-50 border-b border-gray-200"
+                onScroll={(e) => {
+                  const target = e.target as HTMLDivElement;
+                  const newIndex = Math.round(target.scrollLeft / target.clientWidth);
+                  setActiveImgIdx(newIndex);
+                }}
+              >
+                {images.map((img: string, idx: number) => (
+                  <div key={idx} className="w-full shrink-0 snap-center aspect-square flex items-center justify-center relative">
+                    <img src={img} alt={`${product.title} ${idx + 1}`} className="w-full h-full object-contain p-6" />
+                  </div>
+                ))}
+              </div>
+
+              {/* Stationary Discount Badge */}
               {discountPercentage > 0 && (
-                <div className="absolute top-4 left-4 z-10 bg-red-600 text-white text-[11px] uppercase tracking-wider font-extrabold px-3 py-1 rounded shadow-md">
+                <div className="absolute top-4 left-4 z-10 bg-red-600 text-white text-[11px] uppercase tracking-wider font-extrabold px-3 py-1 rounded shadow-md pointer-events-none">
                   {discountPercentage}% OFF
                 </div>
               )}
               
-              <img 
-                key={activeImageUrl}
-                src={activeImageUrl} 
-                alt={product.title} 
-                className="max-w-full max-h-full object-contain transition-transform duration-500 hover:scale-105" 
-              />
+              {/* Stationary Indicators */}
+              {images.length > 1 && (
+                <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-1.5 pointer-events-none">
+                  {images.map((_: any, dotIdx: number) => (
+                    <div key={dotIdx} className={`h-1.5 rounded-full transition-all duration-300 ${activeImgIdx === dotIdx ? 'w-4 bg-gray-800' : 'w-1.5 bg-gray-300'}`} />
+                  ))}
+                </div>
+              )}
             </div>
 
-            {/* Thumbnails */}
-            {images.length > 1 && (
-              <div className="flex gap-2.5 mt-4 overflow-x-auto py-1 no-scrollbar max-w-full">
-                {images.map((img: string, idx: number) => (
-                  <button
-                    key={idx}
-                    type="button"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      setActiveImgIdx(idx);
-                    }}
-                    className={`w-[70px] h-[70px] rounded-lg border-2 p-1 bg-white flex items-center justify-center cursor-pointer transition-all duration-200 active:scale-95 shrink-0 ${
-                      idx === activeImgIdx 
-                        ? 'border-gold-primary shadow-md scale-105' 
-                        : 'border-gray-200 hover:border-gray-300'
-                    }`}
-                  >
-                    <img src={img} alt={`${product.title} view ${idx + 1}`} className="max-w-full max-h-full object-contain" />
-                  </button>
-                ))}
-              </div>
-            )}
+            {/* Desktop View: Single Main Image + Thumbnails */}
+            <div className="hidden lg:flex flex-col gap-4">
+              <div className="bg-white rounded-2xl border border-gray-200/60 shadow-sm flex items-center justify-center relative aspect-[4/3] overflow-hidden group">
+                {discountPercentage > 0 && (
+                  <div className="absolute top-6 left-6 z-10 bg-red-600 text-white text-xs uppercase tracking-wider font-extrabold px-3 py-1.5 rounded shadow-md">
+                    {discountPercentage}% OFF
+                  </div>
+                )}
+                
+                {images.length > 1 && (
+                  <>
+                    <button 
+                      onClick={(e) => {
+                        e.preventDefault();
+                        setActiveImgIdx(prev => prev === 0 ? images.length - 1 : prev - 1);
+                      }}
+                      className="absolute left-4 top-1/2 -translate-y-1/2 z-10 bg-white/90 shadow-md p-2 rounded-full border border-gray-200 text-gray-700 hover:text-black opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <ChevronLeft className="w-6 h-6" />
+                    </button>
+                    
+                    <button 
+                      onClick={(e) => {
+                        e.preventDefault();
+                        setActiveImgIdx(prev => prev === images.length - 1 ? 0 : prev + 1);
+                      }}
+                      className="absolute right-4 top-1/2 -translate-y-1/2 z-10 bg-white/90 shadow-md p-2 rounded-full border border-gray-200 text-gray-700 hover:text-black opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <ChevronRight className="w-6 h-6" />
+                    </button>
 
-            {/* Quality Seals */}
-            <div className="mt-8 grid grid-cols-2 gap-3.5">
-              <div className="bg-white p-3.5 rounded-xl border border-gray-200/50 flex items-center gap-3">
-                <div className="p-2 bg-amber-50 text-gold-primary rounded-lg">
+                    <div className="absolute bottom-6 left-0 right-0 flex justify-center gap-1.5 pointer-events-none z-10">
+                      {images.map((_: any, dotIdx: number) => (
+                        <div key={dotIdx} className={`h-1.5 rounded-full transition-all duration-300 ${activeImgIdx === dotIdx ? 'w-4 bg-gray-800' : 'w-2 bg-gray-300'}`} />
+                      ))}
+                    </div>
+                  </>
+                )}
+
+                <img 
+                  src={images[activeImgIdx] || images[0] || 'https://via.placeholder.com/400'} 
+                  alt={product.title} 
+                  className="w-full h-full object-contain p-10 transition-transform duration-500 group-hover:scale-105" 
+                />
+              </div>
+
+              {images.length > 1 && (
+                <div className="relative group">
+                  {showThumbArrows && (
+                    <button 
+                      onClick={() => scrollRef.current?.scrollBy({ left: -200, behavior: 'smooth' })}
+                      className="absolute left-0 top-1/2 -translate-y-1/2 z-10 bg-white/90 shadow-md p-1.5 rounded-full border border-gray-200 text-gray-700 hover:text-black opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-0"
+                    >
+                      <ChevronLeft className="w-5 h-5" />
+                    </button>
+                  )}
+                  <div ref={scrollRef} className="flex gap-3 overflow-x-auto py-1 no-scrollbar scroll-smooth">
+                    {images.map((img: string, idx: number) => (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => setActiveImgIdx(idx)}
+                        className={`w-24 h-24 rounded-xl border-2 p-2 bg-white flex items-center justify-center cursor-pointer transition-all shrink-0 ${
+                          idx === activeImgIdx 
+                            ? 'border-gray-900 shadow-md scale-[1.02]' 
+                            : 'border-gray-200 hover:border-gray-300'
+                        }`}
+                      >
+                        <img src={img} alt={`${product.title} view ${idx + 1}`} className="w-full h-full object-contain" />
+                      </button>
+                    ))}
+                  </div>
+                  {showThumbArrows && (
+                    <button 
+                      onClick={() => scrollRef.current?.scrollBy({ left: 200, behavior: 'smooth' })}
+                      className="absolute right-0 top-1/2 -translate-y-1/2 z-10 bg-white/90 shadow-md p-1.5 rounded-full border border-gray-200 text-gray-700 hover:text-black opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-0"
+                    >
+                      <ChevronRight className="w-5 h-5" />
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Right Column: Details & Actions (lg:col-span-5) */}
+          <div className="lg:col-span-5 flex flex-col gap-8 lg:sticky lg:top-24 px-4 sm:px-6 lg:px-0 py-6 lg:py-0">
+            
+            {/* Title & Header */}
+            <div>
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-[11px] uppercase tracking-wider font-extrabold text-gold-primary bg-amber-50 px-2.5 py-1 rounded">
+                  {product.category}
+                </span>
+                <div className="flex gap-2">
+                  <button 
+                    onClick={toggleWishlist}
+                    disabled={wishlistLoading}
+                    className={`p-2 bg-gray-50 hover:bg-gray-100 active:scale-90 rounded-full transition-all duration-150 cursor-pointer disabled:opacity-50 ${
+                      isWishlisted ? 'text-red-500' : 'text-gray-400 hover:text-red-500'
+                    }`}
+                    aria-label="Add to wishlist"
+                  >
+                    <Heart className="w-5 h-5" fill={isWishlisted ? 'currentColor' : 'none'} />
+                  </button>
+                  <button 
+                    onClick={shareProduct}
+                    className="p-2 bg-gray-50 hover:bg-gray-100 hover:text-gold-primary text-gray-400 active:scale-90 rounded-full transition-all duration-150 cursor-pointer" 
+                    aria-label="Share product"
+                  >
+                    <Share2 className="w-5 h-5" />
+                  </button>
+                </div>
+              </div>
+
+              <h1 className="text-2xl sm:text-3xl font-extrabold text-gray-900 mb-4 leading-tight">
+                {product.title}
+              </h1>
+
+              {/* Price */}
+              <div className="flex items-baseline gap-2 flex-wrap">
+                <span className="text-3xl sm:text-4xl font-extrabold text-gray-900 tracking-tight">
+                  ₹{price.toLocaleString('en-IN')}
+                </span>
+                {mrp && mrp > price && (
+                  <>
+                    <span className="text-base text-gray-400 line-through ml-1">
+                      ₹{mrp.toLocaleString('en-IN')}
+                    </span>
+                    <span className="text-xs font-extrabold text-emerald-600 bg-emerald-50 px-2 py-1 rounded ml-2">
+                      {discountPercentage}% Save
+                    </span>
+                  </>
+                )}
+              </div>
+              <div className="text-[12px] text-gray-500 mt-1 font-medium">Inclusive of all duties and taxes</div>
+            </div>
+
+            {/* Badges */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="bg-gray-50 p-3 rounded-xl border border-gray-100 flex items-center gap-3">
+                <div className="text-gold-primary">
                   <Award className="w-5 h-5" />
                 </div>
                 <div>
@@ -299,8 +483,8 @@ export default function ProductDetail({ params }: { params: Promise<{ id: string
                   <div className="text-[10px] text-gray-500 font-medium">Certified Quality</div>
                 </div>
               </div>
-              <div className="bg-white p-3.5 rounded-xl border border-gray-200/50 flex items-center gap-3">
-                <div className="p-2 bg-emerald-50 text-emerald-600 rounded-lg">
+              <div className="bg-gray-50 p-3 rounded-xl border border-gray-100 flex items-center gap-3">
+                <div className="text-emerald-600">
                   <ShieldCheck className="w-5 h-5" />
                 </div>
                 <div>
@@ -309,159 +493,100 @@ export default function ProductDetail({ params }: { params: Promise<{ id: string
                 </div>
               </div>
             </div>
-          </div>
 
-          {/* Middle Column: Details & Actions Area (lg:col-span-4) */}
-          <div className="lg:col-span-4 flex flex-col gap-6">
-            <div className="bg-white p-6 sm:p-8 rounded-2xl border border-gray-200/60 shadow-[var(--shadow-soft)]">
-              <div className="flex items-center justify-between mb-3">
-                <span className="text-[11px] uppercase tracking-wider font-extrabold text-gold-primary bg-amber-50/50 px-2.5 py-1 rounded">
-                  {product.category}
-                </span>
-                <div className="flex gap-2">
-                  <button 
-                    onClick={toggleWishlist}
-                    disabled={wishlistLoading}
-                    className={`p-1.5 hover:bg-gray-50 active:scale-90 rounded-full transition-all duration-150 cursor-pointer disabled:opacity-50 ${
-                      isWishlisted ? 'text-red-500' : 'text-gray-400 hover:text-red-500'
-                    }`}
-                    aria-label="Add to wishlist"
-                  >
-                    <Heart className="w-4 h-4" fill={isWishlisted ? 'currentColor' : 'none'} />
-                  </button>
-                  <button 
-                    onClick={shareProduct}
-                    className="p-1.5 hover:bg-gray-50 hover:text-gold-primary text-gray-400 active:scale-90 rounded-full transition-all duration-150 cursor-pointer" 
-                    aria-label="Share product"
-                  >
-                    <Share2 className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-
-              <h1 className="text-xl sm:text-2xl font-extrabold text-gray-900 mb-6 leading-snug">
-                {product.title}
-              </h1>
-
-              {/* Pricing Section */}
-              <div className="border-t border-b border-gray-100 py-4 mb-6">
-                <div className="flex items-baseline gap-2 flex-wrap">
-                  <span className="text-3xl font-extrabold text-gray-900">
-                    ₹{price.toLocaleString('en-IN')}
-                  </span>
-                  {mrp && mrp > price && (
-                    <>
-                      <span className="text-sm text-gray-400 line-through">
-                        ₹{mrp.toLocaleString('en-IN')}
-                      </span>
-                      <span className="text-xs font-extrabold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded ml-1">
-                        {discountPercentage}% Save
-                      </span>
-                    </>
-                  )}
-                </div>
-                <div className="text-[11px] text-gray-400 mt-1.5 font-medium mb-4">Inclusive of all duties and taxes</div>
-
-                {/* Inline Checkout Actions */}
-                {(() => {
-                  const stock = Number(product.stock) || 0;
-                  const isOutOfStock = stock <= 0;
-                  return (
-                    <div className="flex flex-col gap-5 mt-6 border-t border-gray-100 pt-6">
-                      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                        <div className="flex flex-col gap-1">
-                          <div className={isOutOfStock ? "text-red-600 font-bold text-sm" : "text-emerald-600 font-bold text-sm"}>
-                            {isOutOfStock ? "Out of Stock" : "In Stock & Secure"}
-                          </div>
-                          {!isOutOfStock && <div className="text-xs text-gray-500 font-medium">Estimated Dispatch: Within 24 Hours</div>}
-                        </div>
-
-                        {/* Quantity Selector */}
-                        <div className="flex items-center gap-3 bg-gray-50 border border-gray-200 rounded-lg p-1.5">
-                          <button
-                            onClick={() => setQuantity(q => Math.max(1, q - 1))}
-                            disabled={isOutOfStock || quantity <= 1}
-                            className="p-1.5 hover:bg-white active:scale-90 text-gray-600 disabled:opacity-40 disabled:cursor-not-allowed rounded transition-all duration-150 shadow-sm cursor-pointer"
-                            aria-label="Decrease quantity"
-                          >
-                            <Minus className="w-3.5 h-3.5 stroke-2" />
-                          </button>
-                          <span className="text-sm font-extrabold text-gray-800 w-6 text-center">{quantity}</span>
-                          <button
-                            onClick={() => setQuantity(q => Math.min(Math.min(10, stock), q + 1))}
-                            disabled={isOutOfStock || quantity >= Math.min(10, stock)}
-                            className="p-1.5 hover:bg-white active:scale-90 text-gray-600 disabled:opacity-40 disabled:cursor-not-allowed rounded transition-all duration-150 shadow-sm cursor-pointer"
-                            aria-label="Increase quantity"
-                          >
-                            <Plus className="w-3.5 h-3.5 stroke-2" />
-                          </button>
-                        </div>
+            {/* Desktop Inline Checkout Actions (Hidden on Mobile) */}
+            {(() => {
+              const stock = Number(product.stock) || 0;
+              const isOutOfStock = stock <= 0;
+              return (
+                <div className="hidden lg:flex flex-col gap-5 border-y border-gray-100 py-6">
+                  <div className="flex items-center justify-between">
+                    <div className="flex flex-col gap-0.5">
+                      <div className={isOutOfStock ? "text-red-600 font-bold text-sm" : "text-emerald-600 font-bold text-sm"}>
+                        {isOutOfStock ? "Out of Stock" : "In Stock & Ready to Ship"}
                       </div>
-
-                      {/* Action Buttons */}
-                      <div className="flex flex-col sm:flex-row gap-3">
-                        <button 
-                          onClick={handleAddToCart}
-                          disabled={isOutOfStock || addingToCart}
-                          className={`flex-1 py-3.5 font-extrabold rounded-full transition-all duration-300 shadow-md cursor-pointer flex items-center justify-center gap-2 ${
-                            isOutOfStock 
-                              ? 'bg-gray-100 text-gray-400 border border-gray-200 shadow-none cursor-not-allowed' 
-                              : 'bg-white text-gray-900 border-2 border-gold-primary hover:bg-gold-50 shadow-sm active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none'
-                          }`}
-                        >
-                          <ShoppingBag className="w-4 h-4 stroke-2" />
-                          <span>{isOutOfStock ? 'Out of Stock' : addingToCart ? 'Adding to Cart...' : 'Add to Cart'}</span>
-                        </button>
-                        
-                        <button 
-                          onClick={handleBuyNow}
-                          disabled={isOutOfStock || addingToCart}
-                          className={`flex-1 py-3.5 font-extrabold rounded-full transition-all duration-300 shadow-md cursor-pointer flex items-center justify-center gap-2 ${
-                            isOutOfStock 
-                              ? 'bg-gray-200 text-gray-400 border border-gray-200 shadow-none cursor-not-allowed hidden' 
-                              : 'bg-gold-primary hover:bg-gold-hover text-[#2b3036] shadow-amber-500/20 hover:shadow-lg active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none'
-                          }`}
-                        >
-                          <span>Buy Now</span>
-                        </button>
-                      </div>
+                      {!isOutOfStock && <div className="text-xs text-gray-500 font-medium flex items-center gap-1"><Truck className="w-3.5 h-3.5" /> Dispatches within 24 Hrs</div>}
                     </div>
-                  );
-                })()}
 
+                    {/* Quantity Selector */}
+                    <div className="flex items-center gap-3 bg-gray-50 border border-gray-200 rounded-lg p-1">
+                      <button
+                        onClick={() => setQuantity(q => Math.max(1, q - 1))}
+                        disabled={isOutOfStock || quantity <= 1}
+                        className="p-2 hover:bg-white active:scale-90 text-gray-600 disabled:opacity-40 disabled:cursor-not-allowed rounded transition-all duration-150 cursor-pointer"
+                      >
+                        <Minus className="w-4 h-4 stroke-2" />
+                      </button>
+                      <span className="text-sm font-extrabold text-gray-800 w-6 text-center">{quantity}</span>
+                      <button
+                        onClick={() => setQuantity(q => Math.min(Math.min(10, stock), q + 1))}
+                        disabled={isOutOfStock || quantity >= Math.min(10, stock)}
+                        className="p-2 hover:bg-white active:scale-90 text-gray-600 disabled:opacity-40 disabled:cursor-not-allowed rounded transition-all duration-150 cursor-pointer"
+                      >
+                        <Plus className="w-4 h-4 stroke-2" />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Desktop Action Buttons */}
+                  <div className="flex gap-3">
+                    <button 
+                      onClick={handleAddToCart}
+                      disabled={isOutOfStock || addingToCart}
+                      className={`flex-1 py-4 font-extrabold rounded-full transition-all duration-200 cursor-pointer flex items-center justify-center gap-2 ${
+                        isOutOfStock 
+                          ? 'bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed' 
+                          : 'bg-white text-gray-900 border-2 border-gray-900 hover:bg-gray-50 active:scale-[0.98] disabled:opacity-50'
+                      }`}
+                    >
+                      <ShoppingBag className="w-4 h-4 stroke-2" />
+                      <span>{isOutOfStock ? 'Out of Stock' : addingToCart ? 'Adding...' : 'Add to Cart'}</span>
+                    </button>
+                    
+                    <button 
+                      onClick={handleBuyNow}
+                      disabled={isOutOfStock || addingToCart}
+                      className={`flex-1 py-4 font-extrabold rounded-full transition-all duration-200 cursor-pointer flex items-center justify-center ${
+                        isOutOfStock 
+                          ? 'hidden' 
+                          : 'bg-gold-primary hover:bg-gold-hover text-[#2b3036] active:scale-[0.98] disabled:opacity-50'
+                      }`}
+                    >
+                      <span>Buy Now</span>
+                    </button>
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* Description & Specs */}
+            <div className="flex flex-col gap-6">
+              
+              {/* Product Specifications */}
+              <div className="bg-gray-50/50 rounded-2xl p-6 border border-gray-100">
+                <h2 className="text-sm font-extrabold text-gray-900 mb-4 uppercase tracking-wider">Specifications</h2>
+                <div className="grid grid-cols-[120px_1fr] sm:grid-cols-[140px_1fr] gap-y-3 text-sm">
+                  <div className="font-bold text-gray-800">Category</div>
+                  <div className="text-gray-600 capitalize">{product.category}</div>
+                  
+                  <div className="font-bold text-gray-800">Availability</div>
+                  <div className="text-emerald-700 font-semibold">{product.stock && product.stock > 0 ? 'In Stock' : 'Out of Stock'}</div>
+
+                  {product.attributes && product.attributes.map((attr: any, idx: number) => (
+                    <React.Fragment key={idx}>
+                      <div className="font-bold text-gray-800 capitalize">{attr.key}</div>
+                      <div className="text-gray-600">{attr.value}</div>
+                    </React.Fragment>
+                  ))}
+                </div>
               </div>
-            </div>
 
-            {/* Attributes List */}
-            <div className="bg-white px-6 sm:px-8 py-5 border-t border-gray-100">
-              <h2 className="text-sm font-extrabold text-gray-900 mb-4 uppercase tracking-wider">Product Specifications</h2>
-              <div className="grid grid-cols-[140px_1fr] sm:grid-cols-[160px_1fr] gap-y-3 text-sm">
-                <div className="font-bold text-gray-800">Item Category</div>
-                <div className="text-gray-600 capitalize">{product.category}</div>
-                
-                <div className="font-bold text-gray-800">Availability</div>
-                <div className="text-emerald-700 font-semibold">{product.stock && product.stock > 0 ? 'Certified In Stock' : 'Pre-order Available'}</div>
-
-                {product.attributes && product.attributes.map((attr: any, idx: number) => (
-                  <React.Fragment key={idx}>
-                    <div className="font-bold text-gray-800 capitalize">{attr.key}</div>
-                    <div className="text-gray-600">{attr.value}</div>
-                  </React.Fragment>
-                ))}
-              </div>
-            </div>
-
-          </div>
-
-          {/* Right Column: Information & Related Area (lg:col-span-3) */}
-          <div className="lg:col-span-3 flex flex-col gap-6 sticky top-24">
-            <div className="bg-white rounded-2xl border border-gray-200/60 shadow-[var(--shadow-soft)] overflow-hidden">
-              {/* About this item (Description) */}
-              <div className="px-6 sm:px-8 py-6">
-                <h2 className="text-sm font-extrabold text-gray-900 mb-4 uppercase tracking-wider">About this item</h2>
+              {/* About this item */}
+              <div className="bg-white lg:bg-transparent rounded-2xl lg:p-0">
+                <h2 className="text-sm font-extrabold text-gray-900 mb-3 uppercase tracking-wider">About this item</h2>
                 <div className="text-sm text-gray-700 leading-relaxed whitespace-pre-line">
                   {product.description ? (
-                    <ul className="list-disc pl-5 space-y-2.5 marker:text-gold-primary">
+                    <ul className="list-disc pl-5 space-y-2.5 marker:text-gray-300">
                       {product.description.split('\n').map((line: string, i: number) => {
                         const trimmed = line.trim();
                         if (!trimmed) return null;
@@ -469,34 +594,85 @@ export default function ProductDetail({ params }: { params: Promise<{ id: string
                       })}
                     </ul>
                   ) : (
-                    <p className="italic text-gray-400">No detailed description provided for this item.</p>
+                    <p className="italic text-gray-400">No detailed description provided.</p>
                   )}
                 </div>
               </div>
-              
-              {/* Vendor Details */}
-              <div className="bg-gray-50/80 p-6 sm:p-8 border-t border-gray-100">
-                <div className="flex flex-col gap-2">
-                  <div className="flex items-center gap-2">
-                    <ShieldCheck className="w-5 h-5 text-emerald-600" />
-                    <div className="text-sm font-extrabold text-gray-900">
-                      {product.is_sold_by_vendor ? 'Verified Third-Party Vendor' : 'Medox Certified Partner'}
+
+              {/* Vendor Information */}
+              <div className="bg-gray-50 p-5 rounded-2xl border border-gray-100 mt-2">
+                <div className="flex items-start gap-3">
+                  <BadgeCheck className="w-5 h-5 text-gold-primary mt-0.5 shrink-0" />
+                  <div>
+                    <div className="text-sm font-extrabold text-gray-900 mb-1">
+                      {product.is_sold_by_vendor ? 'Verified Independent Vendor' : 'Medox Certified Origin'}
                     </div>
+                    <p className="text-xs text-gray-500 leading-relaxed">
+                      {product.is_sold_by_vendor 
+                        ? 'Sold by a vetted third-party vendor. Protected by MedoxAtoZ guarantee.'
+                        : 'Shipped from a certified medical warehousing facility with climate control.'}
+                    </p>
                   </div>
-                  <p className="text-xs text-gray-500 leading-relaxed pl-7">
-                    {product.is_sold_by_vendor 
-                      ? 'This item is sold by a verified independent vendor on the MedoxAtoZ platform. All sellers must meet strict quality standards.'
-                      : 'This item is shipped directly from a certified medical warehousing facility to maintain precise temperature and moisture controls. Only authorized vendors can publish listing records.'}
-                  </p>
                 </div>
               </div>
+
             </div>
           </div>
-
-
-
         </div>
       </div>
+
+      {/* Mobile Sticky Bottom Action Bar */}
+      {(() => {
+        const stock = Number(product.stock) || 0;
+        const isOutOfStock = stock <= 0;
+        return (
+          <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 pb-6 flex gap-3 z-50 shadow-[0_-10px_20px_rgba(0,0,0,0.05)]">
+            <div className="flex items-center gap-3 bg-gray-100 border border-gray-200 rounded-xl p-1 shrink-0">
+              <button
+                onClick={() => setQuantity(q => Math.max(1, q - 1))}
+                disabled={isOutOfStock || quantity <= 1}
+                className="p-2 active:scale-90 text-gray-600 disabled:opacity-40"
+              >
+                <Minus className="w-4 h-4 stroke-2" />
+              </button>
+              <span className="text-sm font-extrabold text-gray-800 w-4 text-center">{quantity}</span>
+              <button
+                onClick={() => setQuantity(q => Math.min(Math.min(10, stock), q + 1))}
+                disabled={isOutOfStock || quantity >= Math.min(10, stock)}
+                className="p-2 active:scale-90 text-gray-600 disabled:opacity-40"
+              >
+                <Plus className="w-4 h-4 stroke-2" />
+              </button>
+            </div>
+
+            <button 
+              onClick={handleAddToCart}
+              disabled={isOutOfStock || addingToCart}
+              className={`flex-1 py-3.5 px-2 font-extrabold rounded-xl transition-all shadow-sm flex items-center justify-center gap-1.5 ${
+                isOutOfStock 
+                  ? 'bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed' 
+                  : 'bg-gray-900 text-white active:scale-[0.98] disabled:opacity-50'
+              }`}
+            >
+              <ShoppingBag className="w-4 h-4" />
+              <span className="text-[13px]">{isOutOfStock ? 'Out of Stock' : addingToCart ? 'Adding...' : 'Add to Cart'}</span>
+            </button>
+            
+            <button 
+              onClick={handleBuyNow}
+              disabled={isOutOfStock || addingToCart}
+              className={`flex-1 py-3.5 px-2 font-extrabold rounded-xl transition-all shadow-sm flex items-center justify-center ${
+                isOutOfStock 
+                  ? 'hidden' 
+                  : 'bg-gold-primary text-[#2b3036] active:scale-[0.98] disabled:opacity-50'
+              }`}
+            >
+              <span className="text-[13px]">Buy Now</span>
+            </button>
+          </div>
+        );
+      })()}
+
     </main>
   );
 }

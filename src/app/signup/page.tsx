@@ -154,6 +154,10 @@ function SignUpContent() {
       return;
     }
     if (!recaptchaVerifierRef.current) return;
+    if (phoneNumber.length !== 10) {
+      toast.error('Please enter a valid 10-digit phone number.');
+      return;
+    }
     setLoading(true);
     try {
       const formattedPhone = phoneNumber.startsWith('+') ? phoneNumber : `+91${phoneNumber}`;
@@ -362,8 +366,13 @@ function SignUpContent() {
                   type="tel"
                   placeholder="Phone No (e.g. 9876543210)"
                   value={phoneNumber}
-                  onChange={e => setPhoneNumber(e.target.value)}
+                  onChange={e => {
+                    const val = e.target.value.replace(/\D/g, '');
+                    if (val.length <= 10) setPhoneNumber(val);
+                  }}
                   required
+                  pattern="[0-9]{10}"
+                  maxLength={10}
                   className="w-full px-4 py-3.5 border border-gray-300 rounded-[32px] text-[15px] outline-none transition-all focus:border-black focus:ring-1 focus:ring-black"
                 />
                 <button

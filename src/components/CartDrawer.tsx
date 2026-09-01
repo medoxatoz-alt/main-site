@@ -195,14 +195,14 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
       />
       
       {/* Drawer */}
-      <div className="absolute right-0 top-0 bottom-0 w-full sm:w-[450px] max-w-[100vw] bg-white shadow-2xl flex flex-col animate-in slide-in-from-right duration-300">
+      <div className="absolute pt-2 right-0 top-0 bottom-0 w-full sm:w-[450px] max-w-[100vw] bg-white shadow-2xl flex flex-col animate-in slide-in-from-right duration-300">
         
         {/* Header */}
-        <div className="text-[#0d1117] px-5 py-4 flex items-center justify-between shrink-0  ">
+        <div className="text-[#0d1117]  px-5 py-4 flex items-center justify-between shrink-0  ">
           <div className="flex items-center gap-3">
             <div className="relative">
               <ShoppingBag className="w-6 h-6 text-[#0d1117] stroke-2" />
-              <span className="bg-gold-primary text-[#0d1117] font-extrabold text-[10px] h-[16px] min-w-[16px] rounded-full inline-flex items-center justify-center px-1 border-2 border-[#0d1117] absolute -top-1.5 -right-1.5 z-[2]">
+              <span className="bg-gold-primary  text-[#0d1117] font-extrabold text-[10px] h-[16px] min-w-[16px] rounded-full inline-flex items-center justify-center px-1 border-2 border-[#0d1117] absolute -top-1.5 -right-1.5 z-[2]">
                 {cartItems.length}
               </span>
             </div>

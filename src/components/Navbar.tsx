@@ -188,7 +188,7 @@ export default function Navbar() {
               md:before:rotate-45 md:before:border-t md:before:border-l md:before:border-[#e1e4e8]
             `}>
                 {/* Mobile Header */}
-                <div className="md:hidden flex items-center justify-between pb-4 mb-4 border-b border-gray-100">
+                <div className="md:hidden pt-4 flex items-center justify-between pb-4 mb-4 border-b border-gray-100">
                   <div className="font-bold text-lg text-gray-900">Your Account</div>
                   <button onClick={() => setIsDropdownOpen(false)} className="p-2 text-gray-500 hover:bg-gray-100 rounded-full">
                     <X className="w-6 h-6" />

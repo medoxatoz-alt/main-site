@@ -5,7 +5,7 @@ import Navbar from '@/components/Navbar';
 import api from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
-import { Loader2, ArrowLeft, ChevronRight } from 'lucide-react';
+import { Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
 import OrderDetailModal from '@/components/OrderDetailModal';
 import Pagination from '@/components/Pagination';
 import EmptyState from '@/components/EmptyState';
@@ -26,6 +26,32 @@ export default function MyOrdersPage() {
   const [fetchError, setFetchError] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<any | null>(null);
   const router = useRouter();
+
+  const [navHeight, setNavHeight] = useState(112);
+
+  useEffect(() => {
+    const updateHeight = () => {
+      const header = document.querySelector('header');
+      if (header) {
+        setNavHeight(header.getBoundingClientRect().height);
+      }
+    };
+    
+    updateHeight();
+    window.addEventListener('resize', updateHeight);
+    
+    const header = document.querySelector('header');
+    let observer: ResizeObserver | null = null;
+    if (header && window.ResizeObserver) {
+      observer = new ResizeObserver(updateHeight);
+      observer.observe(header);
+    }
+    
+    return () => {
+      window.removeEventListener('resize', updateHeight);
+      if (observer) observer.disconnect();
+    };
+  }, []);
 
   useEffect(() => {
     if (!authLoading && !user) router.push('/signin');
@@ -65,19 +91,16 @@ export default function MyOrdersPage() {
     <main className="bg-[var(--bg-page)] min-h-screen pb-safe sm:pb-20">
       <Navbar />
       
+      {/* Sticky Back Button Bar - Merges with Navbar */}
+    
+
       <div className="max-w-4xl mx-auto sm:px-6 sm:py-10">
 
-        {/* Header - Sticky on mobile for native feel */}
-        <div className="sticky top-0 z-10 bg-white/90 backdrop-blur-md border-b border-gray-100 px-4 py-3 sm:relative sm:bg-transparent sm:border-0 sm:px-0 sm:py-0 flex items-center gap-3 mb-4 sm:mb-8">
-          <Link 
-            href="/account" 
-            className="p-2 -ml-2 rounded-full hover:bg-gray-100 active:bg-gray-200 text-gray-600 hover:text-gray-900 transition-colors cursor-pointer"
-          >
-            <ArrowLeft className="w-6 h-6 sm:w-5 sm:h-5" />
-          </Link>
-          <h1 className="text-xl sm:text-3xl font-extrabold text-gray-900 flex-1 sm:flex-none">My Orders</h1>
-          <span className="text-sm text-gray-500 font-medium bg-gray-100 sm:bg-transparent px-2.5 py-1 sm:p-0 rounded-lg sm:ml-auto">
-            {orders.length} total
+        {/* Header */}
+        <div className="px-4 pt-6 pb-4 sm:px-0 sm:py-0 flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2 sm:mb-8">
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-gray-900">My Orders</h1>
+          <span className="text-sm text-gray-500 font-medium">
+            {orders.length} {orders.length === 1 ? 'order' : 'orders'} total
           </span>
         </div>
 
@@ -85,7 +108,7 @@ export default function MyOrdersPage() {
           {fetchError ? (
             <ErrorState message="Failed to load orders. Please try again." />
           ) : orders.length === 0 ? (
-            <div className="text-center py-20 bg-white sm:bg-transparent rounded-2xl">
+            <div className="text-center ">
               <EmptyState message="You haven't placed any orders yet." />
               <Link href="/" className="mt-6 inline-block px-6 py-3 bg-gold-primary hover:bg-gold-hover active:bg-gold-primary/80 text-text-main font-bold rounded-xl transition-all">
                 Start Shopping

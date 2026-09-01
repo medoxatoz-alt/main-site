@@ -91,7 +91,7 @@ function HomeContent() {
       <Navbar />
 
       {/* Hero Banner */}
-      <div className="bg-gradient-to-br from-[#1e2226] to-nav-bg pt-10 pb-[150px] md:pb-[180px] flex justify-center relative mb-[-120px]">
+      <div className="bg-gradient-to-br from-[#1e2226] to-nav-bg pt-10 -mt-2 pb-[150px] md:pb-[180px] flex justify-center relative mb-[-120px]">
         <div className="w-full max-w-[1500px] px-5 text-white z-[2]">
           <h1 className="text-4xl md:text-[2.8rem] mb-2.5 font-light leading-tight">
             Equipping India's <span className="text-gold-primary font-bold">Clinics</span>
