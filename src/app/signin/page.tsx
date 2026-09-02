@@ -11,13 +11,11 @@ import Link from 'next/link';
 // Firebase Client SDK
 import { auth } from '@/firebase';
 import {
-  signInWithPopup,
-  signInWithRedirect,
-  getRedirectResult,
-  GoogleAuthProvider,
   RecaptchaVerifier,
   signInWithPhoneNumber,
   ConfirmationResult,
+  signInWithEmailAndPassword,
+  sendEmailVerification,
   signOut
 } from 'firebase/auth';
 
@@ -30,6 +28,7 @@ function SignInContent() {
   const [loginMethod, setLoginMethod] = useState<'initial' | 'email' | 'phone'>('initial');
   const [otpStep, setOtpStep] = useState(false); // false = enter phone, true = enter OTP
   const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null);
+  const [needsVerification, setNeedsVerification] = useState(false);
 
   const { refreshUser } = useAuth();
   const router = useRouter();
@@ -78,38 +77,25 @@ function SignInContent() {
     }
   };
 
-  useEffect(() => {
-    const checkRedirect = async () => {
-      try {
-        const result = await getRedirectResult(auth);
-        if (result) {
-          setLoading(true);
-          const idToken = await result.user.getIdToken();
-          await completeLoginWithBackend(idToken);
-        }
-      } catch (err: any) {
-        console.error(err);
-        toast.error(err.message || 'Google Login failed.');
-        setLoading(false);
-      }
-    };
-    checkRedirect();
-  }, []);
-
   const handleEmailLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    setNeedsVerification(false);
     try {
       await api.post('/auth/login', { email, password });
       await refreshUser();
       toast.success('Logged in successfully!');
       router.push('/');
     } catch (err: any) {
-      if (err.response?.status === 404 && err.response?.data?.code === 'USER_NOT_FOUND') {
+      const code = err.response?.data?.code;
+      if (err.response?.status === 404 && code === 'USER_NOT_FOUND') {
         toast.error('Account not found. Redirecting to Sign Up...');
         setTimeout(() => {
           router.push('/signup');
         }, 1500);
+      } else if (code === 'EMAIL_NOT_VERIFIED') {
+        toast.error('Please verify your email before signing in.');
+        setNeedsVerification(true);
       } else {
         toast.error(err.response?.data?.error || 'Login failed. Please check your credentials.');
       }
@@ -118,14 +104,16 @@ function SignInContent() {
     }
   };
 
-  const handleGoogleLogin = async () => {
+  const handleResendVerification = async () => {
     setLoading(true);
     try {
-      const provider = new GoogleAuthProvider();
-      await signInWithRedirect(auth, provider);
-    } catch (err: any) {
-      console.error(err);
-      toast.error(err.message || 'Google Login failed.');
+      const cred = await signInWithEmailAndPassword(auth, email, password);
+      await sendEmailVerification(cred.user);
+      await signOut(auth);
+      toast.success('Verification email sent again.');
+    } catch {
+      toast.error('Could not resend right now. Check your credentials and try again.');
+    } finally {
       setLoading(false);
     }
   };
@@ -244,16 +232,6 @@ function SignInContent() {
             {loginMethod === 'initial' && (
               <div className="flex flex-col gap-3 w-full">
                 <button
-                  onClick={handleGoogleLogin}
-                  disabled={loading}
-                  type="button"
-                  className="w-full py-3 sm:py-3.5 bg-white text-gray-800 border border-gray-300 font-semibold rounded-full transition-all flex items-center justify-center gap-3 shadow-sm hover:bg-gray-50 active:scale-[0.98] disabled:opacity-50"
-                >
-                  <img src="https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_%22G%22_logo.svg" alt="Google" className="w-[18px]" />
-                  <span className="text-[15px]">Continue with Google</span>
-                </button>
-
-                <button
                   type="button"
                   onClick={() => setLoginMethod('phone')}
                   className="w-full py-3 sm:py-3.5 bg-white text-gray-800 border border-gray-300 font-semibold rounded-full transition-all flex items-center justify-center gap-3 shadow-sm hover:bg-gray-50 active:scale-[0.98]"
@@ -316,6 +294,16 @@ function SignInContent() {
                 >
                   {loading ? 'Signing in...' : 'Continue'}
                 </button>
+                {needsVerification && (
+                  <button
+                    type="button"
+                    onClick={handleResendVerification}
+                    disabled={loading}
+                    className="text-sm font-semibold text-[#007185] hover:text-[#c7511f] disabled:opacity-50"
+                  >
+                    Resend verification email
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={() => setLoginMethod('initial')}

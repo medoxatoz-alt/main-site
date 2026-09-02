@@ -10,14 +10,12 @@ import Link from 'next/link';
 
 // Firebase Client SDK
 import { auth } from '@/firebase';
-import { 
-  signInWithPopup, 
-  signInWithRedirect,
-  getRedirectResult,
-  GoogleAuthProvider, 
-  RecaptchaVerifier, 
-  signInWithPhoneNumber, 
+import {
+  RecaptchaVerifier,
+  signInWithPhoneNumber,
   ConfirmationResult,
+  signInWithEmailAndPassword,
+  sendEmailVerification,
   signOut
 } from 'firebase/auth';
 
@@ -32,6 +30,7 @@ function SignUpContent() {
   const [loginMethod, setLoginMethod] = useState<'initial' | 'email' | 'phone'>('initial');
   const [otpStep, setOtpStep] = useState(false); // false = enter phone, true = enter OTP
   const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null);
+  const [verificationSent, setVerificationSent] = useState(false);
 
   const { refreshUser } = useAuth();
   const router = useRouter();
@@ -77,36 +76,6 @@ function SignUpContent() {
     }
   };
 
-  useEffect(() => {
-    const checkRedirect = async () => {
-      try {
-        const result = await getRedirectResult(auth);
-        if (result) {
-          setLoading(true);
-          const idToken = await result.user.getIdToken();
-          const savedName = sessionStorage.getItem('signup_name') || 'Google User';
-          sessionStorage.removeItem('signup_name');
-          try {
-            await api.post('/auth/verify', { idToken, name: savedName, isSignup: true });
-            await refreshUser();
-            await signOut(auth);
-            toast.success('Account created successfully!');
-            router.push('/account');
-          } catch (err: any) {
-            toast.error(err.response?.data?.error || 'Authentication failed on server.');
-          } finally {
-            setLoading(false);
-          }
-        }
-      } catch (err: any) {
-        console.error(err);
-        toast.error(err.message || 'Google signup failed.');
-        setLoading(false);
-      }
-    };
-    checkRedirect();
-  }, [refreshUser, router]);
-
   const handleEmailSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) {
@@ -120,9 +89,15 @@ function SignUpContent() {
     setLoading(true);
     try {
       await api.post('/auth/register', { name, email, password });
-      await refreshUser();
-      toast.success('Account created successfully!');
-      router.push('/account');
+      // The Admin SDK created the account server-side but can't send mail itself --
+      // sign in client-side just long enough to trigger Firebase's own verification
+      // email, then drop the session again. /auth/login won't accept this account
+      // until the link is clicked.
+      const cred = await signInWithEmailAndPassword(auth, email, password);
+      await sendEmailVerification(cred.user);
+      await signOut(auth);
+      setVerificationSent(true);
+      toast.success('Account created! Check your email to verify it.');
     } catch (err: any) {
       toast.error(err.response?.data?.error || 'Registration failed. Please try again.');
     } finally {
@@ -130,19 +105,16 @@ function SignUpContent() {
     }
   };
 
-  const handleGoogleSignUp = async () => {
-    if (!name.trim()) {
-      toast.error('Please enter your full name first.');
-      return;
-    }
+  const handleResendVerification = async () => {
     setLoading(true);
     try {
-      sessionStorage.setItem('signup_name', name.trim());
-      const provider = new GoogleAuthProvider();
-      await signInWithRedirect(auth, provider);
-    } catch (err: any) {
-      console.error(err);
-      toast.error(err.message || 'Google signup failed.');
+      const cred = await signInWithEmailAndPassword(auth, email, password);
+      await sendEmailVerification(cred.user);
+      await signOut(auth);
+      toast.success('Verification email sent again.');
+    } catch {
+      toast.error('Could not resend right now. Try signing in again in a moment.');
+    } finally {
       setLoading(false);
     }
   };
@@ -258,7 +230,34 @@ function SignUpContent() {
         {/* Hidden recaptcha container for phone auth */}
         <div id="recaptcha-container"></div>
 
-        {!otpStep ? (
+        {verificationSent ? (
+          <div className="w-full flex flex-col items-center text-center gap-4 py-4">
+            <div className="w-14 h-14 rounded-full bg-[#007185]/10 flex items-center justify-center">
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#007185" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+                <polyline points="22,6 12,13 2,6"></polyline>
+              </svg>
+            </div>
+            <h3 className="text-lg font-bold text-gray-900">Verify your email</h3>
+            <p className="text-sm text-gray-500 max-w-[320px]">
+              We sent a verification link to <span className="font-semibold text-gray-800">{email}</span>. Click it, then sign in below.
+            </p>
+            <button
+              type="button"
+              onClick={handleResendVerification}
+              disabled={loading}
+              className="text-sm font-semibold text-[#007185] hover:text-[#c7511f] disabled:opacity-50"
+            >
+              {loading ? 'Sending...' : "Didn't get it? Resend"}
+            </button>
+            <Link
+              href="/signin"
+              className="w-full py-3.5 bg-[#0d1117] hover:bg-black text-white font-bold rounded-full transition-all active:scale-[0.98] text-[15px] text-center mt-2"
+            >
+              Go to Sign In
+            </Link>
+          </div>
+        ) : !otpStep ? (
           <>
             <div className="w-full mb-4">
               <input 
@@ -273,16 +272,6 @@ function SignUpContent() {
 
             {loginMethod === 'initial' && (
               <div className="flex flex-col gap-3 w-full">
-                <button
-                  onClick={handleGoogleSignUp}
-                  disabled={loading}
-                  type="button"
-                  className="w-full py-3 sm:py-3.5 bg-white text-gray-800 border border-gray-300 font-semibold rounded-full transition-all flex items-center justify-center gap-3 shadow-sm hover:bg-gray-50 active:scale-[0.98] disabled:opacity-50"
-                >
-                  <img src="https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_%22G%22_logo.svg" alt="Google" className="w-[18px]" />
-                  <span className="text-[15px]">Continue with Google</span>
-                </button>
-
                 <button
                   type="button"
                   onClick={() => setLoginMethod('phone')}
