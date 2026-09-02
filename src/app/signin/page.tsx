@@ -156,7 +156,7 @@ function SignInContent() {
     try {
       const result = await confirmationResult.confirm(otp);
       const idToken = await result.user.getIdToken();
-      // We reuse the /auth/google endpoint as it just takes an idToken and creates a session
+      // /auth/verify just takes an idToken and creates a session, regardless of provider
       await completeLoginWithBackend(idToken);
     } catch (err: any) {
       console.error(err);

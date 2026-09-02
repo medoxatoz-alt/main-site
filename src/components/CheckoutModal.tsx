@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { Loader2, MapPin, Lock, X, Plus, Phone } from 'lucide-react';
 import { load } from '@cashfreepayments/cashfree-js';
+import { isNativeApp, requestNativeCashfreePayment } from '@/lib/nativeBridge';
 import PhoneVerification from '@/components/PhoneVerification';
 import { useGeolocatedAddress } from '@/hooks/useGeolocatedAddress';
 
@@ -221,24 +222,40 @@ export default function CheckoutModal({ isOpen, onClose, buyNowItem }: { isOpen:
       };
 
       if (paymentMethod === 'CASHFREE') {
+        const { data } = await api.post('/payments/cashfree/create-order', payload);
+
+        if (!data.payment_session_id) {
+          throw new Error('Failed to create Cashfree session');
+        }
+
+        if (isNativeApp()) {
+          // Inside the Medox app: hand off to the native Cashfree SDK instead of
+          // running the hosted web checkout inside the WebView. The web
+          // checkout's UPI Intent app icons only appear once Cashfree enables a
+          // feature flag per merchant account; the native SDK's UPI Intent flow
+          // resolves installed apps via the OS directly and needs no such flag.
+          // The app navigates back to /checkout/status once its native payment
+          // UI finishes, so this leaves the spinner up rather than resolving here.
+          requestNativeCashfreePayment(
+            data.payment_session_id,
+            data.cashfree_order_id,
+            process.env.NEXT_PUBLIC_CASHFREE_ENV?.toUpperCase() === 'PRODUCTION' ? 'PRODUCTION' : 'SANDBOX'
+          );
+          return;
+        }
+
         if (!cashfree) {
           toast.error('Payment gateway is still initializing. Please try again in a moment.');
           setPlacingOrder(false);
           return;
         }
 
-        const { data } = await api.post('/payments/cashfree/create-order', payload);
-        
-        if (!data.payment_session_id) {
-          throw new Error('Failed to create Cashfree session');
-        }
-
         // Open Cashfree Drop-in Checkout
         const checkoutOptions = {
           paymentSessionId: data.payment_session_id,
-          redirectTarget: '_self', 
+          redirectTarget: '_self',
         };
-        
+
         cashfree.checkout(checkoutOptions).then((result: any) => {
           if (result.error) {
             console.error('Cashfree Error:', result.error);
@@ -247,7 +264,7 @@ export default function CheckoutModal({ isOpen, onClose, buyNowItem }: { isOpen:
           } else if (result.redirect) {
             // Handled by Cashfree SDK natively
           } else if (result.paymentDetails) {
-            // Because redirectTarget is '_self', the browser should automatically 
+            // Because redirectTarget is '_self', the browser should automatically
             // redirect to our return_url (/checkout/status) upon success.
             console.log('redirect...');
           }
