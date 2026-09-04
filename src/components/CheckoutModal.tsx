@@ -7,7 +7,6 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { Loader2, MapPin, Lock, X, Plus, Phone } from 'lucide-react';
 import { load } from '@cashfreepayments/cashfree-js';
-import { isNativeApp, requestNativeCashfreePayment } from '@/lib/nativeBridge';
 import PhoneVerification from '@/components/PhoneVerification';
 import { useGeolocatedAddress } from '@/hooks/useGeolocatedAddress';
 
@@ -226,22 +225,6 @@ export default function CheckoutModal({ isOpen, onClose, buyNowItem }: { isOpen:
 
         if (!data.payment_session_id) {
           throw new Error('Failed to create Cashfree session');
-        }
-
-        if (isNativeApp()) {
-          // Inside the Medox app: hand off to the native Cashfree SDK instead of
-          // running the hosted web checkout inside the WebView. The web
-          // checkout's UPI Intent app icons only appear once Cashfree enables a
-          // feature flag per merchant account; the native SDK's UPI Intent flow
-          // resolves installed apps via the OS directly and needs no such flag.
-          // The app navigates back to /checkout/status once its native payment
-          // UI finishes, so this leaves the spinner up rather than resolving here.
-          requestNativeCashfreePayment(
-            data.payment_session_id,
-            data.cashfree_order_id,
-            process.env.NEXT_PUBLIC_CASHFREE_ENV?.toUpperCase() === 'PRODUCTION' ? 'PRODUCTION' : 'SANDBOX'
-          );
-          return;
         }
 
         if (!cashfree) {
