@@ -75,9 +75,14 @@ function CheckoutStatusContent() {
           Thank you for your purchase. Your order has been placed successfully.
         </p>
         {isApp ? (
-          <a href="medox://open" className="w-full max-w-sm mx-auto py-3.5 bg-gold-primary hover:bg-gold-hover text-text-main font-bold rounded-xl shadow-md transition-all active:scale-[0.98] flex items-center justify-center">
-            Go Back to App
-          </a>
+          <div className="flex flex-col gap-3 w-full max-w-sm mx-auto">
+            <a href="medox://open" className="w-full py-3.5 bg-gold-primary hover:bg-gold-hover text-text-main font-bold rounded-xl shadow-md transition-all active:scale-[0.98] flex items-center justify-center">
+              Go Back to App
+            </a>
+            <Link href="/" className="w-full py-3.5 bg-white hover:bg-gray-50 text-gray-700 font-bold border border-gray-200 rounded-xl shadow-sm transition-all active:scale-[0.98] flex items-center justify-center">
+              Continue on Website
+            </Link>
+          </div>
         ) : (
           <div className="flex flex-col sm:flex-row gap-4 justify-center w-full max-w-sm mx-auto">
             <Link href="/account/orders" className="w-full flex-1 py-3.5 bg-gold-primary hover:bg-gold-hover text-text-main font-bold rounded-xl shadow-md transition-all active:scale-[0.98] flex items-center justify-center">
@@ -101,17 +106,22 @@ function CheckoutStatusContent() {
       <p className="text-lg text-gray-600 mb-8 max-w-md mx-auto">
         {errorMessage || 'Your transaction could not be completed.'}
       </p>
-      <div className="flex flex-col sm:flex-row gap-4 justify-center w-full max-w-sm mx-auto">
-        {isApp ? (
-          <a href="medox://open" className="w-full flex-1 py-3.5 bg-gold-primary hover:bg-gold-hover text-text-main font-bold rounded-xl shadow-md transition-all active:scale-[0.98] flex items-center justify-center">
+      {isApp ? (
+        <div className="flex flex-col gap-3 w-full max-w-sm mx-auto">
+          <a href="medox://open" className="w-full py-3.5 bg-gold-primary hover:bg-gold-hover text-text-main font-bold rounded-xl shadow-md transition-all active:scale-[0.98] flex items-center justify-center">
             Go Back to App
           </a>
-        ) : (
+          <Link href="/" className="w-full py-3.5 bg-white hover:bg-gray-50 text-gray-700 font-bold border border-gray-200 rounded-xl shadow-sm transition-all active:scale-[0.98] flex items-center justify-center">
+            Continue on Website
+          </Link>
+        </div>
+      ) : (
+        <div className="flex flex-col sm:flex-row gap-4 justify-center w-full max-w-sm mx-auto">
           <button onClick={() => window.location.href = '/'} className="w-full flex-1 py-3.5 bg-gold-primary hover:bg-gold-hover text-text-main font-bold rounded-xl shadow-md transition-all active:scale-[0.98] flex items-center justify-center">
             Try Again
           </button>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }
