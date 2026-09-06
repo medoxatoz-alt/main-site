@@ -233,9 +233,18 @@ export default function CheckoutModal({ isOpen, onClose, buyNowItem }: { isOpen:
         // cookies, UPI-intent app launches) needs to run in one continuous real
         // browser session; starting it fresh there rather than mid-flight inside
         // this WebView is what makes that work.
+        //
+        // cashfreeOrderId is passed along so the app can show /checkout/status
+        // for this exact order once it detects the user has returned -- Cashfree
+        // won't reliably complete its own return_url redirect back into the app
+        // (confirmed: it doesn't navigate to a custom URI scheme), so the app
+        // can't wait on that; it acts on its own foreground-return signal instead.
         if (typeof window !== 'undefined' && window.navigator.userAgent.includes('MedoxApp/') && (window as any).ReactNativeWebView) {
           const payUrl = `${window.location.origin}/checkout/pay?session=${encodeURIComponent(data.payment_session_id)}`;
-          (window as any).ReactNativeWebView.postMessage(JSON.stringify({ type: 'open-checkout', payload: { url: payUrl } }));
+          (window as any).ReactNativeWebView.postMessage(JSON.stringify({
+            type: 'open-checkout',
+            payload: { url: payUrl, cashfreeOrderId: data.cashfree_order_id },
+          }));
           return;
         }
 
