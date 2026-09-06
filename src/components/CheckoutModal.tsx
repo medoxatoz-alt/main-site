@@ -227,6 +227,18 @@ export default function CheckoutModal({ isOpen, onClose, buyNowItem }: { isOpen:
           throw new Error('Failed to create Cashfree session');
         }
 
+        // Inside the Medox app's WebView, don't run Cashfree's checkout here --
+        // hand off to the native app, which opens /checkout/pay in the system
+        // browser instead. Cashfree's own checkout flow (hidden-form POST,
+        // cookies, UPI-intent app launches) needs to run in one continuous real
+        // browser session; starting it fresh there rather than mid-flight inside
+        // this WebView is what makes that work.
+        if (typeof window !== 'undefined' && window.navigator.userAgent.includes('MedoxApp/') && (window as any).ReactNativeWebView) {
+          const payUrl = `${window.location.origin}/checkout/pay?session=${encodeURIComponent(data.payment_session_id)}`;
+          (window as any).ReactNativeWebView.postMessage(JSON.stringify({ type: 'open-checkout', payload: { url: payUrl } }));
+          return;
+        }
+
         if (!cashfree) {
           toast.error('Payment gateway is still initializing. Please try again in a moment.');
           setPlacingOrder(false);
