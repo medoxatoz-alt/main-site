@@ -12,6 +12,10 @@ function CheckoutStatusContent() {
   const searchParams = useSearchParams();
   const { user, loading: authLoading } = useAuth();
   const cashfreeOrderId = searchParams.get('cashfree_order_id');
+  // Set only for checkouts the app opened in the system browser (see
+  // server-main's create-order route) -- this page otherwise renders identically
+  // whether reached from the app or a plain browser.
+  const isApp = searchParams.get('app') === '1';
 
   const [status, setStatus] = useState<'LOADING' | 'SUCCESS' | 'FAILED'>('LOADING');
   const [errorMessage, setErrorMessage] = useState('');
@@ -70,14 +74,20 @@ function CheckoutStatusContent() {
         <p className="text-lg text-gray-600 mb-8 max-w-md mx-auto">
           Thank you for your purchase. Your order has been placed successfully.
         </p>
-        <div className="flex flex-col sm:flex-row gap-4 justify-center w-full max-w-sm mx-auto">
-          <Link href="/account/orders" className="w-full flex-1 py-3.5 bg-gold-primary hover:bg-gold-hover text-text-main font-bold rounded-xl shadow-md transition-all active:scale-[0.98] flex items-center justify-center">
-            View Orders
-          </Link>
-          <Link href="/" className="w-full flex-1 py-3.5 bg-white hover:bg-gray-50 text-gray-700 font-bold border border-gray-200 rounded-xl shadow-sm transition-all active:scale-[0.98] flex items-center justify-center">
-            Continue Shopping
-          </Link>
-        </div>
+        {isApp ? (
+          <a href="medox://open" className="w-full max-w-sm mx-auto py-3.5 bg-gold-primary hover:bg-gold-hover text-text-main font-bold rounded-xl shadow-md transition-all active:scale-[0.98] flex items-center justify-center">
+            Go Back to App
+          </a>
+        ) : (
+          <div className="flex flex-col sm:flex-row gap-4 justify-center w-full max-w-sm mx-auto">
+            <Link href="/account/orders" className="w-full flex-1 py-3.5 bg-gold-primary hover:bg-gold-hover text-text-main font-bold rounded-xl shadow-md transition-all active:scale-[0.98] flex items-center justify-center">
+              View Orders
+            </Link>
+            <Link href="/" className="w-full flex-1 py-3.5 bg-white hover:bg-gray-50 text-gray-700 font-bold border border-gray-200 rounded-xl shadow-sm transition-all active:scale-[0.98] flex items-center justify-center">
+              Continue Shopping
+            </Link>
+          </div>
+        )}
       </div>
     );
   }
@@ -92,9 +102,15 @@ function CheckoutStatusContent() {
         {errorMessage || 'Your transaction could not be completed.'}
       </p>
       <div className="flex flex-col sm:flex-row gap-4 justify-center w-full max-w-sm mx-auto">
-        <button onClick={() => window.location.href = '/'} className="w-full flex-1 py-3.5 bg-gold-primary hover:bg-gold-hover text-text-main font-bold rounded-xl shadow-md transition-all active:scale-[0.98] flex items-center justify-center">
-          Try Again
-        </button>
+        {isApp ? (
+          <a href="medox://open" className="w-full flex-1 py-3.5 bg-gold-primary hover:bg-gold-hover text-text-main font-bold rounded-xl shadow-md transition-all active:scale-[0.98] flex items-center justify-center">
+            Go Back to App
+          </a>
+        ) : (
+          <button onClick={() => window.location.href = '/'} className="w-full flex-1 py-3.5 bg-gold-primary hover:bg-gold-hover text-text-main font-bold rounded-xl shadow-md transition-all active:scale-[0.98] flex items-center justify-center">
+            Try Again
+          </button>
+        )}
       </div>
     </div>
   );
