@@ -17,7 +17,7 @@ import AnalyticsTab from '@/sections/admin/AnalyticsTab';
 import EditProductModal from '@/components/EditProductModal';
 import SubcategoriesTab from '@/sections/admin/SubcategoriesTab';
 
-type Tab = 'vendors' | 'products' | 'orders' | 'all-orders' | 'cancellation-requests' | 'rejected-orders' | 'payments' | 'analytics' | 'vendor-products' | 'subcategories';
+type Tab = 'vendors' | 'products' | 'orders' | 'all-orders' | 'cancelled-orders' | 'payments' | 'analytics' | 'vendor-products' | 'subcategories';
 
 interface NavItem {
   id: Tab;
@@ -33,8 +33,7 @@ const NAV_ITEMS: NavItem[] = [
   { id: 'products',        label: 'My Products',      icon: <Package className="w-4 h-4" />,      accent: 'gold' },
   { id: 'orders',          label: 'My Orders',        icon: <ShoppingBag className="w-4 h-4" />,  accent: 'gold', dividerBefore: true },
   { id: 'all-orders',      label: 'All Orders',        icon: <LayoutDashboard className="w-4 h-4" />, accent: 'blue' },
-  { id: 'cancellation-requests', label: 'Cancellations', icon: <XCircle className="w-4 h-4" />,      accent: 'red' },
-  { id: 'rejected-orders', label: 'Rejected Orders',   icon: <XCircle className="w-4 h-4" />,      accent: 'red' },
+  { id: 'cancelled-orders', label: 'Cancelled Orders',   icon: <XCircle className="w-4 h-4" />,      accent: 'red' },
   { id: 'payments',        label: 'Payments',          icon: <CreditCard className="w-4 h-4" />,   accent: 'emerald' },
   { id: 'analytics',       label: 'Analytics',         icon: <BarChart3 className="w-4 h-4" />,    accent: 'purple', dividerBefore: true },
 ];
@@ -52,8 +51,7 @@ const ACCENT_INACTIVE = 'text-slate-400 hover:text-slate-200 hover:bg-white/5 bo
 const TAB_TITLES: Partial<Record<Tab, string>> = {
   vendors: 'Vendor Management', subcategories: 'Manage Subcategories', products: 'My Products',
   orders: 'My Orders', 'all-orders': 'All Orders',
-  'cancellation-requests': 'Cancellation Requests',
-  'rejected-orders': 'Rejected Orders', payments: 'Payments Overview',
+  'cancelled-orders': 'Cancelled Orders', payments: 'Payments Overview',
   analytics: 'Financial Analytics',
 };
 
@@ -95,7 +93,7 @@ export default function AdminDashboard() {
         setProducts((await api.get(`/products/vendor/${selectedVendorId}`)).data);
       } else if (activeTab === 'orders') {
         setOrders((await api.get('/orders/vendor')).data);
-      } else if (['all-orders', 'cancellation-requests', 'rejected-orders', 'payments', 'analytics'].includes(activeTab)) {
+      } else if (['all-orders', 'cancelled-orders', 'payments', 'analytics'].includes(activeTab)) {
         setOrders((await api.get('/orders')).data);
       }
     } catch {
@@ -273,22 +271,13 @@ export default function AdminDashboard() {
                 title="All Orders" icon={<LayoutDashboard className="w-4 h-4 text-blue-600" />}
               />
             )}
-            {activeTab === 'cancellation-requests' && (
+            {activeTab === 'cancelled-orders' && (
               <OrdersTab
                 orders={orders} isFetching={isFetching} fetchError={fetchError}
                 viewerUid={user.uid} viewerRole="admin"
-                filter={o => o.status === 'Cancellation Requested'} showVendorCol onRefresh={fetchData}
-                title="Cancellation Requests" icon={<XCircle className="w-4 h-4 text-red-600" />}
-                emptyMessage="No cancellation requests." headerBg="from-red-50 to-white"
-              />
-            )}
-            {activeTab === 'rejected-orders' && (
-              <OrdersTab
-                orders={orders} isFetching={isFetching} fetchError={fetchError}
-                viewerUid={user.uid} viewerRole="admin"
-                filter={o => o.status === 'Rejected'} showVendorCol onRefresh={fetchData}
-                title="Rejected Orders" icon={<XCircle className="w-4 h-4 text-red-500" />}
-                headerBg="from-red-50/60 to-white" emptyMessage="No rejected orders."
+                filter={o => o.status === 'Cancelled'} showVendorCol onRefresh={fetchData}
+                title="Cancelled Orders" icon={<XCircle className="w-4 h-4 text-gray-500" />}
+                headerBg="from-gray-50 to-white" emptyMessage="No cancelled orders."
               />
             )}
             {activeTab === 'payments' && (

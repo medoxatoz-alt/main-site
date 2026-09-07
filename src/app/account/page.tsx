@@ -6,7 +6,7 @@ import api from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
-import { Loader2, ChevronRight, Heart, MapPin, Phone, Trash2, Plus, Package, Edit3, X } from 'lucide-react';
+import { Loader2, ChevronRight, Heart, MapPin, Phone, Trash2, Plus, Package, Edit3, X, CheckCircle2 } from 'lucide-react';
 import EmptyState from '@/components/EmptyState';
 import ErrorState from '@/components/ErrorState';
 import Link from 'next/link';
@@ -166,11 +166,23 @@ export default function Account() {
 
   const handleSaveAddress = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!newAddress.fullName.trim()) {
+      toast.error('Please enter a full name.');
+      return;
+    }
+    if (newAddress.phone.replace(/\D/g, '').length !== 10) {
+      toast.error('Please enter a valid 10-digit phone number.');
+      return;
+    }
+    if (!newAddress.address.trim() || !newAddress.city.trim() || !newAddress.state.trim()) {
+      toast.error('Please fill in the address, city, and state.');
+      return;
+    }
     if (!/^\d{6}$/.test(newAddress.pincode.trim())) {
       toast.error('Please enter a valid 6-digit Pincode.');
       return;
     }
-    
+
     setSavingAddress(true);
     try {
       await api.post('/user/addresses', newAddress);
@@ -192,6 +204,16 @@ export default function Account() {
       fetchData();
     } catch {
       toast.error('Failed to delete address');
+    }
+  };
+
+  const handleSetDefaultAddress = async (id: string) => {
+    try {
+      await api.patch(`/user/addresses/${id}/default`);
+      toast.success('Default address updated');
+      fetchData();
+    } catch {
+      toast.error('Failed to set default address');
     }
   };
 
@@ -289,9 +311,9 @@ export default function Account() {
           <div className="mb-8">
             <div className="flex justify-between items-end mb-3 px-1">
               <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wider">Address Book</h3>
-              {addresses.length >= 3 ? (
+              {addresses.length >= 5 ? (
                 <span className="text-[10px] text-red-600 font-bold bg-red-50 px-2 py-1 rounded-md border border-red-100">
-                  Limit: 3/3
+                  Limit: 5/5
                 </span>
               ) : (
                 <button
@@ -312,16 +334,22 @@ export default function Account() {
                 </div>
               ) : (
                 addresses.map((addr, index) => (
-                  <div key={addr.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden flex flex-col relative">
+                  <div key={addr.id} className={`bg-white rounded-2xl border shadow-sm overflow-hidden flex flex-col relative ${addr.isDefault ? 'border-gold-primary/50 ring-1 ring-gold-primary/20' : 'border-gray-100'}`}>
                     <div className="p-4 sm:p-5 flex-1">
                       <div className="flex justify-between items-start mb-2.5">
                         <div className="flex items-center gap-2">
                           <MapPin className="w-4 h-4 text-gold-primary" />
                           <h3 className="font-extrabold text-gray-900 text-sm truncate">{addr.fullName}</h3>
                         </div>
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">
-                          #{index + 1}
-                        </span>
+                        {addr.isDefault ? (
+                          <span className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-gold-hover bg-gold-light px-2 py-0.5 rounded-full">
+                            <CheckCircle2 className="w-3 h-3" /> Default
+                          </span>
+                        ) : (
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">
+                            #{index + 1}
+                          </span>
+                        )}
                       </div>
                       <p className="text-[13px] text-gray-600 leading-relaxed mb-3">
                         {addr.address}<br />
@@ -332,12 +360,20 @@ export default function Account() {
                         <span>{addr.phone}</span>
                       </div>
                     </div>
-                    <div className="border-t border-gray-50 bg-gray-50/50">
+                    <div className="border-t border-gray-50 bg-gray-50/50 flex divide-x divide-gray-100">
+                      {!addr.isDefault && (
+                        <button
+                          onClick={() => handleSetDefaultAddress(addr.id)}
+                          className="flex-1 py-2.5 flex items-center justify-center gap-1.5 text-xs font-bold text-gold-hover hover:text-gold-primary active:bg-gold-light transition-colors cursor-pointer"
+                        >
+                          <CheckCircle2 className="w-3.5 h-3.5" /> Set as Default
+                        </button>
+                      )}
                       <button
                         onClick={() => handleDeleteAddress(addr.id)}
-                        className="w-full py-2.5 flex items-center justify-center gap-1.5 text-xs font-bold text-red-500 hover:text-red-600 active:bg-red-50 transition-colors cursor-pointer"
+                        className="flex-1 py-2.5 flex items-center justify-center gap-1.5 text-xs font-bold text-red-500 hover:text-red-600 active:bg-red-50 transition-colors cursor-pointer"
                       >
-                        <Trash2 className="w-3.5 h-3.5" /> Remove Address
+                        <Trash2 className="w-3.5 h-3.5" /> Remove
                       </button>
                     </div>
                   </div>
@@ -375,7 +411,7 @@ export default function Account() {
               </div>
               <div className="space-y-3">
                 <input required placeholder="Full Name" value={newAddress.fullName} onChange={e => setNewAddress({ ...newAddress, fullName: e.target.value })} className={inputCls} />
-                <input required placeholder="Phone Number (10 digits)" type="tel" value={newAddress.phone} onChange={e => setNewAddress({ ...newAddress, phone: e.target.value })} className={inputCls} />
+                <input required placeholder="Phone Number (10 digits)" type="tel" maxLength={10} value={newAddress.phone} onChange={e => setNewAddress({ ...newAddress, phone: e.target.value.replace(/\D/g, '') })} className={inputCls} />
                 <textarea required placeholder="House/Flat No., Street, Landmark" value={newAddress.address} onChange={e => setNewAddress({ ...newAddress, address: e.target.value })} className={`${inputCls} resize-none`} rows={3} />
                 <input required placeholder="City" value={newAddress.city} onChange={e => setNewAddress({ ...newAddress, city: e.target.value })} className={inputCls} />
                 <div className="flex gap-3">

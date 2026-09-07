@@ -15,13 +15,13 @@ function ProductSkeleton() {
     <div className="bg-white p-3 sm:p-5 rounded-lg flex flex-col justify-between relative border border-gray-200 animate-pulse">
       {/* Image Frame Skeleton */}
       <div className="h-[160px] sm:h-[240px] w-full bg-gray-100 rounded-md mb-4" />
-      
+
       {/* Details Section Skeleton */}
       <div className="flex-1 flex flex-col">
         {/* Title Lines */}
         <div className="h-4 bg-gray-100 rounded w-5/6 mb-2" />
         <div className="h-4 bg-gray-100 rounded w-1/2 mb-4" />
-        
+
         {/* Price & Add to Cart Section */}
         <div className="flex items-center justify-between mt-auto pt-2 border-t border-gray-50">
           {/* Pricing */}
@@ -44,7 +44,7 @@ function HomeContent() {
   const [currentPage, setCurrentPage] = useState(1);
   const searchParams = useSearchParams();
   const searchQuery = searchParams.get('search')?.toLowerCase() || '';
-  
+
   const { user } = useAuth();
   const router = useRouter();
 
@@ -103,7 +103,7 @@ function HomeContent() {
 
       {/* Main Content Area */}
       <div className="max-w-[1500px] mx-auto p-3 sm:p-5 relative z-[5]">
-   
+
 
         {loading ? (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-6 mb-10">

@@ -15,6 +15,16 @@ import CheckoutModal from '@/components/CheckoutModal';
 interface CartItem {
   productId: string;
   quantity: number;
+  variantId?: string;
+}
+
+interface ProductVariant {
+  id: string;
+  label: string;
+  price: number;
+  mrp?: number;
+  stock: number;
+  images?: string[];
 }
 
 interface Product {
@@ -22,6 +32,22 @@ interface Product {
   title: string;
   price: string | number;
   image: string | string[];
+  stock?: number;
+  variants?: ProductVariant[];
+}
+
+// Resolves a cart line's display price/stock/image/label: the matching
+// variant's own fields when the line has a variantId, falling back to the
+// product's flat fields otherwise (unchanged from before variants existed).
+// A variant's image falls back to the product's own images when it has none.
+function resolveLine(p: Product, item: CartItem) {
+  const variant = item.variantId ? p.variants?.find(v => v.id === item.variantId) : undefined;
+  const price = variant ? Number(variant.price) || 0 : (typeof p.price === 'string' ? parseFloat(p.price.replace(/,/g, '')) : Number(p.price) || 0);
+  const stock = variant ? Number(variant.stock) || 0 : Number(p.stock) || 0;
+  const variantImages = variant?.images;
+  const imageField = Array.isArray(variantImages) && variantImages.length > 0 ? variantImages : p.image;
+  const image = Array.isArray(imageField) ? imageField[0] : (imageField || 'https://via.placeholder.com/150');
+  return { price, stock, image, label: variant?.label };
 }
 
 export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
@@ -34,7 +60,7 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
   const [isUpdating, setIsUpdating] = useState<string | null>(null);
   const [isRemoving, setIsRemoving] = useState<string | null>(null);
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
-  const [buyNowItem, setBuyNowItem] = useState<{ productId: string, quantity: number } | null>(null);
+  const [buyNowItem, setBuyNowItem] = useState<{ productId: string, quantity: number, variantId?: string } | null>(null);
 
   // Close drawer if pressed escape
   useEffect(() => {
@@ -74,9 +100,9 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
       const { data: items } = await api.get('/cart');
       setCartItems(items);
 
-      const missingProductIds = items
-        .map((item: CartItem) => item.productId)
-        .filter((id: string) => !productDetails[id]);
+      const missingProductIds = Array.from(new Set<string>(
+        items.map((item: CartItem) => item.productId)
+      )).filter((id: string) => !productDetails[id]);
 
       if (missingProductIds.length > 0) {
         const productPromises = missingProductIds.map((id: string) => 
@@ -115,26 +141,30 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, user]);
 
-  const handleUpdateQty = async (productId: string, newQty: number) => {
+  const lineKey = (productId: string, variantId?: string) => `${productId}_${variantId ?? ''}`;
+
+  const handleUpdateQty = async (productId: string, newQty: number, variantId?: string) => {
     const p = productDetails[productId];
-    const stock = p ? (Number((p as any).stock) || 0) : 0;
+    const stock = p ? resolveLine(p, { productId, quantity: newQty, variantId }).stock : 0;
     if (p && newQty > stock) {
       toast.error(`Only ${stock} units available in stock.`);
       return;
     }
-    setIsUpdating(productId);
+    const key = lineKey(productId, variantId);
+    setIsUpdating(key);
     try {
+      const qs = variantId ? `?variantId=${encodeURIComponent(variantId)}` : '';
       if (newQty <= 0) {
-        await api.delete(`/cart/${productId}`);
+        await api.delete(`/cart/${productId}${qs}`);
         toast.success('Item removed');
       } else {
-        await api.patch(`/cart/${productId}`, { quantity: newQty });
+        await api.patch(`/cart/${productId}${qs}`, { quantity: newQty });
       }
-      
+
       // Update local state optimistic
       setCartItems(prev => {
-        if (newQty <= 0) return prev.filter(i => i.productId !== productId);
-        return prev.map(i => i.productId === productId ? { ...i, quantity: newQty } : i);
+        if (newQty <= 0) return prev.filter(i => lineKey(i.productId, i.variantId) !== key);
+        return prev.map(i => lineKey(i.productId, i.variantId) === key ? { ...i, quantity: newQty } : i);
       });
       window.dispatchEvent(new Event('cart-updated'));
     } catch (err: any) {
@@ -145,13 +175,15 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
     }
   };
 
-  const handleRemove = async (productId: string) => {
-    setIsRemoving(productId);
-    setIsUpdating(productId);
+  const handleRemove = async (productId: string, variantId?: string) => {
+    const key = lineKey(productId, variantId);
+    setIsRemoving(key);
+    setIsUpdating(key);
     try {
-      await api.delete(`/cart/${productId}`);
+      const qs = variantId ? `?variantId=${encodeURIComponent(variantId)}` : '';
+      await api.delete(`/cart/${productId}${qs}`);
       toast.success('Item removed');
-      setCartItems(prev => prev.filter(i => i.productId !== productId));
+      setCartItems(prev => prev.filter(i => lineKey(i.productId, i.variantId) !== key));
       window.dispatchEvent(new Event('cart-updated'));
     } catch (err) {
       toast.error('Failed to remove item');
@@ -166,12 +198,7 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
     return cartItems.reduce((total, item) => {
       const p = productDetails[item.productId];
       if (!p) return total;
-
-      const price = typeof p.price === 'string'
-        ? parseFloat(p.price.replace(/,/g, ''))
-        : Number(p.price);
-
-      return total + (price * item.quantity);
+      return total + (resolveLine(p, item).price * item.quantity);
     }, 0);
   };
 
@@ -185,8 +212,7 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
   const hasInventoryIssues = cartItems.some(item => {
     const p = productDetails[item.productId];
     if (!p) return false;
-    const stock = Number((p as any).stock) || 0;
-    return stock < item.quantity;
+    return resolveLine(p, item).stock < item.quantity;
   });
 
   return (
@@ -262,34 +288,37 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
                 const p = productDetails[item.productId];
                 if (!p) return null;
 
-                const price = typeof p.price === 'string' ? parseFloat(p.price.replace(/,/g, '')) : Number(p.price);
-                const img = Array.isArray(p.image) ? p.image[0] : (p.image || 'https://via.placeholder.com/150');
-                const isItemUpdating = isUpdating === item.productId;
-                const isItemRemoving = isRemoving === item.productId;
+                const { price, stock, image: img, label } = resolveLine(p, item);
+                const key = lineKey(item.productId, item.variantId);
+                const isItemUpdating = isUpdating === key;
+                const isItemRemoving = isRemoving === key;
 
                 return (
                   <div
-                    key={item.productId}
+                    key={key}
                     className={`bg-white border border-gray-100 p-3 rounded-xl shadow-sm flex gap-4 transition-opacity ${isItemUpdating ? 'opacity-50 pointer-events-none' : 'opacity-100'}`}
                   >
                     <Link href={`/product/${item.productId}`} onClick={onClose} className="shrink-0 w-20 h-20 bg-gray-50 rounded-lg p-1.5 flex items-center justify-center cursor-pointer">
                       <img src={img} alt={p.title} className="max-w-full max-h-full object-contain mix-blend-multiply" />
                     </Link>
-                    
+
                     <div className="flex flex-col flex-1">
                       <Link href={`/product/${item.productId}`} onClick={onClose} className="text-sm font-bold text-gray-900 line-clamp-2 hover:text-gold-primary transition-colors mb-1">
                         {p.title}
                       </Link>
-                      
+                      {label && (
+                        <div className="text-[11px] font-semibold text-gray-500 mb-1">{label}</div>
+                      )}
+
                       <div className="text-gold-600 font-bold text-sm mb-2">
                         ₹{price.toLocaleString('en-IN')}
                       </div>
-                      
+
                       <div className="mt-auto flex items-center justify-between">
                         {/* Quantity */}
                         <div className="flex items-center bg-gray-50 border border-gray-200 rounded-lg overflow-hidden">
                           <button
-                            onClick={() => handleUpdateQty(item.productId, item.quantity - 1)}
+                            onClick={() => handleUpdateQty(item.productId, item.quantity - 1, item.variantId)}
                             className="px-2 py-1.5 text-gray-600 hover:bg-gray-200 transition-colors cursor-pointer border-none bg-transparent"
                           >
                             <Minus className="w-3.5 h-3.5" />
@@ -298,8 +327,8 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
                             {item.quantity}
                           </span>
                           <button
-                            onClick={() => handleUpdateQty(item.productId, item.quantity + 1)}
-                            disabled={item.quantity >= (Number((p as any).stock) || 0)}
+                            onClick={() => handleUpdateQty(item.productId, item.quantity + 1, item.variantId)}
+                            disabled={item.quantity >= stock}
                             className="px-2 py-1.5 text-gray-600 hover:bg-gray-200 transition-colors disabled:opacity-50 cursor-pointer border-none bg-transparent"
                           >
                             <Plus className="w-3.5 h-3.5" />
@@ -307,7 +336,7 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
                         </div>
 
                         <button
-                          onClick={() => handleRemove(item.productId)}
+                          onClick={() => handleRemove(item.productId, item.variantId)}
                           className="text-red-500 hover:text-red-700 p-1.5 rounded-full hover:bg-red-50 transition-colors cursor-pointer border-none bg-transparent"
                           aria-label="Remove item"
                         >

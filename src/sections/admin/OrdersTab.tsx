@@ -1,12 +1,13 @@
 'use client';
 
-import { useState } from 'react';
-import { ShoppingBag, ExternalLink } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { ShoppingBag, ExternalLink, Search } from 'lucide-react';
 import PaginationBar from '@/components/PaginationBar';
 import OrderDetailModal from '@/components/OrderDetailModal';
 import EmptyState from '@/components/EmptyState';
 import ErrorState from '@/components/ErrorState';
 import { usePagination } from '@/hooks/usePagination';
+import api from '@/lib/api';
 
 interface OrdersTabProps {
   orders: any[];
@@ -26,8 +27,10 @@ interface OrdersTabProps {
 const STATUS_STYLES: Record<string, string> = {
   Pending:   'bg-blue-50 text-blue-600 border-blue-200',
   Approved:  'bg-emerald-50 text-emerald-600 border-emerald-200',
-  Rejected:  'bg-red-50 text-red-500 border-red-200',
+  Rejected:  'bg-red-50 text-red-500 border-red-200', // historical only -- no longer a reachable status
   Delivered: 'bg-purple-50 text-purple-600 border-purple-200',
+  'Cancellation Requested': 'bg-orange-50 text-orange-600 border-orange-200',
+  Cancelled: 'bg-gray-100 text-gray-500 border-gray-300',
 };
 
 const STATUS_DOT: Record<string, string> = {
@@ -35,6 +38,8 @@ const STATUS_DOT: Record<string, string> = {
   Approved:  'bg-emerald-500',
   Rejected:  'bg-red-400',
   Delivered: 'bg-purple-500',
+  'Cancellation Requested': 'bg-orange-400',
+  Cancelled: 'bg-gray-400',
 };
 
 function SkeletonRow({ cols }: { cols: number }) {
@@ -58,8 +63,32 @@ export default function OrdersTab({
   icon,
 }: OrdersTabProps) {
   const [selectedOrder, setSelectedOrder] = useState<any | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [vendorNames, setVendorNames] = useState<Record<string, string>>({});
 
-  const displayOrders = filter ? orders.filter(filter) : orders;
+  // Vendor column shows store names, never a raw Firebase uid -- fetch the
+  // admin's vendor list once (only when this column is actually shown) and
+  // build a uid -> storeName lookup.
+  useEffect(() => {
+    if (!showVendorCol) return;
+    api.get('/vendors')
+      .then(res => {
+        const map: Record<string, string> = {};
+        (res.data || []).forEach((v: any) => { if (v.uid) map[v.uid] = v.storeName || 'Vendor'; });
+        setVendorNames(map);
+      })
+      .catch(() => {});
+  }, [showVendorCol]);
+
+  const filteredOrders = filter ? orders.filter(filter) : orders;
+  const q = searchQuery.trim().toLowerCase();
+  const displayOrders = q
+    ? filteredOrders.filter(o =>
+        [o.orderId, o.awbCode, o.trackingId, o.shiprocketOrderId != null ? String(o.shiprocketOrderId) : '']
+          .some(v => typeof v === 'string' && v.toLowerCase().includes(q))
+        || (Array.isArray(o.items) && o.items.some((item: any) => String(item.productId || '').toLowerCase().includes(q)))
+      )
+    : filteredOrders;
   const { page, setPage, totalPages, slice, total } = usePagination(displayOrders, 10);
   const cols = showVendorCol ? 6 : 5;
 
@@ -67,15 +96,25 @@ export default function OrdersTab({
     <>
       <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm">
         {/* Header */}
-        <div className={`px-5 py-4 border-b border-gray-100 flex items-center gap-3 bg-gradient-to-r ${headerBg}`}>
+        <div className={`px-5 py-4 border-b border-gray-100 flex items-center gap-3 flex-wrap bg-gradient-to-r ${headerBg}`}>
           {icon && (
             <div className="w-8 h-8 rounded-lg bg-white/80 border border-gray-100 flex items-center justify-center shadow-sm">
               {icon}
             </div>
           )}
-          <div>
+          <div className="flex-1 min-w-[140px]">
             <h3 className="text-sm font-bold text-gray-800">{title}</h3>
             <p className="text-xs text-gray-400">{total} records</p>
+          </div>
+          <div className="relative w-full sm:w-64">
+            <Search className="w-3.5 h-3.5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              placeholder="Search shipping ID or SKU..."
+              className="w-full pl-8 pr-3 py-1.5 bg-white border border-gray-200 rounded-lg text-xs outline-none focus:border-gold-primary transition-colors"
+            />
           </div>
         </div>
 
@@ -116,7 +155,9 @@ export default function OrdersTab({
                   {showVendorCol && (
                     <td className="py-4 px-5">
                       <span className="px-2 py-1 bg-gray-100 rounded-lg text-xs font-mono text-gray-500">
-                        {!o.vendorId || o.vendorId === 'admin' ? 'Admin' : o.vendorId.substring(0, 8) + '…'}
+                        {o.sellerIsAdmin || !o.vendorId || o.vendorId === 'admin' || (o.sellerIsAdmin === undefined && o.vendorId === viewerUid)
+                          ? 'Admin'
+                          : (vendorNames[o.vendorId] || 'Vendor')}
                       </span>
                     </td>
                   )}

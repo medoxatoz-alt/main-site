@@ -10,7 +10,16 @@ import { load } from '@cashfreepayments/cashfree-js';
 import PhoneVerification from '@/components/PhoneVerification';
 import { useGeolocatedAddress } from '@/hooks/useGeolocatedAddress';
 
-export default function CheckoutModal({ isOpen, onClose, buyNowItem }: { isOpen: boolean; onClose: () => void; buyNowItem?: { productId: string, quantity: number } | null }) {
+// Resolves a cart line's price against the matching variant when the line
+// has a variantId, falling back to the product's flat price otherwise --
+// unchanged from before variants existed for lines with no variantId.
+function resolveLinePrice(p: any, item: { variantId?: string }): number {
+  const variant = item.variantId ? (p.variants || []).find((v: any) => v.id === item.variantId) : undefined;
+  if (variant) return Number(variant.price) || 0;
+  return typeof p.price === 'string' ? parseFloat(p.price.replace(/,/g, '')) : Number(p.price) || 0;
+}
+
+export default function CheckoutModal({ isOpen, onClose, buyNowItem }: { isOpen: boolean; onClose: () => void; buyNowItem?: { productId: string, quantity: number, variantId?: string } | null }) {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
 
@@ -148,7 +157,8 @@ export default function CheckoutModal({ isOpen, onClose, buyNowItem }: { isOpen:
       setAddresses(savedAddresses);
 
       if (savedAddresses.length > 0) {
-        setShipping(prev => ({ ...prev, ...savedAddresses[0] }));
+        const defaultAddress = savedAddresses.find((a: any) => a.isDefault) || savedAddresses[0];
+        setShipping(prev => ({ ...prev, ...defaultAddress }));
       } else {
         setUseNewAddress(true);
         setShipping(s => ({ ...s, fullName: user?.name || '' }));
@@ -216,7 +226,7 @@ export default function CheckoutModal({ isOpen, onClose, buyNowItem }: { isOpen:
       }
 
       const payload = {
-        cartItems: cartItems.map(i => ({ productId: i.productId, quantity: i.quantity })),
+        cartItems: cartItems.map(i => ({ productId: i.productId, quantity: i.quantity, variantId: i.variantId })),
         shippingDetails: shipping,
       };
 
@@ -286,8 +296,7 @@ export default function CheckoutModal({ isOpen, onClose, buyNowItem }: { isOpen:
     return cartItems.reduce((acc, item) => {
       const p = productDetails[item.productId];
       if (!p) return acc;
-      const price = typeof p.price === 'string' ? parseFloat(p.price.replace(/,/g, '')) : Number(p.price);
-      return acc + (price * item.quantity);
+      return acc + (resolveLinePrice(p, item) * item.quantity);
     }, 0);
   }, [cartItems, productDetails]);
 
@@ -525,7 +534,12 @@ export default function CheckoutModal({ isOpen, onClose, buyNowItem }: { isOpen:
                           className="mt-1 cursor-pointer"
                         />
                         <div className="text-gray-700 flex-1">
-                          <strong className="text-gray-900 font-bold">{addr.fullName}</strong>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <strong className="text-gray-900 font-bold">{addr.fullName}</strong>
+                            {addr.isDefault && (
+                              <span className="text-[10px] font-bold uppercase tracking-wider text-gold-hover bg-gold-light px-2 py-0.5 rounded-full">Default</span>
+                            )}
+                          </div>
                           <div className="text-sm mt-1 text-gray-600 leading-relaxed">{addr.address}, {addr.city}, {addr.state} {addr.pincode}</div>
                           <div className="text-sm mt-2 text-gray-500 font-medium">Phone: {addr.phone}</div>
                         </div>

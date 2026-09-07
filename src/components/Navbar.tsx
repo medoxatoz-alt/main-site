@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
-import { Home, Heart, ShoppingBag as LucideShoppingBag, User, Download, Package, X } from 'lucide-react';
+import { Home, Heart, ShoppingBag as LucideShoppingBag, User, Download, Package, X, MapPin, ChevronDown, CheckCircle2 } from 'lucide-react';
 import { useState, useEffect, Suspense, useRef } from 'react';
 import api from '@/lib/api';
 import toast from 'react-hot-toast';
@@ -70,6 +70,12 @@ export default function Navbar() {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
+  const [isLocationPickerOpen, setIsLocationPickerOpen] = useState(false);
+  const [savedAddresses, setSavedAddresses] = useState<any[]>([]);
+  const [addressesLoaded, setAddressesLoaded] = useState(false);
+  const [settingLocationId, setSettingLocationId] = useState<string | null>(null);
+  const locationPickerRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
     const savedLoc = localStorage.getItem('medox_location');
     if (savedLoc) {
@@ -77,7 +83,28 @@ export default function Navbar() {
     }
   }, []);
 
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (locationPickerRef.current && !locationPickerRef.current.contains(event.target as Node)) {
+        setIsLocationPickerOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const openLocationPicker = () => {
+    setIsLocationPickerOpen(o => !o);
+    if (!addressesLoaded && user) {
+      api.get('/user/addresses')
+        .then(res => setSavedAddresses(res.data || []))
+        .catch(() => {})
+        .finally(() => setAddressesLoaded(true));
+    }
+  };
+
   const detectLocation = async () => {
+    setIsLocationPickerOpen(false);
     try {
       const parsed = await detectLocationRaw();
       const displayLoc = parsed.city ? `${parsed.city}, ${parsed.state}` : parsed.state || 'India';
@@ -86,6 +113,23 @@ export default function Navbar() {
       toast.success(`Location set to ${displayLoc}`);
     } catch {
       // error toast already shown by the hook
+    }
+  };
+
+  const selectSavedAddress = async (addr: any) => {
+    const displayLoc = `${addr.city}, ${addr.state}`;
+    localStorage.setItem('medox_location', displayLoc);
+    setLocation(displayLoc);
+    setIsLocationPickerOpen(false);
+    if (addr.isDefault) return;
+    setSettingLocationId(addr.id);
+    try {
+      await api.patch(`/user/addresses/${addr.id}/default`);
+      setSavedAddresses(prev => prev.map(a => ({ ...a, isDefault: a.id === addr.id })));
+    } catch {
+      toast.error('Failed to update saved location');
+    } finally {
+      setSettingLocationId(null);
     }
   };
 
@@ -155,13 +199,65 @@ export default function Navbar() {
           {/* Actions */}
           <div className="order-2 flex items-center gap-4 md:gap-6">
             
-            <button onClick={detectLocation} disabled={loadingLocation} className="hidden md:flex items-center gap-2 text-white/80 hover:text-gold-primary transition-all duration-300 font-medium bg-transparent border-none cursor-pointer outline-none disabled:opacity-75 group">
-              <svg className="w-5 h-5 stroke-current fill-none stroke-2 group-hover:scale-110 transition-transform" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
-                <circle cx="12" cy="10" r="3"></circle>
-              </svg>
-              <span className="text-sm truncate max-w-[120px]">{loadingLocation ? 'Detecting...' : location}</span>
-            </button>
+            <div className="relative hidden md:block" ref={locationPickerRef}>
+              <button onClick={openLocationPicker} className="flex items-center gap-2 text-white/80 hover:text-gold-primary transition-all duration-300 font-medium bg-transparent border-none cursor-pointer outline-none group">
+                <svg className="w-5 h-5 stroke-current fill-none stroke-2 group-hover:scale-110 transition-transform" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                  <circle cx="12" cy="10" r="3"></circle>
+                </svg>
+                <span className="text-sm truncate max-w-[120px]">{loadingLocation ? 'Detecting...' : location}</span>
+                <ChevronDown className={`w-3.5 h-3.5 transition-transform ${isLocationPickerOpen ? 'rotate-180' : ''}`} />
+              </button>
+
+              {isLocationPickerOpen && (
+                <div className="absolute top-full right-0 mt-3 w-80 bg-white rounded-xl shadow-[0_8px_25px_rgba(0,0,0,0.15)] border border-[#e1e4e8] overflow-hidden z-[1100] animate-in fade-in slide-in-from-top-1 duration-150 text-text-main">
+                  <button
+                    onClick={detectLocation}
+                    disabled={loadingLocation}
+                    className="w-full flex items-center gap-2.5 px-4 py-3 text-sm font-bold text-gold-hover hover:bg-gold-light/40 transition-colors cursor-pointer disabled:opacity-50 border-b border-gray-100"
+                  >
+                    <MapPin className="w-4 h-4" /> {loadingLocation ? 'Detecting current location...' : 'Use Current Location'}
+                  </button>
+
+                  {user && (
+                    <div className="max-h-64 overflow-y-auto">
+                      {!addressesLoaded ? (
+                        <div className="px-4 py-3 text-xs text-gray-400">Loading saved addresses...</div>
+                      ) : savedAddresses.length === 0 ? (
+                        <div className="px-4 py-3 text-xs text-gray-400">No saved addresses yet.</div>
+                      ) : (
+                        savedAddresses.map(addr => (
+                          <button
+                            key={addr.id}
+                            onClick={() => selectSavedAddress(addr)}
+                            disabled={settingLocationId === addr.id}
+                            className="w-full text-left px-4 py-3 text-sm border-b border-gray-50 last:border-0 hover:bg-gray-50 transition-colors flex items-start gap-2 cursor-pointer disabled:opacity-50"
+                          >
+                            {addr.isDefault ? (
+                              <CheckCircle2 className="w-4 h-4 text-gold-hover shrink-0 mt-0.5" />
+                            ) : (
+                              <span className="w-4 h-4 shrink-0" />
+                            )}
+                            <span className="min-w-0">
+                              <span className="font-bold text-gray-900 block truncate">{addr.fullName}</span>
+                              <span className="text-gray-500 text-xs block truncate">{addr.address}, {addr.city}, {addr.state} {addr.pincode}</span>
+                            </span>
+                          </button>
+                        ))
+                      )}
+                    </div>
+                  )}
+
+                  <Link
+                    href={user ? '/account' : '/signin'}
+                    onClick={() => setIsLocationPickerOpen(false)}
+                    className="block text-center py-2.5 text-xs font-bold text-gold-hover hover:text-gold-primary hover:bg-gray-50 transition-colors border-t border-gray-100"
+                  >
+                    {user ? '+ Add a new address' : 'Sign in to use a saved address'}
+                  </Link>
+                </div>
+              )}
+            </div>
 
             {/* Account Dropdown (Simplified for brevity, keep your original dropdown logic here) */}
             <div className="relative flex items-center md:pb-[25px] md:mb-[-25px] group" ref={dropdownRef}>

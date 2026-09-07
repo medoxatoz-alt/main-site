@@ -8,6 +8,9 @@
   --color-nav-bg: var(--nav-bg);
   --color-text-main: var(--text-main);
   --color-text-muted: var(--text-muted);
+  
+  --animate-slide-up: slideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  --animate-fade-in: fadeIn 0.4s ease-out forwards;
 }
 
 :root {
@@ -53,6 +56,16 @@ body {
   button { font-family: inherit; }
 }
 
+@keyframes slideUp {
+  0% { transform: translateY(30px); opacity: 0; }
+  100% { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes fadeIn {
+  0% { opacity: 0; }
+  100% { opacity: 1; }
+}
+
 @utility no-scrollbar {
   -ms-overflow-style: none;  /* IE and Edge */
   scrollbar-width: none;  /* Firefox */
@@ -67,3 +80,4 @@ body {
     padding-bottom: 112px !important; /* 72px nav bar + 40px safe buffer */
   }
 }
+

@@ -1,13 +1,11 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import api from '@/lib/api';
 import toast from 'react-hot-toast';
-import { X, Upload, Image as ImageIcon, Trash2, Search, ChevronDown } from 'lucide-react';
-
-const ALLOWED_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
-const MAX_FILE_SIZE_MB = 5;
-const MAX_IMAGES = 5;
+import { X, Image as ImageIcon, Trash2, Search, ChevronDown } from 'lucide-react';
+import VariantEditor, { VariantRow } from './VariantEditor';
+import HowToUseEditor, { HowToUseState, emptyHowToUse } from './HowToUseEditor';
 
 interface EditProductModalProps {
   isOpen: boolean;
@@ -16,14 +14,23 @@ interface EditProductModalProps {
   product: any;
 }
 
+const parseImages = (imageProp: any): string[] => {
+  if (!imageProp) return [];
+  if (Array.isArray(imageProp)) return imageProp.flat().filter(img => typeof img === 'string' && img.trim() !== '');
+  if (typeof imageProp !== 'string') return [];
+  const trimmed = imageProp.trim();
+  if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
+    try { return JSON.parse(trimmed) as string[]; } catch { }
+  }
+  if (trimmed.includes(',')) return trimmed.split(',').map((img) => img.trim());
+  return [trimmed];
+};
+
 export default function EditProductModal({ isOpen, onClose, onSuccess, product }: EditProductModalProps) {
   const [newTitle, setNewTitle] = useState('');
   const [newBrand, setNewBrand] = useState('');
-  const [newPrice, setNewPrice] = useState('');
-  const [newMrp, setNewMrp] = useState('');
   const [newMainCategoryId, setNewMainCategoryId] = useState('');
   const [newSubCategoryId, setNewSubCategoryId] = useState('');
-  const [newStock, setNewStock] = useState('10');
   const [newWeight, setNewWeight] = useState('0.5');
   const [newLength, setNewLength] = useState('10');
   const [newBreadth, setNewBreadth] = useState('10');
@@ -31,9 +38,13 @@ export default function EditProductModal({ isOpen, onClose, onSuccess, product }
   const [newDescription, setNewDescription] = useState('');
   const [categoriesConfig, setCategoriesConfig] = useState<{mainCategories: {id: string, name: string}[], subcategories: Record<string, {id: string, name: string}[]>}>({ mainCategories: [], subcategories: {} });
   const [attributes, setAttributes] = useState<{key: string, value: string}[]>([]);
-  
+  const [variants, setVariants] = useState<VariantRow[]>([]);
+  const [howToUse, setHowToUse] = useState<HowToUseState>(emptyHowToUse());
+
   const [isSubCatDropdownOpen, setIsSubCatDropdownOpen] = useState(false);
   const [subCatSearch, setSubCatSearch] = useState('');
+
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -47,37 +58,13 @@ export default function EditProductModal({ isOpen, onClose, onSuccess, product }
       setSubCatSearch('');
     }
   }, [newMainCategoryId]);
-  
-  const [existingImages, setExistingImages] = useState<string[]>([]);
-  const [imageFiles, setImageFiles] = useState<File[]>([]);
-  const [imagePreviews, setImagePreviews] = useState<string[]>([]);
-  
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const parseImages = (imageProp: any): string[] => {
-    if (!imageProp) return [];
-    if (Array.isArray(imageProp)) return imageProp.flat().filter(img => typeof img === 'string' && img.trim() !== '');
-    if (typeof imageProp !== 'string') return [];
-    const trimmed = imageProp.trim();
-    if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
-      try { return JSON.parse(trimmed) as string[]; } catch { }
-    }
-    if (trimmed.includes(',')) return trimmed.split(',').map((img) => img.trim());
-    return [trimmed];
-  };
 
   useEffect(() => {
     if (isOpen && product) {
       setNewTitle(product.title || '');
       setNewBrand(product.brand || '');
-      // Handle comma-separated prices
-      const rawPrice = product.price ? String(product.price).replace(/,/g, '') : '';
-      setNewPrice(rawPrice);
-      setNewMrp(product.mrp ? String(product.mrp).replace(/,/g, '') : '');
       setNewMainCategoryId(product.mainCategoryId || '');
       setNewSubCategoryId(product.subCategoryId || '');
-      setNewStock(product.stock !== undefined ? String(product.stock) : '10');
       setNewWeight(product.weight !== undefined ? String(product.weight) : '0.5');
       setNewLength(product.length !== undefined ? String(product.length) : '10');
       setNewBreadth(product.breadth !== undefined ? String(product.breadth) : '10');
@@ -85,107 +72,137 @@ export default function EditProductModal({ isOpen, onClose, onSuccess, product }
       setNewDescription(product.description || '');
       setAttributes(product.attributes || []);
 
-      let initialImages = parseImages(product.images);
-      if (initialImages.length === 0) {
-        initialImages = parseImages(product.image);
+      if (Array.isArray(product.variants) && product.variants.length > 0) {
+        setVariants(product.variants.map((v: any) => ({
+          id: v.id || Math.random().toString(36).slice(2, 10),
+          label: v.label || '',
+          price: v.price !== undefined ? String(v.price) : '',
+          mrp: v.mrp !== undefined && v.mrp !== null ? String(v.mrp) : '',
+          stock: v.stock !== undefined ? String(v.stock) : '0',
+          existingImages: Array.isArray(v.images) ? v.images : [],
+          imageFiles: [],
+          imagePreviews: [],
+        })));
+      } else {
+        // Not migrated to variants yet -- synthesize one row from the
+        // product's current flat price/mrp/stock/images, so editing (and
+        // saving) any product always shows its real current pricing and
+        // moves it onto the new shape.
+        let initialImages = parseImages(product.images);
+        if (initialImages.length === 0) initialImages = parseImages(product.image);
+        setVariants([{
+          id: Math.random().toString(36).slice(2, 10),
+          label: '',
+          price: product.price !== undefined ? String(product.price).replace(/,/g, '') : '',
+          mrp: product.mrp !== undefined && product.mrp !== null ? String(product.mrp).replace(/,/g, '') : '',
+          stock: product.stock !== undefined ? String(product.stock) : '0',
+          existingImages: initialImages,
+          imageFiles: [],
+          imagePreviews: [],
+        }]);
       }
-      
-      setExistingImages(initialImages);
-      setImageFiles([]);
-      setImagePreviews([]);
+
+      setHowToUse({
+        pdfFile: null,
+        pdfFileName: '',
+        existingPdfUrl: product.howToUsePdf || '',
+        links: Array.isArray(product.resourceLinks)
+          ? product.resourceLinks.map((l: any) => ({
+              id: Math.random().toString(36).slice(2, 10),
+              label: l.label || '',
+              url: l.url || '',
+            }))
+          : [],
+      });
     }
   }, [isOpen, product]);
 
   if (!isOpen) return null;
 
-  const totalImages = existingImages.length + imageFiles.length;
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const selected = Array.from(e.target.files || []);
-    const available = MAX_IMAGES - totalImages;
-
-    if (available <= 0) {
-      toast.error(`Maximum ${MAX_IMAGES} images allowed.`);
-      return;
-    }
-
-    const validated: File[] = [];
-    for (const file of selected.slice(0, available)) {
-      if (!ALLOWED_TYPES.includes(file.type)) {
-        toast.error(`${file.name}: only JPG, PNG, WebP allowed.`);
-        continue;
-      }
-      if (file.size > MAX_FILE_SIZE_MB * 1024 * 1024) {
-        toast.error(`${file.name}: must be under ${MAX_FILE_SIZE_MB}MB.`);
-        continue;
-      }
-      validated.push(file);
-    }
-
-    const newPreviews = validated.map(f => URL.createObjectURL(f));
-    setImageFiles(prev => [...prev, ...validated]);
-    setImagePreviews(prev => [...prev, ...newPreviews]);
-
-    if (fileInputRef.current) fileInputRef.current.value = '';
-  };
-
-  const removeExistingImage = (idx: number) => {
-    setExistingImages(prev => prev.filter((_, i) => i !== idx));
-  };
-
-  const removeNewImage = (idx: number) => {
-    URL.revokeObjectURL(imagePreviews[idx]);
-    setImageFiles(prev => prev.filter((_, i) => i !== idx));
-    setImagePreviews(prev => prev.filter((_, i) => i !== idx));
-  };
-
   const resetForm = () => {
-    imagePreviews.forEach(url => URL.revokeObjectURL(url));
+    variants.forEach(v => v.imagePreviews.forEach(url => URL.revokeObjectURL(url)));
   };
 
   const handleClose = () => { resetForm(); onClose(); };
 
   const handleEditProduct = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!newSubCategoryId) {
       toast.error('Please select a subcategory.');
       return;
     }
 
+    if (variants.some(v => !v.price || parseFloat(v.price) <= 0)) {
+      toast.error('Please enter a price greater than 0 for each option.');
+      return;
+    }
+    if (variants.length > 1) {
+      const labels = variants.map(v => v.label.trim().toLowerCase());
+      if (labels.some(l => !l)) {
+        toast.error('Please label each option so shoppers can tell them apart.');
+        return;
+      }
+      if (new Set(labels).size !== labels.length) {
+        toast.error('Option labels must be unique.');
+        return;
+      }
+    }
+    const filledLinks = howToUse.links.filter(l => l.url.trim());
+    if (filledLinks.some(l => !/^https?:\/\//i.test(l.url.trim()))) {
+      toast.error('Links must start with http:// or https://');
+      return;
+    }
+
     setIsSubmitting(true);
     try {
-      // Upload any new images in parallel (order preserved)
-      const uploadedUrls: string[] = await Promise.all(imageFiles.map(async (file) => {
+      // Upload a newly-picked "How to Use" PDF, if any; otherwise keep
+      // whatever URL it already had (or none, if it was removed).
+      let howToUsePdf = howToUse.existingPdfUrl;
+      if (howToUse.pdfFile) {
         const formData = new FormData();
-        formData.append('image', file);
-        const res = await api.post('/upload/image', formData, {
+        formData.append('pdf', howToUse.pdfFile);
+        const res = await api.post('/upload/pdf', formData, {
           headers: { 'Content-Type': 'multipart/form-data' }
         });
-        return res.data.url;
-      }));
+        howToUsePdf = res.data.url;
+      }
 
-      // Combine existing images with newly uploaded ones
-      const finalImages = [...existingImages, ...uploadedUrls];
-      const thumbnail = finalImages[0] || 'https://via.placeholder.com/200?text=No+Image';
+      // Upload each variant's newly-picked images, then combine with any it
+      // already had.
+      const variantsPayload = await Promise.all(variants.map(async (v) => {
+        const uploaded: string[] = await Promise.all(v.imageFiles.map(async (file) => {
+          const formData = new FormData();
+          formData.append('image', file);
+          const res = await api.post('/upload/image', formData, {
+            headers: { 'Content-Type': 'multipart/form-data' }
+          });
+          return res.data.url;
+        }));
+        return {
+          id: v.id,
+          label: v.label,
+          price: parseFloat(v.price) || 0,
+          mrp: v.mrp ? parseFloat(v.mrp) : undefined,
+          stock: parseInt(v.stock) || 0,
+          images: [...v.existingImages, ...uploaded],
+        };
+      }));
 
       const payload = {
         title: newTitle,
         brand: newBrand,
-        price: parseFloat(newPrice),
-        mrp: newMrp ? parseFloat(newMrp) : undefined,
         mainCategoryId: newMainCategoryId,
         subCategoryId: newSubCategoryId || undefined,
-        stock: parseInt(newStock) || 0,
         weight: parseFloat(newWeight) || 0.5,
         length: parseFloat(newLength) || 10,
         breadth: parseFloat(newBreadth) || 10,
         height: parseFloat(newHeight) || 10,
         description: newDescription,
-        images: finalImages,
-        image: thumbnail,   // backwards-compat alias
-        thumbnail,
         attributes: attributes.filter(a => a.key.trim() && a.value.trim()),
+        variants: variantsPayload,
+        howToUsePdf,
+        resourceLinks: filledLinks.map(l => ({ label: l.label, url: l.url.trim() })),
       };
 
       await api.put(`/products/${product.id}`, payload);
@@ -239,32 +256,8 @@ export default function EditProductModal({ isOpen, onClose, onSuccess, product }
               </div>
             </div>
 
-            {/* Price / MRP / Stock */}
-            <div className="grid grid-cols-3 gap-4">
-              <div>
-                <label className="block text-sm font-bold text-gray-700 mb-1.5">Price (₹) *</label>
-                <input
-                  type="number" min="0" value={newPrice} onChange={e => setNewPrice(e.target.value)} required
-                  placeholder="2500"
-                  className="w-full px-3.5 py-2.5 border border-gray-300 rounded-xl text-sm outline-none transition-all focus:border-gold-primary focus:ring-2 focus:ring-gold-primary/20"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-bold text-gray-700 mb-1.5">MRP (₹)</label>
-                <input
-                  type="number" min="0" value={newMrp} onChange={e => setNewMrp(e.target.value)}
-                  placeholder="3000"
-                  className="w-full px-3.5 py-2.5 border border-gray-300 rounded-xl text-sm outline-none transition-all focus:border-gold-primary focus:ring-2 focus:ring-gold-primary/20"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-bold text-gray-700 mb-1.5">Stock</label>
-                <input
-                  type="number" min="0" value={newStock} onChange={e => setNewStock(e.target.value)}
-                  className="w-full px-3.5 py-2.5 border border-gray-300 rounded-xl text-sm outline-none transition-all focus:border-gold-primary focus:ring-2 focus:ring-gold-primary/20"
-                />
-              </div>
-            </div>
+            {/* Pricing, Stock & Images */}
+            <VariantEditor variants={variants} onChange={setVariants} />
 
             {/* Packaging Details */}
             <div>
@@ -305,8 +298,8 @@ export default function EditProductModal({ isOpen, onClose, onSuccess, product }
             <div>
               <div className="flex justify-between items-center mb-1.5">
                 <label className="block text-sm font-bold text-gray-700">Custom Attributes</label>
-                <button 
-                  type="button" 
+                <button
+                  type="button"
                   onClick={() => setAttributes([...attributes, { key: '', value: '' }])}
                   className="text-xs font-bold text-blue-600 hover:text-blue-800 cursor-pointer"
                 >
@@ -316,7 +309,7 @@ export default function EditProductModal({ isOpen, onClose, onSuccess, product }
               <div className="space-y-2">
                 {attributes.map((attr, idx) => (
                   <div key={idx} className="flex gap-2">
-                    <input 
+                    <input
                       type="text" placeholder="e.g. Material" value={attr.key}
                       onChange={e => {
                         const newAttrs = [...attributes];
@@ -325,7 +318,7 @@ export default function EditProductModal({ isOpen, onClose, onSuccess, product }
                       }}
                       className="w-1/3 px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:border-gold-primary"
                     />
-                    <input 
+                    <input
                       type="text" placeholder="e.g. Cotton" value={attr.value}
                       onChange={e => {
                         const newAttrs = [...attributes];
@@ -334,8 +327,8 @@ export default function EditProductModal({ isOpen, onClose, onSuccess, product }
                       }}
                       className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:border-gold-primary"
                     />
-                    <button 
-                      type="button" 
+                    <button
+                      type="button"
                       onClick={() => setAttributes(attributes.filter((_, i) => i !== idx))}
                       className="p-2 text-red-500 hover:bg-red-50 rounded-lg cursor-pointer"
                     >
@@ -354,13 +347,13 @@ export default function EditProductModal({ isOpen, onClose, onSuccess, product }
               <label className="block text-sm font-bold text-gray-700 mb-1.5">Category *</label>
               <div className="relative">
                 {/* Custom Searchable Dropdown */}
-                <div 
+                <div
                   className="w-full px-3.5 py-2.5 border border-gray-300 rounded-xl text-sm outline-none transition-all bg-white cursor-pointer flex items-center justify-between hover:border-gold-primary"
                   onClick={() => setIsSubCatDropdownOpen(!isSubCatDropdownOpen)}
                 >
                   <span className={newMainCategoryId ? "text-gray-900" : "text-gray-400"}>
                     {newMainCategoryId ? (
-                      newSubCategoryId 
+                      newSubCategoryId
                         ? (categoriesConfig.subcategories[newMainCategoryId]?.find(s => s.id === newSubCategoryId)?.name || 'Selected Subcategory')
                         : (categoriesConfig.mainCategories.find(c => c.id === newMainCategoryId)?.name || 'Selected Category')
                     ) : '-- Select Category --'}
@@ -389,25 +382,25 @@ export default function EditProductModal({ isOpen, onClose, onSuccess, product }
                         const searchLower = subCatSearch.toLowerCase();
                         const matchesMain = mainCat.name.toLowerCase().includes(searchLower);
                         const matchedSubs = subs.filter(sub => sub.name.toLowerCase().includes(searchLower));
-                        
+
                         if (subCatSearch && !matchesMain && matchedSubs.length === 0) return null;
 
                         return (
                           <div key={mainCat.id} className="mb-2">
-                            <div 
+                            <div
                               className="px-3 py-2 text-sm font-bold rounded-lg mb-1 bg-gray-50 text-gray-800"
                             >
                               {mainCat.name}
                             </div>
-                            
+
                             {subs.length > 0 && (
                               <div className="pl-3 border-l-2 border-gray-100 ml-3 space-y-0.5">
                                 {(subCatSearch && !matchesMain ? matchedSubs : subs).map(sub => (
                                   <div
                                     key={sub.id}
                                     className={`px-3 py-1.5 text-sm rounded-lg cursor-pointer transition-colors ${
-                                      newSubCategoryId === sub.id 
-                                        ? 'bg-gold-primary/10 text-gold-700 font-semibold' 
+                                      newSubCategoryId === sub.id
+                                        ? 'bg-gold-primary/10 text-gold-700 font-semibold'
                                         : 'text-gray-600 hover:bg-gray-50'
                                     }`}
                                     onClick={() => { setNewMainCategoryId(mainCat.id); setNewSubCategoryId(sub.id); setIsSubCatDropdownOpen(false); }}
@@ -420,8 +413,8 @@ export default function EditProductModal({ isOpen, onClose, onSuccess, product }
                           </div>
                         );
                       })}
-                      
-                      {categoriesConfig.mainCategories.length > 0 && 
+
+                      {categoriesConfig.mainCategories.length > 0 &&
                        !categoriesConfig.mainCategories.some(mainCat => {
                          const subs = categoriesConfig.subcategories[mainCat.id] || [];
                          const searchLower = subCatSearch.toLowerCase();
@@ -445,71 +438,8 @@ export default function EditProductModal({ isOpen, onClose, onSuccess, product }
               />
             </div>
 
-            {/* Multi-image uploader */}
-            <div>
-              <label className="block text-sm font-bold text-gray-700 mb-1.5">
-                Product Images <span className="text-gray-400 font-normal">({totalImages}/{MAX_IMAGES} · JPG, PNG, WebP · Max 5MB each)</span>
-              </label>
-
-              {/* Previews grid */}
-              {(existingImages.length > 0 || imagePreviews.length > 0) && (
-                <div className="grid grid-cols-5 gap-2 mb-3">
-                  {/* Existing Images */}
-                  {existingImages.map((url, idx) => (
-                    <div key={`exist-${idx}`} className="relative group aspect-square">
-                      <img src={url} alt={`Existing ${idx + 1}`} className="w-full h-full object-cover rounded-lg border border-gray-200" />
-                      {idx === 0 && (
-                        <div className="absolute top-1 left-1 bg-gold-primary text-text-main text-[9px] font-bold px-1.5 py-0.5 rounded">
-                          MAIN
-                        </div>
-                      )}
-                      <button
-                        type="button" onClick={() => removeExistingImage(idx)}
-                        className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
-                      >
-                        <Trash2 className="w-2.5 h-2.5" />
-                      </button>
-                    </div>
-                  ))}
-                  
-                  {/* New Upload Previews */}
-                  {imagePreviews.map((url, idx) => (
-                    <div key={`new-${idx}`} className="relative group aspect-square">
-                      <img src={url} alt={`Preview ${idx + 1}`} className="w-full h-full object-cover rounded-lg border border-gray-200" />
-                      {existingImages.length === 0 && idx === 0 && (
-                        <div className="absolute top-1 left-1 bg-gold-primary text-text-main text-[9px] font-bold px-1.5 py-0.5 rounded">
-                          MAIN
-                        </div>
-                      )}
-                      <button
-                        type="button" onClick={() => removeNewImage(idx)}
-                        className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
-                      >
-                        <Trash2 className="w-2.5 h-2.5" />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {/* Drop zone */}
-              {totalImages < MAX_IMAGES && (
-                <label className="flex flex-col items-center gap-2 border-2 border-dashed border-gray-200 rounded-xl p-5 cursor-pointer hover:border-gold-primary hover:bg-gold-primary/5 transition-all">
-                  <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center">
-                    <Upload className="w-5 h-5 text-gray-400" />
-                  </div>
-                  <div className="text-center">
-                    <p className="text-sm font-semibold text-gray-700">Click to add images</p>
-                    <p className="text-xs text-gray-400 mt-0.5">or drag & drop here</p>
-                  </div>
-                  <input
-                    ref={fileInputRef}
-                    type="file" multiple accept=".jpg,.jpeg,.png,.webp"
-                    onChange={handleFileChange} className="hidden"
-                  />
-                </label>
-              )}
-            </div>
+            {/* How to Use */}
+            <HowToUseEditor value={howToUse} onChange={setHowToUse} />
           </form>
         </div>
 

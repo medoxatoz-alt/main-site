@@ -6,25 +6,25 @@ import api from '@/lib/api';
 import toast from 'react-hot-toast';
 import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
-import { 
-  Loader2, 
-  Star, 
-  ShieldCheck, 
-  Truck, 
-  BadgeCheck, 
-  RotateCcw, 
-  Plus, 
-  Minus, 
+import {
+  Loader2,
+  ShieldCheck,
+  Truck,
+  BadgeCheck,
+  Plus,
+  Minus,
   ShoppingBag,
   Award,
   Heart,
   Share2,
-  MessageSquare,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  FileText,
+  ExternalLink
 } from 'lucide-react';
 import EmptyState from '@/components/EmptyState';
 import ErrorState from '@/components/ErrorState';
+import DeliveryEstimate from '@/components/DeliveryEstimate';
 import React from 'react';
 
 const parseImages = (imageProp: any): string[] => {
@@ -50,7 +50,18 @@ export default function ProductDetail({ params }: { params: Promise<{ id: string
   const [activeImgIdx, setActiveImgIdx] = useState(0);
   const [quantity, setQuantity] = useState(1);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  
+  const [selectedVariantId, setSelectedVariantId] = useState<string | undefined>(undefined);
+  const [isZooming, setIsZooming] = useState(false);
+  const [zoomOrigin, setZoomOrigin] = useState({ x: 50, y: 50 });
+
+  const handleZoomMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    setZoomOrigin({
+      x: ((e.clientX - rect.left) / rect.width) * 100,
+      y: ((e.clientY - rect.top) / rect.height) * 100,
+    });
+  };
+
   const [navHeight, setNavHeight] = useState(112); // fallback desktop height
 
   useEffect(() => {
@@ -157,7 +168,10 @@ export default function ProductDetail({ params }: { params: Promise<{ id: string
       try {
         const res = await api.get(`/products/${id}`);
         setProduct(res.data);
-        if ((Number(res.data.stock) || 0) <= 0) {
+        const firstVariant = res.data.variants?.[0];
+        setSelectedVariantId(firstVariant?.id);
+        const initialStock = Number(firstVariant ? firstVariant.stock : res.data.stock) || 0;
+        if (initialStock <= 0) {
           setQuantity(0);
         }
       } catch (err: any) {
@@ -177,28 +191,31 @@ export default function ProductDetail({ params }: { params: Promise<{ id: string
       router.push('/signin');
       return;
     }
+    const activeVariant = product.variants?.find((v: any) => v.id === selectedVariantId);
     setAddingToCart(true);
     try {
       const cartRes = await api.get('/cart');
-      const existingItem = cartRes.data.find((item: any) => item.productId === product.id);
+      const existingItem = cartRes.data.find((item: any) => item.productId === product.id && (item.variantId || undefined) === (activeVariant?.id || undefined));
       const currentQty = existingItem ? existingItem.quantity : 0;
-      
+
       const targetQty = currentQty + quantity;
-      const stock = Number(product.stock) || 0;
+      const stock = Number(activeVariant ? activeVariant.stock : product.stock) || 0;
 
       if (stock < targetQty) {
         toast.error(`Cannot add to cart. Only ${stock} units available in stock (you already have ${currentQty} in your cart).`);
         setAddingToCart(false);
         return false;
       }
-      
+
       if (currentQty === 0) {
-        await api.post(`/cart/${product.id}`);
+        await api.post(`/cart/${product.id}`, activeVariant ? { variantId: activeVariant.id } : {});
         if (targetQty > 1) {
-          await api.patch(`/cart/${product.id}`, { quantity: targetQty });
+          const qs = activeVariant ? `?variantId=${encodeURIComponent(activeVariant.id)}` : '';
+          await api.patch(`/cart/${product.id}${qs}`, { quantity: targetQty });
         }
       } else {
-        await api.patch(`/cart/${product.id}`, { quantity: targetQty });
+        const qs = activeVariant ? `?variantId=${encodeURIComponent(activeVariant.id)}` : '';
+        await api.patch(`/cart/${product.id}${qs}`, { quantity: targetQty });
       }
 
       toast.success('Added to Cart!');
@@ -218,14 +235,16 @@ export default function ProductDetail({ params }: { params: Promise<{ id: string
       router.push('/signin');
       return;
     }
-    
-    window.dispatchEvent(new CustomEvent('open-checkout', { 
-      detail: { 
-        buyNowItem: { 
-          productId: product.id, 
-          quantity: quantity 
-        } 
-      } 
+    const activeVariant = product.variants?.find((v: any) => v.id === selectedVariantId);
+
+    window.dispatchEvent(new CustomEvent('open-checkout', {
+      detail: {
+        buyNowItem: {
+          productId: product.id,
+          quantity: quantity,
+          ...(activeVariant ? { variantId: activeVariant.id } : {}),
+        }
+      }
     }));
   };
 
@@ -284,17 +303,24 @@ export default function ProductDetail({ params }: { params: Promise<{ id: string
     );
   }
 
-  const images = Array.isArray(product.images) && product.images.length > 0 
-    ? product.images 
+  const variants = product.variants as { id: string; label: string; price: number; mrp?: number; stock: number; images?: string[] }[] | undefined;
+  const activeVariant = variants?.find(v => v.id === selectedVariantId);
+
+  const baseImages = Array.isArray(product.images) && product.images.length > 0
+    ? product.images
     : parseImages(product.image);
-  const activeImageUrl = images[activeImgIdx] || images[0] || 'https://via.placeholder.com/400';
-  const price = typeof product.price === 'string' ? parseFloat(product.price.replace(/,/g, '')) : Number(product.price);
-  const mrp = product.mrp ? (typeof product.mrp === 'string' ? parseFloat(product.mrp.replace(/,/g, '')) : Number(product.mrp)) : null;
+  // A variant with its own images uses those; otherwise falls back to the
+  // product's regular images.
+  const images = activeVariant?.images && activeVariant.images.length > 0 ? activeVariant.images : baseImages;
+  const price = activeVariant ? Number(activeVariant.price) || 0 : (typeof product.price === 'string' ? parseFloat(product.price.replace(/,/g, '')) : Number(product.price));
+  const mrp = activeVariant
+    ? (activeVariant.mrp ? Number(activeVariant.mrp) : null)
+    : (product.mrp ? (typeof product.mrp === 'string' ? parseFloat(product.mrp.replace(/,/g, '')) : Number(product.mrp)) : null);
   const discountPercentage = mrp && mrp > price ? Math.round(((mrp - price) / mrp) * 100) : 0;
 
 
   return (
-    <main className="bg-white lg:bg-[var(--bg-page)] min-h-screen pb-28 lg:pb-20">
+    <main className="bg-white lg:bg-[var(--bg-page)] min-h-screen pb-28 lg:pb-20 animate-fade-in">
       <Navbar />
       
       {/* Sticky Back Button Bar - Merges with Navbar */}
@@ -313,9 +339,8 @@ export default function ProductDetail({ params }: { params: Promise<{ id: string
         </div>
       </div>
 
-      <div className="max-w-[1500px] mx-auto lg:px-8 py-0 lg:py-12 lg:pt-5">
-        
-   
+      <div className="max-w-[1500px] mx-auto lg:px-8 py-0 lg:py-12 lg:pt-5 animate-slide-up">
+
         <div className="grid grid-cols-1 lg:grid-cols-12 lg:gap-10 items-start">
           
           {/* Left Column: Image Gallery (lg:col-span-7) */}
@@ -356,7 +381,12 @@ export default function ProductDetail({ params }: { params: Promise<{ id: string
 
             {/* Desktop View: Single Main Image + Thumbnails */}
             <div className="hidden lg:flex flex-col gap-4">
-              <div className="bg-white rounded-2xl border border-gray-200/60 shadow-sm flex items-center justify-center relative aspect-[4/3] overflow-hidden group">
+              <div
+                className="bg-white rounded-2xl border border-gray-200/60 shadow-sm flex items-center justify-center relative aspect-[4/3] overflow-hidden group cursor-zoom-in"
+                onMouseEnter={() => setIsZooming(true)}
+                onMouseLeave={() => setIsZooming(false)}
+                onMouseMove={handleZoomMouseMove}
+              >
                 {discountPercentage > 0 && (
                   <div className="absolute top-6 left-6 z-10 bg-red-600 text-white text-xs uppercase tracking-wider font-extrabold px-3 py-1.5 rounded shadow-md">
                     {discountPercentage}% OFF
@@ -393,10 +423,11 @@ export default function ProductDetail({ params }: { params: Promise<{ id: string
                   </>
                 )}
 
-                <img 
-                  src={images[activeImgIdx] || images[0] || 'https://via.placeholder.com/400'} 
-                  alt={product.title} 
-                  className="w-full h-full object-contain p-10 transition-transform duration-500 group-hover:scale-105" 
+                <img
+                  src={images[activeImgIdx] || images[0] || 'https://via.placeholder.com/400'}
+                  alt={product.title}
+                  style={isZooming ? { transform: `scale(2)`, transformOrigin: `${zoomOrigin.x}% ${zoomOrigin.y}%` } : undefined}
+                  className="w-full h-full object-contain p-10 transition-transform duration-200 ease-out"
                 />
               </div>
 
@@ -489,8 +520,45 @@ export default function ProductDetail({ params }: { params: Promise<{ id: string
                   </>
                 )}
               </div>
-              <div className="text-[12px] text-gray-500 mt-1 font-medium">Inclusive of all duties and taxes</div>
+              <div className="text-[12px] text-gray-500 mt-1 font-medium">Inclusive of all taxes</div>
             </div>
+
+            {/* Variant Selector */}
+            {variants && variants.length > 1 && (
+              <div>
+                <div className="text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">
+                  Options{activeVariant ? `: ${activeVariant.label}` : ''}
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {variants.map(v => {
+                    const isSelected = v.id === selectedVariantId;
+                    const outOfStock = (Number(v.stock) || 0) <= 0;
+                    return (
+                      <button
+                        key={v.id}
+                        type="button"
+                        onClick={() => {
+                          setSelectedVariantId(v.id);
+                          setActiveImgIdx(0);
+                          const newStock = Number(v.stock) || 0;
+                          setQuantity(newStock <= 0 ? 0 : Math.min(quantity || 1, Math.min(10, newStock)));
+                        }}
+                        disabled={outOfStock}
+                        className={`px-4 py-2 rounded-full text-sm font-bold border-2 transition-all cursor-pointer ${
+                          isSelected
+                            ? 'border-gray-900 bg-gray-900 text-white'
+                            : outOfStock
+                              ? 'border-gray-200 text-gray-300 cursor-not-allowed line-through'
+                              : 'border-gray-200 text-gray-700 hover:border-gray-400'
+                        }`}
+                      >
+                        {v.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
 
             {/* Badges */}
             <div className="grid grid-cols-2 gap-3">
@@ -516,7 +584,7 @@ export default function ProductDetail({ params }: { params: Promise<{ id: string
 
             {/* Inline Checkout Actions (All Devices) */}
             {(() => {
-              const stock = Number(product.stock) || 0;
+              const stock = Number(activeVariant ? activeVariant.stock : product.stock) || 0;
               const isOutOfStock = stock <= 0;
               return (
                 <div className="flex flex-col gap-5 border-y border-gray-100 py-6">
@@ -526,6 +594,9 @@ export default function ProductDetail({ params }: { params: Promise<{ id: string
                         {isOutOfStock ? "Out of Stock" : "In Stock & Ready to Ship"}
                       </div>
                       {!isOutOfStock && <div className="text-xs text-gray-500 font-medium flex items-center gap-1"><Truck className="w-3.5 h-3.5" /> Dispatches within 24 Hrs</div>}
+                      {!isOutOfStock && stock <= 5 && (
+                        <div className="text-xs font-bold text-orange-600 mt-0.5">Only {stock} left in stock — order soon!</div>
+                      )}
                     </div>
 
                     {/* Quantity Selector */}
@@ -579,6 +650,9 @@ export default function ProductDetail({ params }: { params: Promise<{ id: string
               );
             })()}
 
+            {/* Delivery Estimate */}
+            <DeliveryEstimate weightKg={Number(product.weight) || 0.5} />
+
             {/* Description & Specs */}
             <div className="flex flex-col gap-6">
               
@@ -590,7 +664,7 @@ export default function ProductDetail({ params }: { params: Promise<{ id: string
                   <div className="text-gray-600 capitalize">{product.category}</div>
                   
                   <div className="font-bold text-gray-800">Availability</div>
-                  <div className="text-emerald-700 font-semibold">{product.stock && product.stock > 0 ? 'In Stock' : 'Out of Stock'}</div>
+                  <div className="text-emerald-700 font-semibold">{(activeVariant ? activeVariant.stock : product.stock) > 0 ? 'In Stock' : 'Out of Stock'}</div>
 
                   {product.attributes && product.attributes.map((attr: any, idx: number) => (
                     <React.Fragment key={idx}>
@@ -618,6 +692,40 @@ export default function ProductDetail({ params }: { params: Promise<{ id: string
                   )}
                 </div>
               </div>
+
+              {/* How to Use */}
+              {(product.howToUsePdf || (Array.isArray(product.resourceLinks) && product.resourceLinks.length > 0)) && (
+                <div className="bg-gray-50/50 rounded-2xl p-5 border border-gray-100">
+                  <h2 className="text-sm font-extrabold text-gray-900 mb-3 uppercase tracking-wider">How to Use</h2>
+                  <div className="flex flex-col gap-2">
+                    {product.howToUsePdf && (
+                      <a
+                        href={product.howToUsePdf}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        download
+                        className="flex items-center gap-2.5 px-3.5 py-2.5 bg-white border border-gray-200 rounded-xl text-sm font-semibold text-gray-700 hover:border-gold-primary hover:text-gold-hover transition-colors"
+                      >
+                        <FileText className="w-4 h-4 text-gold-hover shrink-0" />
+                        <span className="flex-1">Download Usage Guide (PDF)</span>
+                        <ExternalLink className="w-3.5 h-3.5 text-gray-400 shrink-0" />
+                      </a>
+                    )}
+                    {Array.isArray(product.resourceLinks) && product.resourceLinks.map((link: any, idx: number) => (
+                      <a
+                        key={idx}
+                        href={link.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-2.5 px-3.5 py-2.5 bg-white border border-gray-200 rounded-xl text-sm font-semibold text-gray-700 hover:border-gold-primary hover:text-gold-hover transition-colors"
+                      >
+                        <ExternalLink className="w-4 h-4 text-gold-hover shrink-0" />
+                        <span className="flex-1 truncate">{link.label || 'Link'}</span>
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {/* Vendor Information */}
               <div className="bg-gray-50 p-5 rounded-2xl border border-gray-100 mt-2">

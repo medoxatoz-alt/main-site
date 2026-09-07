@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { X, Package, MapPin, Clock, CheckCircle, XCircle, Truck, ShoppingBag, Store, ExternalLink, Download } from 'lucide-react';
 import ConfirmActionModal from './ConfirmActionModal';
 import VendorProfileModal from './VendorProfileModal';
@@ -25,6 +25,7 @@ interface Order {
   id: string;
   orderId: string;
   vendorId?: string;
+  sellerIsAdmin?: boolean;
   customerId: string;
   customerEmail: string;
   status: string;
@@ -62,15 +63,19 @@ interface OrderDetailModalProps {
 const STATUS_COLORS: Record<string, string> = {
   Pending:   'bg-blue-50 text-blue-700 border-blue-200',
   Approved:  'bg-emerald-50 text-emerald-700 border-emerald-200',
-  Rejected:  'bg-red-50 text-red-700 border-red-200',
+  Rejected:  'bg-red-50 text-red-700 border-red-200', // historical only -- no longer a reachable status
   Delivered: 'bg-purple-50 text-purple-700 border-purple-200',
+  'Cancellation Requested': 'bg-orange-50 text-orange-700 border-orange-200',
+  Cancelled: 'bg-gray-100 text-gray-600 border-gray-300',
 };
 
 const TIMELINE_ICONS: Record<string, React.ReactNode> = {
   Pending:   <ShoppingBag className="w-3.5 h-3.5" />,
   Approved:  <CheckCircle className="w-3.5 h-3.5" />,
-  Rejected:  <XCircle className="w-3.5 h-3.5" />,
+  Rejected:  <XCircle className="w-3.5 h-3.5" />, // historical only -- no longer a reachable status
   Delivered: <Truck className="w-3.5 h-3.5" />,
+  'Cancellation Requested': <Clock className="w-3.5 h-3.5" />,
+  Cancelled: <XCircle className="w-3.5 h-3.5" />,
 };
 
 export default function OrderDetailModal({
@@ -81,16 +86,53 @@ export default function OrderDetailModal({
   onStatusChange,
 }: OrderDetailModalProps) {
   const [showDeliveredConfirm, setShowDeliveredConfirm] = useState(false);
-  const [showRejectConfirm, setShowRejectConfirm] = useState(false);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   const [viewVendorUid, setViewVendorUid] = useState<string | null>(null);
   const [isUpdating, setIsUpdating] = useState(false);
   const [showApproveForm, setShowApproveForm] = useState(false);
   const [trackingId, setTrackingId] = useState('');
   const [trackingLink, setTrackingLink] = useState('');
+  const [vendorName, setVendorName] = useState<string | null>(null);
+  const [vendorNameLoading, setVendorNameLoading] = useState(false);
 
-  const isOwner = order.vendorId === viewerUid;
-  const canAct = viewerRole === 'admin' || (viewerRole === 'vendor' && isOwner);
+  // Whether this order's seller is the platform (an admin), not a specific
+  // vendor. vendorId is always a real Firebase uid on both sides -- there is
+  // no literal 'admin' sentinel actually written anywhere by products.ts.
+  // sellerIsAdmin (snapshotted at order-creation time, see
+  // payments.ts's resolveCart/createOrdersInFirestore) is the reliable
+  // signal. For legacy orders placed before that flag existed, this can
+  // only confirm "yes" when the CURRENT viewer is the same admin who
+  // created it -- the backend's own canManageOrder additionally does a real
+  // role lookup for other legacy cases, which a client can't replicate.
+  const isOrderAdminOwned = order.sellerIsAdmin !== undefined
+    ? order.sellerIsAdmin
+    : (!order.vendorId || order.vendorId === viewerUid);
+
+  // Mirrors the backend's canManageOrder (server-main/src/routes/orders.ts) as
+  // closely as a client can: a vendor only ever manages their own orders
+  // (uid match); an admin only acts on admin-owned orders (see above) --
+  // a legacy order owned by a *different* admin's uid conservatively hides
+  // the button here even though the backend would still resolve it
+  // correctly if clicked via another surface.
+  const canAct = viewerRole === 'vendor'
+    ? order.vendorId === viewerUid
+    : viewerRole === 'admin'
+      ? isOrderAdminOwned
+      : false;
+
+  // For a genuine third-party vendor's order, fetch their store name so the
+  // admin never sees a raw Firebase uid in the Vendor Information panel.
+  useEffect(() => {
+    if (viewerRole !== 'admin' || isOrderAdminOwned || !order.vendorId) return;
+    let cancelled = false;
+    setVendorNameLoading(true);
+    api.get(`/vendors/${order.vendorId}`)
+      .then(res => { if (!cancelled) setVendorName(res.data?.storeName || null); })
+      .catch(() => { if (!cancelled) setVendorName(null); })
+      .finally(() => { if (!cancelled) setVendorNameLoading(false); });
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [order.vendorId, isOrderAdminOwned, viewerRole]);
 
   const handleApproveSubmit = async () => {
     if (!trackingId.trim() || !trackingLink.trim()) {
@@ -317,19 +359,21 @@ export default function OrderDetailModal({
                   </h3>
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <div>
-                      {order.vendorId === 'admin' || !order.vendorId ? (
+                      {isOrderAdminOwned ? (
                         <>
                           <p className="font-bold text-sm text-gray-900">Medox Admin Store</p>
                           <p className="text-[13px] text-gray-500 mt-0.5">Direct sale by administrator</p>
                         </>
                       ) : (
                         <>
-                          <p className="font-bold text-sm text-gray-900 truncate">ID: {order.vendorId}</p>
+                          <p className="font-bold text-sm text-gray-900 truncate">
+                            {vendorNameLoading ? 'Loading…' : (vendorName || 'Third-party Vendor')}
+                          </p>
                           <p className="text-[13px] text-gray-500 mt-0.5">Third-party vendor</p>
                         </>
                       )}
                     </div>
-                    {order.vendorId !== 'admin' && order.vendorId && (
+                    {!isOrderAdminOwned && order.vendorId && (
                       <button
                         type="button"
                         onClick={() => setViewVendorUid(order.vendorId || null)}
@@ -374,13 +418,17 @@ export default function OrderDetailModal({
           {/* Action Footer */}
           {(order.status === 'Approved') && (
             <div className="p-4 border-t border-gray-100 bg-gray-50 flex justify-end gap-3 rounded-b-[2rem] sm:rounded-b-2xl">
-              {canAct && (
+              {canAct ? (
                 <button
                   onClick={() => setShowCancelConfirm(true)}
                   className="px-4 py-2 bg-red-500 text-white hover:bg-red-600 font-bold text-sm rounded-xl transition-all flex items-center gap-1.5"
                 >
                   <XCircle className="w-4 h-4" /> Cancel Order
                 </button>
+              ) : (
+                viewerRole === 'admin' && (
+                  <p className="text-xs text-gray-400 italic">This order belongs to a vendor — only the vendor can cancel it.</p>
+                )
               )}
             </div>
           )}
@@ -404,25 +452,6 @@ export default function OrderDetailModal({
           actionButtonLabelAnyway="Mark Delivered Anyway"
           onConfirm={() => updateStatus('Delivered')}
           onCancel={() => setShowDeliveredConfirm(false)}
-          isLoading={isUpdating}
-          variant="danger"
-        />
-      )}
-
-      {showRejectConfirm && (
-        <ConfirmActionModal
-          title="Reject Order?"
-          description={`Order #${order.orderId}`}
-          warningText="⚠️ Rejecting this order cannot be undone."
-          warningPoints={[
-            "The order status will be changed to Rejected",
-            "The customer will receive a rejection notification"
-          ]}
-          confirmWord="CONFIRM"
-          actionButtonLabel="Confirm Reject"
-          actionButtonLabelAnyway="Reject Order Anyway"
-          onConfirm={() => updateStatus('Rejected')}
-          onCancel={() => setShowRejectConfirm(false)}
           isLoading={isUpdating}
           variant="danger"
         />
