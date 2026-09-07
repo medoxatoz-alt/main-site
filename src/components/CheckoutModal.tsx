@@ -352,7 +352,7 @@ export default function CheckoutModal({ isOpen, onClose, buyNowItem }: { isOpen:
             Secure Checkout
           </h2>
           <div className="md:hidden"></div> {/* Spacer for mobile */}
-          <button onClick={onClose} className="text-gray-900 md:text-gray-400 font-bold md:font-normal text-sm hover:text-gray-900 bg-transparent border-none cursor-pointer tracking-wide">
+          <button onClick={onClose} className="text-gray-900 md:text-gray-400 font-bold md:font-normal text-sm hover:text-gray-900 bg-transparent border-none cursor-pointer tracking-wide mt-4 md:mt-0">
             <span className="md:hidden">CANCEL</span>
             <X className="hidden md:block w-6 h-6" />
           </button>

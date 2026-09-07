@@ -202,7 +202,7 @@ function SignInContent() {
       </div>
 
       {/* Right side: Form (full width on mobile, half width on lg) */}
-      <div className="flex-1 flex flex-col justify-center items-center py-6 px-4 sm:py-12 sm:px-6 lg:px-8 relative">
+      <div className="flex-1 flex flex-col justify-center items-center py-6 px-4 mt-4 sm:py-12 sm:px-6 lg:px-8 relative">
         <a 
           href="/" 
           className="absolute top-4 right-4 sm:top-8 sm:right-8 text-sm font-semibold text-gray-500 hover:text-gold-primary transition-colors flex items-center gap-1.5"
