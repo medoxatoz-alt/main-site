@@ -1,9 +1,10 @@
 // Bump this on any deploy that changes STATIC_ASSETS or the caching strategy below.
-const CACHE_NAME = 'medoxatoz-v2';
+const CACHE_NAME = 'medoxatoz-v3';
 const STATIC_ASSETS = [
   '/',
   '/manifest.json',
   '/logo.webp',
+  '/offline.html',
 ];
 
 // Install: cache static assets
@@ -24,30 +25,51 @@ self.addEventListener('activate', (event) => {
   self.clients.claim();
 });
 
-// Fetch: network-first strategy (fall back to cache for static assets)
+// Fetch:
+//   - Navigations (actual page loads): network-first, falling back to the
+//     precached /offline.html on failure. Previously this fell back to
+//     caches.match(request), which almost never matched the exact URL being
+//     navigated to (only '/' was ever cached) and produced either a raw
+//     network error ("page not reachable") or, when the URL WAS '/', a
+//     stale cached shell HTML pointing at hashed JS/CSS bundle filenames
+//     from a previous deploy that were never cached and no longer exist --
+//     hence pages "loading with no CSS". /offline.html is fully
+//     self-contained (inline styles, no external requests) so it always
+//     renders correctly regardless of what else is or isn't cached.
+//   - Everything else (hashed JS/CSS bundles, images, etc.): pass straight
+//     through to the network. Only the explicitly precached STATIC_ASSETS
+//     get a cache fallback; anything else is simply allowed to fail on its
+//     own when offline instead of resolving to a bogus/missing cache entry.
 self.addEventListener('fetch', (event) => {
   const { request } = event;
 
   // Only handle GET requests
   if (request.method !== 'GET') return;
 
-  // Skip cross-origin API requests — always go to network for those
+  // Skip cross-origin requests — always go to network for those
   const url = new URL(request.url);
   if (url.origin !== self.location.origin) return;
 
-  event.respondWith(
-    fetch(request)
-      .then((response) => {
-        // Cache successful responses for static assets
-        if (response.ok && STATIC_ASSETS.includes(url.pathname)) {
-          const clone = response.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
-        }
-        return response;
-      })
-      .catch(() => {
-        // Fall back to cache when offline
-        return caches.match(request).then((cached) => cached || Response.error());
-      })
-  );
+  if (request.mode === 'navigate') {
+    event.respondWith(
+      fetch(request).catch(() =>
+        caches.match('/offline.html').then((cached) => cached || Response.error())
+      )
+    );
+    return;
+  }
+
+  if (STATIC_ASSETS.includes(url.pathname)) {
+    event.respondWith(
+      fetch(request)
+        .then((response) => {
+          if (response.ok) {
+            const clone = response.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
+          }
+          return response;
+        })
+        .catch(() => caches.match(request).then((cached) => cached || Response.error()))
+    );
+  }
 });

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { ShoppingBag, ExternalLink, Search } from 'lucide-react';
 import PaginationBar from '@/components/PaginationBar';
 import OrderDetailModal from '@/components/OrderDetailModal';
@@ -22,6 +22,10 @@ interface OrdersTabProps {
   headerBg?: string;
   title?: string;
   icon?: React.ReactNode;
+  // Auto-opens this order's detail modal once it shows up in `orders` --
+  // used for deep links (e.g. from a Shiprocket order's comment field)
+  // pointing straight at one order.
+  focusOrderId?: string;
 }
 
 const STATUS_STYLES: Record<string, string> = {
@@ -61,10 +65,24 @@ export default function OrdersTab({
   headerBg = 'from-gray-50 to-white',
   title = 'Orders',
   icon,
+  focusOrderId,
 }: OrdersTabProps) {
   const [selectedOrder, setSelectedOrder] = useState<any | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [vendorNames, setVendorNames] = useState<Record<string, string>>({});
+
+  // Auto-open the deep-linked order the first time it appears in `orders`.
+  // Keyed on focusOrderId so it only fires once per link, not every time
+  // `orders` re-fetches (e.g. after the user closes the modal).
+  const focusedIdRef = useRef('');
+  useEffect(() => {
+    if (!focusOrderId || focusedIdRef.current === focusOrderId) return;
+    const match = orders.find(o => o.id === focusOrderId || o.orderId === focusOrderId);
+    if (match) {
+      focusedIdRef.current = focusOrderId;
+      setSelectedOrder(match);
+    }
+  }, [focusOrderId, orders]);
 
   // Vendor column shows store names, never a raw Firebase uid -- fetch the
   // admin's vendor list once (only when this column is actually shown) and

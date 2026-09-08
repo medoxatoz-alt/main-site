@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import api from '@/lib/api';
 import toast from 'react-hot-toast';
 import {
@@ -55,9 +55,15 @@ const TAB_TITLES: Partial<Record<Tab, string>> = {
   analytics: 'Financial Analytics',
 };
 
-export default function AdminDashboard() {
+function AdminDashboardContent() {
   const { user, loading } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  // Deep link support -- e.g. from a Shiprocket order's comment field
+  // (see server-main's buildOrderPortalLink), which always points here with
+  // ?tab=all-orders&orderId=<id> regardless of whether the order is
+  // platform- or vendor-owned, since only admin has Shiprocket access.
+  const focusOrderId = searchParams.get('orderId') || undefined;
 
   const [activeTab, setActiveTab] = useState<Tab>('vendors');
   const [vendors, setVendors] = useState<any[]>([]);
@@ -79,6 +85,13 @@ export default function AdminDashboard() {
       setActiveTab('analytics');
     }
   }, []);
+
+  // A deep-linked order always lives on 'all-orders' -- runs after the
+  // mobile-width effect above so a link opened on a narrow screen still
+  // lands on the right tab instead of being overridden to 'analytics'.
+  useEffect(() => {
+    if (focusOrderId) setActiveTab('all-orders');
+  }, [focusOrderId]);
 
   const fetchData = async () => {
     if (!user) return;
@@ -269,6 +282,7 @@ export default function AdminDashboard() {
                 orders={orders} isFetching={isFetching} fetchError={fetchError}
                 viewerUid={user.uid} viewerRole="admin" showVendorCol onRefresh={fetchData}
                 title="All Orders" icon={<LayoutDashboard className="w-4 h-4 text-blue-600" />}
+                focusOrderId={focusOrderId}
               />
             )}
             {activeTab === 'cancelled-orders' && (
@@ -297,5 +311,17 @@ export default function AdminDashboard() {
         </main>
       </div>
     </>
+  );
+}
+
+export default function AdminDashboard() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-[#0f172a] flex items-center justify-center">
+        <Loader2 className="w-10 h-10 text-amber-400 animate-spin" />
+      </div>
+    }>
+      <AdminDashboardContent />
+    </Suspense>
   );
 }
