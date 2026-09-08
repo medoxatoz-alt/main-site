@@ -202,9 +202,16 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
     }, 0);
   };
 
+  const closeCheckout = () => {
+    setIsCheckoutOpen(false);
+    // Clear any stale "Buy Now" item so a later full-cart checkout isn't
+    // silently limited to whatever single product was last bought this way.
+    setBuyNowItem(null);
+  };
+
   if (!isOpen) {
     return (
-      <CheckoutModal isOpen={isCheckoutOpen} onClose={() => setIsCheckoutOpen(false)} buyNowItem={buyNowItem} />
+      <CheckoutModal isOpen={isCheckoutOpen} onClose={closeCheckout} buyNowItem={buyNowItem} />
     );
   }
 
@@ -366,7 +373,7 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
             )}
 
             <button
-              onClick={() => setIsCheckoutOpen(true)}
+              onClick={() => { setBuyNowItem(null); setIsCheckoutOpen(true); }}
               disabled={hasInventoryIssues}
               className={`w-full py-3.5 font-bold rounded-xl transition-all flex items-center justify-center gap-2 border-none ${
                 hasInventoryIssues
@@ -380,7 +387,7 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
         )}
       </div>
 
-      <CheckoutModal isOpen={isCheckoutOpen} onClose={() => setIsCheckoutOpen(false)} buyNowItem={buyNowItem} />
+      <CheckoutModal isOpen={isCheckoutOpen} onClose={closeCheckout} buyNowItem={buyNowItem} />
     </div>
   );
 }

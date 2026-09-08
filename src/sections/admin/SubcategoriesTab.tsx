@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import api from '@/lib/api';
 import toast from 'react-hot-toast';
-import { Loader2, Plus, Trash2, FolderTree, ArrowUp, ArrowDown } from 'lucide-react';
+import { Loader2, Plus, Trash2, FolderTree, ArrowUp, ArrowDown, Pencil, Check, X } from 'lucide-react';
 
 interface SubcategoriesTabProps {
   isFetching: boolean;
@@ -19,6 +19,10 @@ export default function SubcategoriesTab({ isFetching, fetchError }: Subcategori
   const [isAdding, setIsAdding] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [isSavingOrder, setIsSavingOrder] = useState(false);
+
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingName, setEditingName] = useState('');
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
 
   const fetchCategories = async () => {
     setLoadingConfig(true);
@@ -58,6 +62,35 @@ export default function SubcategoriesTab({ isFetching, fetchError }: Subcategori
       toast.error('Failed to add subcategory');
     } finally {
       setIsAdding(false);
+    }
+  };
+
+  const startEditing = (docId: string, currentName: string) => {
+    setEditingId(docId);
+    setEditingName(currentName);
+  };
+
+  const cancelEditing = () => {
+    setEditingId(null);
+    setEditingName('');
+  };
+
+  const handleSaveEdit = async (docId: string) => {
+    const trimmed = editingName.trim();
+    if (!trimmed) {
+      toast.error('Name cannot be empty');
+      return;
+    }
+    setIsSavingEdit(true);
+    try {
+      await api.put(`/categories/sub/${docId}`, { name: trimmed });
+      toast.success('Subcategory renamed');
+      cancelEditing();
+      fetchCategories();
+    } catch (err: any) {
+      toast.error(err.response?.data?.error || 'Failed to rename subcategory');
+    } finally {
+      setIsSavingEdit(false);
     }
   };
 
@@ -226,36 +259,83 @@ export default function SubcategoriesTab({ isFetching, fetchError }: Subcategori
               </div>
             ) : (
               <ul className="divide-y divide-gray-100">
-                {currentSubcats.map((doc, idx) => (
+                {currentSubcats.map((doc, idx) => {
+                  const isEditing = editingId === doc.id;
+                  return (
                   <li key={doc.id} className="flex items-center justify-between px-6 py-3.5 hover:bg-gray-50 transition-colors group">
-                    <span className="text-sm font-medium text-gray-900">{doc.name}</span>
-                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
-                      <button 
-                        onClick={() => handleMove(idx, 'up')}
-                        disabled={idx === 0}
-                        className="p-1.5 text-gray-400 hover:text-teal-600 hover:bg-teal-50 rounded-lg transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-                        title="Move Up"
-                      >
-                        <ArrowUp className="w-4 h-4" />
-                      </button>
-                      <button 
-                        onClick={() => handleMove(idx, 'down')}
-                        disabled={idx === currentSubcats.length - 1}
-                        className="p-1.5 text-gray-400 hover:text-teal-600 hover:bg-teal-50 rounded-lg transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-                        title="Move Down"
-                      >
-                        <ArrowDown className="w-4 h-4" />
-                      </button>
-                      <button 
-                        onClick={() => handleDeleteSubcategory(doc.id, doc.name)}
-                        className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors ml-2"
-                        title="Delete Subcategory"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                    {isEditing ? (
+                      <input
+                        type="text"
+                        value={editingName}
+                        onChange={e => setEditingName(e.target.value)}
+                        onKeyDown={e => {
+                          if (e.key === 'Enter') handleSaveEdit(doc.id);
+                          if (e.key === 'Escape') cancelEditing();
+                        }}
+                        autoFocus
+                        className="flex-1 mr-3 border border-teal-300 rounded-lg px-2.5 py-1.5 text-sm outline-none focus:ring-1 focus:ring-teal-500"
+                      />
+                    ) : (
+                      <span className="text-sm font-medium text-gray-900">{doc.name}</span>
+                    )}
+                    <div className={`flex items-center gap-1 transition-opacity ${isEditing ? 'opacity-100' : 'opacity-0 group-hover:opacity-100 focus-within:opacity-100'}`}>
+                      {isEditing ? (
+                        <>
+                          <button
+                            onClick={() => handleSaveEdit(doc.id)}
+                            disabled={isSavingEdit}
+                            className="p-1.5 text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors disabled:opacity-50"
+                            title="Save"
+                          >
+                            {isSavingEdit ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+                          </button>
+                          <button
+                            onClick={cancelEditing}
+                            disabled={isSavingEdit}
+                            className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50"
+                            title="Cancel"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          <button
+                            onClick={() => handleMove(idx, 'up')}
+                            disabled={idx === 0}
+                            className="p-1.5 text-gray-400 hover:text-teal-600 hover:bg-teal-50 rounded-lg transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                            title="Move Up"
+                          >
+                            <ArrowUp className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => handleMove(idx, 'down')}
+                            disabled={idx === currentSubcats.length - 1}
+                            className="p-1.5 text-gray-400 hover:text-teal-600 hover:bg-teal-50 rounded-lg transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                            title="Move Down"
+                          >
+                            <ArrowDown className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => startEditing(doc.id, doc.name)}
+                            className="p-1.5 text-gray-400 hover:text-teal-600 hover:bg-teal-50 rounded-lg transition-colors ml-2"
+                            title="Edit Subcategory"
+                          >
+                            <Pencil className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteSubcategory(doc.id, doc.name)}
+                            className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                            title="Delete Subcategory"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </>
+                      )}
                     </div>
                   </li>
-                ))}
+                  );
+                })}
               </ul>
             )}
           </div>

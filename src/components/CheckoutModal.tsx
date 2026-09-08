@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback, useMemo } from 'react';
+import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import api from '@/lib/api';
 import toast from 'react-hot-toast';
 import { useRouter } from 'next/navigation';
@@ -34,6 +34,12 @@ export default function CheckoutModal({ isOpen, onClose, buyNowItem }: { isOpen:
   const [pincodeLoading, setPincodeLoading] = useState(false);
   const { detect: detectLocation, detecting: detectingLoc } = useGeolocatedAddress({ onError: (msg) => toast.error(msg) });
   const [cashfree, setCashfree] = useState<any>(null);
+  // Synchronous re-entrancy guard for the Pay button -- `placingOrder` state
+  // only disables the button after a re-render, which leaves a window where
+  // two rapid clicks/taps could both start a checkout (two separate Cashfree
+  // sessions) before React commits. A ref is checked/set immediately, with
+  // no such gap.
+  const submittingRef = useRef(false);
 
   const [shipping, setShipping] = useState<{
     id?: string;
@@ -204,6 +210,8 @@ export default function CheckoutModal({ isOpen, onClose, buyNowItem }: { isOpen:
   const handlePlaceOrder = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    if (submittingRef.current) return;
+
     if (!shipping.fullName?.trim() || !shipping.phone?.trim() || !shipping.address?.trim() || !shipping.city?.trim() || !shipping.state?.trim() || !shipping.pincode?.trim()) {
       toast.error('Please fill in all shipping details.');
       return;
@@ -214,6 +222,7 @@ export default function CheckoutModal({ isOpen, onClose, buyNowItem }: { isOpen:
       return;
     }
 
+    submittingRef.current = true;
     setPlacingOrder(true);
 
     try {
@@ -260,6 +269,7 @@ export default function CheckoutModal({ isOpen, onClose, buyNowItem }: { isOpen:
 
         if (!cashfree) {
           toast.error('Payment gateway is still initializing. Please try again in a moment.');
+          submittingRef.current = false;
           setPlacingOrder(false);
           return;
         }
@@ -274,6 +284,7 @@ export default function CheckoutModal({ isOpen, onClose, buyNowItem }: { isOpen:
           if (result.error) {
             console.error('Cashfree Error:', result.error);
             toast.error(result.error.message || 'Payment failed or cancelled.');
+            submittingRef.current = false;
             setPlacingOrder(false);
           } else if (result.redirect) {
             // Handled by Cashfree SDK natively
@@ -288,6 +299,7 @@ export default function CheckoutModal({ isOpen, onClose, buyNowItem }: { isOpen:
     } catch (err: any) {
       const msg = err.response?.data?.error || err.message || 'Something went wrong. Please try again.';
       toast.error(msg);
+      submittingRef.current = false;
       setPlacingOrder(false);
     }
   };
