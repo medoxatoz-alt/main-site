@@ -140,34 +140,10 @@ export default function MegaMenu() {
 
   const isForYouActive = pathname === '/' || pathname === '';
 
-  // Auto-hide MegaMenu while scrolling down, reveal when scrolling up or at top
-  const [isVisible, setIsVisible] = useState(true);
-  const lastScrollYRef = useRef(0);
-
+  // Close any open desktop hover dropdown when scrolling
   useEffect(() => {
     const handleScroll = () => {
-      const currentScrollY = window.scrollY;
-
-      // Always show when near the top of the page
-      if (currentScrollY <= 40) {
-        setIsVisible(true);
-        lastScrollYRef.current = currentScrollY;
-        return;
-      }
-
-      const diff = currentScrollY - lastScrollYRef.current;
-
-      // Scrolling down -> hide categories bar for more screen space
-      if (diff > 8) {
-        setIsVisible(false);
-        if (hoveredDesktopCat) setHoveredDesktopCat(null);
-      }
-      // Scrolling up -> reveal categories bar smoothly
-      else if (diff < -8) {
-        setIsVisible(true);
-      }
-
-      lastScrollYRef.current = currentScrollY;
+      if (hoveredDesktopCat) setHoveredDesktopCat(null);
     };
 
     window.addEventListener('scroll', handleScroll, { passive: true });
@@ -188,7 +164,7 @@ export default function MegaMenu() {
 
   if (loading) {
     return (
-      <div className="bg-[#12161b] border-t border-b border-white/5 py-2.5">
+      <div className="bg-[#0d1117] md:bg-[#12161b] border-b border-white/5 py-2.5">
         <div className="max-w-[1500px] mx-auto px-4 flex items-center gap-3 sm:gap-6 overflow-hidden">
           {Array.from({ length: 8 }).map((_, i) => (
             <div key={i} className="flex flex-col items-center gap-1.5 shrink-0 min-w-[64px] animate-pulse">
@@ -203,13 +179,9 @@ export default function MegaMenu() {
 
   return (
     <>
-      {/* UNIFIED HORIZONTAL CATEGORY STRIP (SCROLL HIDE ON SCROLL DOWN, REVEAL ON SCROLL UP) */}
+      {/* UNIFIED HORIZONTAL CATEGORY STRIP (AT TOP, SCROLLS AWAY NATURALLY ON MOBILE AND PC) */}
       <div
-        className={`bg-transparent md:bg-[#12161b] border-t-0 border-b-0 md:border-t md:border-b border-white/5 relative z-40 select-none shadow-none md:shadow-sm transition-all duration-300 ease-in-out ${
-          isVisible
-            ? 'max-h-28 opacity-100 translate-y-0 pointer-events-auto'
-            : 'max-h-0 opacity-0 -translate-y-full pointer-events-none overflow-hidden border-t-0 border-b-0 py-0'
-        }`}
+        className="bg-[#0d1117] md:bg-[#12161b] border-b border-white/5 relative z-30 select-none shadow-sm"
         onMouseLeave={handleMouseLeaveMenu}
       >
         <div className="w-full max-w-[1600px] mx-auto relative group px-1 sm:px-3 lg:px-6">
