@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Edge-level protection for protected dashboard and account routes
@@ -21,6 +21,9 @@ export function middleware(request: NextRequest) {
 
   return NextResponse.next();
 }
+
+// Backwards-compatible export
+export const middleware = proxy;
 
 export const config = {
   matcher: [

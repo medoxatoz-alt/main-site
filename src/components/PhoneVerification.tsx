@@ -20,26 +20,50 @@ export default function PhoneVerification({ onVerified }: { onVerified: () => vo
   const recaptchaWidgetIdRef = useRef<number | null>(null);
 
   useEffect(() => {
-    const verifier = new RecaptchaVerifier(auth, 'checkout-recaptcha', {
-      size: 'invisible',
-      callback: () => {},
-    });
-    verifier.render().then((widgetId: number) => {
-      recaptchaWidgetIdRef.current = widgetId;
-    });
-    recaptchaVerifierRef.current = verifier;
-    return () => {
-      verifier.clear();
-      recaptchaVerifierRef.current = null;
-      recaptchaWidgetIdRef.current = null;
-    };
+    let isMounted = true;
+    try {
+      const verifier = new RecaptchaVerifier(auth, 'checkout-recaptcha', {
+        size: 'invisible',
+        callback: () => {},
+      });
+      verifier
+        .render()
+        .then((widgetId: number) => {
+          if (isMounted) {
+            recaptchaWidgetIdRef.current = widgetId;
+            recaptchaVerifierRef.current = verifier;
+          }
+        })
+        .catch((err) => {
+          console.warn('Checkout reCAPTCHA render notice:', err?.message || err);
+        });
+
+      return () => {
+        isMounted = false;
+        try {
+          verifier.clear();
+        } catch {}
+        recaptchaVerifierRef.current = null;
+        recaptchaWidgetIdRef.current = null;
+      };
+    } catch (e) {
+      console.warn('Failed to initialize RecaptchaVerifier:', e);
+    }
   }, []);
 
   const requestOTP = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!recaptchaVerifierRef.current) return;
     setLoading(true);
     try {
+      if (!recaptchaVerifierRef.current) {
+        const verifier = new RecaptchaVerifier(auth, 'checkout-recaptcha', {
+          size: 'invisible',
+          callback: () => {},
+        });
+        const widgetId = await verifier.render();
+        recaptchaWidgetIdRef.current = widgetId;
+        recaptchaVerifierRef.current = verifier;
+      }
       const formattedPhone = phoneNumber.startsWith('+') ? phoneNumber : `+91${phoneNumber}`;
       const confirmation = await signInWithPhoneNumber(auth, formattedPhone, recaptchaVerifierRef.current);
       setConfirmationResult(confirmation);
@@ -47,13 +71,15 @@ export default function PhoneVerification({ onVerified }: { onVerified: () => vo
       toast.success('OTP sent to your phone.');
     } catch (err: any) {
       console.error(err);
-      if (recaptchaWidgetIdRef.current !== null) {
-        (window as any).grecaptcha?.reset(recaptchaWidgetIdRef.current);
+      if (recaptchaWidgetIdRef.current !== null && (window as any).grecaptcha?.reset) {
+        try {
+          (window as any).grecaptcha.reset(recaptchaWidgetIdRef.current);
+        } catch {}
       } else {
         recaptchaVerifierRef.current?.render().then((widgetId: number) => {
           (window as any).grecaptcha?.reset(widgetId);
           recaptchaWidgetIdRef.current = widgetId;
-        });
+        }).catch(() => {});
       }
       toast.error(err.message || 'Failed to send OTP.');
     } finally {

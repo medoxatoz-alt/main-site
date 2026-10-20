@@ -7,7 +7,8 @@ import { Home, Heart, ShoppingBag as LucideShoppingBag, User, Download, Package,
 import { useState, useEffect, Suspense, useRef } from 'react';
 import api from '@/lib/api';
 import toast from 'react-hot-toast';
-import { usePWAInstall } from '@/hooks/usePWAInstall';
+import { useIsInApp } from '@/hooks/useIsInApp';
+import { GooglePlayButton, AppStoreButton } from '@/components/AppStoreBadges';
 import MegaMenu from '@/components/MegaMenu';
 import CartDrawer from '@/components/CartDrawer';
 import { useGeolocatedAddress } from '@/hooks/useGeolocatedAddress';
@@ -66,7 +67,7 @@ export default function Navbar() {
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [location, setLocation] = useState('India');
   const { detect: detectLocationRaw, detecting: loadingLocation } = useGeolocatedAddress({ onError: (msg) => toast.error(msg) });
-  const { isInstallable, promptInstall } = usePWAInstall();
+  const { isInApp } = useIsInApp();
   
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -397,20 +398,14 @@ export default function Navbar() {
                             </Link>
                           </li>
                         </ul>
-                        {isInstallable && (
-                          <>
-                            <div className="font-bold mb-2 mt-4 text-[15px] text-black">Get the App</div>
-                            <ul className="list-none p-0 m-0 space-y-1">
-                              <li>
-                                <button
-                                  onClick={() => { promptInstall(); setIsDropdownOpen(false); }}
-                                  className="flex items-center gap-1.5 py-1 text-[#007185] hover:text-gold-primary hover:underline transition-all duration-300 text-[13px] font-semibold bg-transparent border-none cursor-pointer text-left w-full"
-                                >
-                                  <Download className="w-3.5 h-3.5" /> Install App
-                                </button>
-                              </li>
-                            </ul>
-                          </>
+                        {!isInApp && (
+                          <div className="mt-4 pt-3 border-t border-gray-100">
+                            <div className="font-bold mb-2 text-[14px] text-black">Get the App</div>
+                            <div className="flex flex-col gap-2.5 items-start">
+                              <GooglePlayButton size="md" />
+                              <AppStoreButton size="md" />
+                            </div>
+                          </div>
                         )}
                       </>
                     ) : null}
@@ -420,13 +415,15 @@ export default function Navbar() {
             </div>
 
             {/* UPGRADED: Download App Button */}
-            <Link 
-              href="/download" 
-              className="hidden md:flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 border border-white/10 hover:bg-white/10 hover:border-sky-400/40 hover:shadow-[0_0_15px_rgba(14,165,233,0.15)] transition-all duration-300 text-white hover:text-sky-400 group"
-            >
-              <Download className="w-4 h-4 group-hover:-translate-y-0.5 transition-transform duration-300" />
-              <span className="text-sm font-semibold tracking-wide">App</span>
-            </Link>
+            {!isInApp && (
+              <Link 
+                href="/download" 
+                className="hidden md:flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 border border-white/10 hover:bg-white/10 hover:border-gold-primary/40 hover:shadow-[0_0_15px_rgba(212,175,55,0.15)] transition-all duration-300 text-white hover:text-gold-primary group"
+              >
+                <Download className="w-4 h-4 group-hover:-translate-y-0.5 transition-transform duration-300" />
+                <span className="text-sm font-semibold tracking-wide">App</span>
+              </Link>
+            )}
 
             {/* UPGRADED: Orders Button */}
             <Link 
