@@ -33,9 +33,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (res.data.token) {
         saveToken(res.data.token);
       }
-    } catch {
-      setUser(null);
-      clearToken();
+    } catch (err: any) {
+      if (err?.response?.status === 401) {
+        setUser(null);
+        clearToken();
+      } else {
+        console.warn('Could not refresh user session:', err?.message || err);
+        setUser(null);
+      }
     } finally {
       setLoading(false);
     }

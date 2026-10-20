@@ -2,9 +2,14 @@
 import axios from 'axios';
 
 // All frontend requests go to the Express backend.
+// Ensure baseURL always ends with /api even if user sets NEXT_PUBLIC_API_URL without /api
+let rawBaseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+rawBaseUrl = rawBaseUrl.trim().replace(/\/+$/, '');
+const normalizedBaseUrl = rawBaseUrl.endsWith('/api') ? rawBaseUrl : `${rawBaseUrl}/api`;
+
 // WithCredentials ensures cookies (JWT) are sent with every request.
 const api = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api',
+  baseURL: normalizedBaseUrl,
   withCredentials: true,
 });
 
@@ -18,9 +23,11 @@ export function saveToken(token: string) {
   if (typeof window === 'undefined') return;
   try {
     localStorage.setItem(TOKEN_KEY, token);
-    // Set a JS-accessible cookie (NOT httpOnly) so the edge middleware can read it.
-    // maxAge = 7 days in seconds
-    document.cookie = `${TOKEN_KEY}=${token}; path=/; max-age=604800; SameSite=Lax`;
+    // Set a JS-accessible cookie so the Next.js edge middleware can read it.
+    // Add Secure flag on HTTPS (production), omit on HTTP (local dev).
+    const isSecure = window.location.protocol === 'https:';
+    const secureFlag = isSecure ? '; Secure' : '';
+    document.cookie = `${TOKEN_KEY}=${token}; path=/; max-age=604800; SameSite=Lax${secureFlag}`;
   } catch {}
 }
 
@@ -29,7 +36,9 @@ export function clearToken() {
   try {
     localStorage.removeItem(TOKEN_KEY);
     // Expire the client-side cookie immediately
-    document.cookie = `${TOKEN_KEY}=; path=/; max-age=0; SameSite=Lax`;
+    const isSecure = window.location.protocol === 'https:';
+    const secureFlag = isSecure ? '; Secure' : '';
+    document.cookie = `${TOKEN_KEY}=; path=/; max-age=0; SameSite=Lax${secureFlag}`;
   } catch {}
 }
 
