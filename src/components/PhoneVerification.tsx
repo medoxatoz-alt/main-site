@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { auth } from '@/firebase';
 import { RecaptchaVerifier, signInWithPhoneNumber, ConfirmationResult } from 'firebase/auth';
-import api from '@/lib/api';
+import api, { saveToken } from '@/lib/api';
 import toast from 'react-hot-toast';
 import { Phone, CheckCircle, Loader2 } from 'lucide-react';
 
@@ -94,7 +94,8 @@ export default function PhoneVerification({ onVerified }: { onVerified: () => vo
     try {
       const result = await confirmationResult.confirm(otp);
       const idToken = await result.user.getIdToken();
-      await api.post('/auth/verify-phone', { idToken });
+      const res = await api.post('/auth/verify-phone', { idToken });
+      if (res.data.token) saveToken(res.data.token);
       await refreshUser();
       toast.success('Phone number verified successfully!');
       onVerified();

@@ -8,17 +8,65 @@ const api = axios.create({
   withCredentials: true,
 });
 
-// Interceptor to handle auth errors globally
+// ── Token helpers ─────────────────────────────────────────────────────────────
+// Persist/clear token in both localStorage (for Bearer header) and a
+// client-accessible cookie (for Next.js edge middleware route guards).
+
+const TOKEN_KEY = 'medox_token';
+
+export function saveToken(token: string) {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.setItem(TOKEN_KEY, token);
+    // Set a JS-accessible cookie (NOT httpOnly) so the edge middleware can read it.
+    // maxAge = 7 days in seconds
+    document.cookie = `${TOKEN_KEY}=${token}; path=/; max-age=604800; SameSite=Lax`;
+  } catch {}
+}
+
+export function clearToken() {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.removeItem(TOKEN_KEY);
+    // Expire the client-side cookie immediately
+    document.cookie = `${TOKEN_KEY}=; path=/; max-age=0; SameSite=Lax`;
+  } catch {}
+}
+
+function getToken(): string | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    return localStorage.getItem(TOKEN_KEY);
+  } catch {
+    return null;
+  }
+}
+
+// ── Interceptors ──────────────────────────────────────────────────────────────
+
+// Request: attach stored token as Authorization header on every outgoing call.
+api.interceptors.request.use((config) => {
+  const token = getToken();
+  if (token) {
+    config.headers = config.headers ?? {};
+    config.headers['Authorization'] = `Bearer ${token}`;
+  }
+  return config;
+});
+
+// Response: clear stale token on 401 so subsequent calls don't keep failing.
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    // If the server returns 401 Unauthorized, we could redirect to login here,
-    // but the AuthContext handles setting user to null.
+    if (error?.response?.status === 401) {
+      clearToken();
+    }
     return Promise.reject(error);
   }
 );
 
 export default api;
+
 
 // ── Shared categories cache ─────────────────────────────────────────────────
 // Categories rarely change and are fetched independently by both the nav menu

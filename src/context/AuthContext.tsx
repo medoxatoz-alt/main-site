@@ -1,7 +1,7 @@
 'use client';
 
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import api from '../lib/api';
+import api, { saveToken, clearToken } from '../lib/api';
 
 export interface User {
   uid: string;
@@ -29,8 +29,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const res = await api.get('/auth/me');
       setUser(res.data.user);
+      // Persist the refreshed token so the edge middleware cookie stays valid
+      if (res.data.token) {
+        saveToken(res.data.token);
+      }
     } catch {
       setUser(null);
+      clearToken();
     } finally {
       setLoading(false);
     }
@@ -47,9 +52,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = async () => {
     try {
       await api.post('/auth/logout');
-      setUser(null);
     } catch (err) {
       console.error('Logout failed', err);
+    } finally {
+      setUser(null);
+      clearToken();
     }
   };
 

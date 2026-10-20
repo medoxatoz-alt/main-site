@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { Suspense } from 'react';
 import { useAuth } from '@/context/AuthContext';
-import api from '@/lib/api';
+import api, { saveToken } from '@/lib/api';
 import toast from 'react-hot-toast';
 import Link from 'next/link';
 import { Eye, EyeOff, Loader2 } from 'lucide-react';
@@ -80,7 +80,8 @@ function SignInContent() {
 
   const completeLoginWithBackend = async (idToken: string, name?: string) => {
     try {
-      await api.post('/auth/verify', { idToken, name, isSignup: true });
+      const res = await api.post('/auth/verify', { idToken, name, isSignup: true });
+      if (res.data.token) saveToken(res.data.token);
       await refreshUser();
       await signOut(auth); // Clear local firebase state, rely on HTTP cookie
       toast.success('Logged in successfully!');
@@ -104,7 +105,8 @@ function SignInContent() {
     setLoading(true);
     setNeedsVerification(false);
     try {
-      await api.post('/auth/login', { email, password });
+      const res = await api.post('/auth/login', { email, password });
+      if (res.data.token) saveToken(res.data.token);
       await refreshUser();
       toast.success('Logged in successfully!');
       router.push('/');

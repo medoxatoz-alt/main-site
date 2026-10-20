@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { Suspense } from 'react';
 import { useAuth } from '@/context/AuthContext';
-import api from '@/lib/api';
+import api, { saveToken } from '@/lib/api';
 import toast from 'react-hot-toast';
 import Link from 'next/link';
 import { Eye, EyeOff, Check, X as XIcon, Loader2 } from 'lucide-react';
@@ -117,7 +117,8 @@ function SignUpContent() {
 
   const completeSignupWithBackend = async (idToken: string, customName?: string) => {
     try {
-      await api.post('/auth/verify', { idToken, name: customName || name, isSignup: true });
+      const res = await api.post('/auth/verify', { idToken, name: customName || name, isSignup: true });
+      if (res.data.token) saveToken(res.data.token);
       await refreshUser();
       await signOut(auth); // Clear local firebase state, rely on HTTP cookie
       toast.success('Account created successfully!');
