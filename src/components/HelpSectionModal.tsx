@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect, useMemo } from 'react';
 import {
@@ -15,13 +15,12 @@ import {
   RotateCcw,
   Sparkles,
   Search,
-  Compass,
-  ArrowRight,
   ShieldCheck,
   CreditCard,
 } from 'lucide-react';
 
 import api from '@/lib/api';
+import Sheet from '@/components/ui/Sheet';
 
 interface FaqItem {
   id: string;
@@ -205,11 +204,6 @@ export default function HelpSectionModal() {
     return () => window.removeEventListener('open-help-modal', handleOpen);
   }, []);
 
-  const openWalkthrough = () => {
-    setIsOpen(false);
-    window.dispatchEvent(new Event('open-walkthrough'));
-  };
-
   // Compute categories dynamically
   const categories = useMemo(() => {
     const set = new Set<string>();
@@ -232,208 +226,141 @@ export default function HelpSectionModal() {
     });
   }, [dbFaqs, searchQuery, selectedCategory]);
 
-  if (!isOpen) return null;
+  const close = () => setIsOpen(false);
 
   return (
-    <div className="fixed inset-0 z-[9999] flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-      {/* Backdrop Dismissal */}
-      <div className="absolute inset-0" onClick={() => setIsOpen(false)} />
-
-      {/* Modal / Native Bottom Sheet Container */}
-      <div className="relative w-full sm:max-w-xl bg-white rounded-t-[32px] sm:rounded-3xl p-5 sm:p-7 shadow-2xl text-gray-900 animate-in slide-in-from-bottom sm:zoom-in-95 duration-200 max-h-[92vh] flex flex-col z-10 border border-gray-100">
-        
-        {/* Mobile Pull Handle Bar */}
-        <div className="w-12 h-1.5 bg-gray-300 rounded-full mx-auto mb-3 sm:hidden shrink-0" />
-
-        {/* Top Header */}
-        <div className="flex items-center justify-between pb-3.5 border-b border-gray-100 shrink-0">
-          <div className="flex items-center gap-3">
-            <div className="w-11 h-11 rounded-2xl bg-amber-50 border border-amber-200/70 flex items-center justify-center text-amber-600 shadow-xs">
-              <HelpCircle className="w-6 h-6 stroke-[2]" />
-            </div>
-            <div>
-              <h3 className="text-lg sm:text-xl font-black text-gray-900 tracking-tight">
-                Help & Guides
-              </h3>
-              <p className="text-xs text-gray-500 font-medium">
-                Instant answers, FAQs & healthcare support
-              </p>
-            </div>
-          </div>
-          <button
-            onClick={() => setIsOpen(false)}
-            aria-label="Close help modal"
-            className="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-500 hover:text-gray-800 transition-colors cursor-pointer border-none"
-          >
-            <X className="w-4.5 h-4.5" />
-          </button>
+    <Sheet
+      open={isOpen}
+      onClose={close}
+      side="bottom"
+      label="Help and guides"
+      zIndex={9999}
+      className="h-[88dvh] sm:h-[min(760px,86dvh)] sm:max-w-xl sm:mx-auto sm:bottom-6 sm:rounded-[20px]"
+    >
+      {/* Header */}
+      <div data-sheet-handle className="px-5 pt-1 pb-3 flex items-center justify-between touch-none shrink-0">
+        <div>
+          <h3 className="text-[19px] font-semibold text-ink tracking-tight">Help &amp; guides</h3>
+          <p className="text-[13px] text-text-muted">Answers to common questions</p>
         </div>
+        <button
+          onClick={close}
+          aria-label="Close help"
+          className="pressable -mr-2 w-10 h-10 grid place-items-center rounded-full text-gray-500 hover:bg-gray-100 border-none bg-transparent"
+        >
+          <X className="w-5 h-5" />
+        </button>
+      </div>
 
-        {/* Instant Search Bar */}
-        <div className="pt-3 pb-2 shrink-0">
-          <div className="relative flex items-center">
-            <Search className="w-4 h-4 text-gray-400 absolute left-3.5 pointer-events-none" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search help topics, GST, orders, returns..."
-              className="w-full pl-10 pr-9 py-2.5 bg-gray-50 hover:bg-gray-100/70 focus:bg-white border border-gray-200/90 rounded-2xl text-xs sm:text-sm text-gray-900 placeholder-gray-400 outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-500/15 transition-all"
-            />
-            {searchQuery && (
-              <button
-                onClick={() => setSearchQuery('')}
-                className="absolute right-3 text-gray-400 hover:text-gray-600 p-0.5 cursor-pointer bg-transparent border-none"
-              >
-                <X className="w-3.5 h-3.5" />
-              </button>
-            )}
-          </div>
-        </div>
-
-        {/* Category Filter Pills (Horizontal Scroll) */}
-        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-2.5 pt-0.5 shrink-0">
-          {categories.map((cat) => (
-            <button
-              key={cat}
-              onClick={() => setSelectedCategory(cat)}
-              className={`px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-all duration-150 cursor-pointer border-none ${
-                selectedCategory === cat
-                  ? 'bg-amber-500 text-white shadow-xs'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200/80 hover:text-gray-900'
-              }`}
-            >
-              {cat}
+      {/* Search */}
+      <div className="px-5 pb-3 shrink-0">
+        <div className="flex items-center h-11 rounded-xl bg-gray-100 px-3.5 focus-within:bg-white focus-within:ring-1 focus-within:ring-ink transition-colors">
+          <Search className="w-4 h-4 text-gray-400 shrink-0" />
+          <input
+            type="search"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search orders, GST, returns…"
+            className="flex-1 min-w-0 h-full bg-transparent border-none outline-none px-2.5 text-[15px] text-ink placeholder:text-gray-400 [&::-webkit-search-cancel-button]:hidden"
+          />
+          {searchQuery && (
+            <button onClick={() => setSearchQuery('')} aria-label="Clear search" className="text-gray-400 hover:text-ink border-none bg-transparent">
+              <X className="w-4 h-4" />
             </button>
-          ))}
-        </div>
-
-        {/* Interactive App Tour / How to Use Banner */}
-        <div className="mb-3 p-3 sm:p-3.5 rounded-2xl bg-gradient-to-r from-amber-50/80 via-orange-50/50 to-amber-50/80 border border-amber-200/70 flex items-center justify-between gap-3 shrink-0">
-          <div className="flex items-center gap-2.5 min-w-0">
-            <div className="w-9 h-9 rounded-xl bg-amber-500 text-white flex items-center justify-center shrink-0 shadow-xs">
-              <Compass className="w-5 h-5 stroke-[2]" />
-            </div>
-            <div className="min-w-0">
-              <h4 className="text-xs sm:text-sm font-extrabold text-gray-900 leading-tight">
-                How to Use Medox App
-              </h4>
-              <p className="text-[11px] text-gray-600 truncate">
-                Take the interactive 30-second walkthrough tour
-              </p>
-            </div>
-          </div>
-          <button
-            onClick={openWalkthrough}
-            className="shrink-0 px-3 py-1.5 rounded-xl bg-white hover:bg-amber-50 border border-amber-300 text-amber-800 text-xs font-black flex items-center gap-1 shadow-xs active:scale-95 transition-all cursor-pointer"
-          >
-            <span>View Tour</span>
-            <ArrowRight className="w-3.5 h-3.5 stroke-[2.5]" />
-          </button>
-        </div>
-
-        {/* Scrollable FAQ Accordion */}
-        <div className="flex-1 overflow-y-auto custom-scrollbar pr-0.5 space-y-2">
-          {filteredFaqs.length === 0 ? (
-            <div className="py-10 text-center flex flex-col items-center">
-              <div className="w-12 h-12 rounded-2xl bg-gray-100 flex items-center justify-center text-gray-400 mb-2">
-                <Search className="w-6 h-6" />
-              </div>
-              <p className="text-sm font-bold text-gray-800">No matching questions found</p>
-              <p className="text-xs text-gray-500 mt-1 max-w-xs">
-                Can’t find what you are looking for? Reach out to our 24/7 medical desk below.
-              </p>
-            </div>
-          ) : (
-            filteredFaqs.map((faq) => {
-              const isExpanded = openIdx === faq.id;
-              const Icon = faq.icon;
-              return (
-                <div
-                  key={faq.id}
-                  className={`rounded-2xl border transition-all duration-200 overflow-hidden ${
-                    isExpanded
-                      ? 'border-amber-200 bg-amber-50/20 shadow-xs'
-                      : 'border-gray-100 bg-gray-50/60 hover:bg-gray-50 hover:border-gray-200'
-                  }`}
-                >
-                  <button
-                    onClick={() => setOpenIdx(isExpanded ? null : faq.id)}
-                    className="w-full flex items-center justify-between p-3.5 sm:p-4 text-left gap-3 cursor-pointer bg-transparent border-none"
-                  >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div
-                        className={`w-8.5 h-8.5 rounded-xl flex items-center justify-center shrink-0 ${faq.iconColor}`}
-                      >
-                        <Icon className="w-4.5 h-4.5 stroke-[2]" />
-                      </div>
-                      <div className="min-w-0">
-                        <span
-                          className={`text-[9.5px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-md inline-block mb-1 ${faq.badgeBg}`}
-                        >
-                          {faq.category}
-                        </span>
-                        <span className="text-xs sm:text-sm font-bold text-gray-900 block leading-snug">
-                          {faq.q}
-                        </span>
-                      </div>
-                    </div>
-                    <ChevronDown
-                      className={`w-4 h-4 text-gray-400 transition-transform duration-200 shrink-0 ${
-                        isExpanded ? 'rotate-180 text-amber-600' : ''
-                      }`}
-                    />
-                  </button>
-                  {isExpanded && (
-                    <div className="px-4 pb-4 pl-14 text-xs sm:text-sm text-gray-600 leading-relaxed border-t border-gray-100/80 pt-2.5 animate-in fade-in duration-150">
-                      {faq.a}
-                    </div>
-                  )}
-                </div>
-              );
-            })
           )}
         </div>
+      </div>
 
-        {/* Quick Contact Desk Footer */}
-        <div className="pt-3.5 border-t border-gray-100 flex flex-col gap-2.5 shrink-0">
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] font-extrabold text-gray-400 uppercase tracking-wider">
-              Need Direct Assistance?
-            </span>
-            <span className="text-[11px] font-bold text-emerald-600 flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-              <span>Support Desk Online</span>
-            </span>
-          </div>
+      {/* Categories */}
+      <div className="flex gap-2 overflow-x-auto no-scrollbar px-5 pb-3 shrink-0">
+        {categories.map((cat) => (
+          <button
+            key={cat}
+            onClick={() => setSelectedCategory(cat)}
+            className={`pressable shrink-0 h-8 px-3.5 rounded-full text-[13px] font-medium whitespace-nowrap border ${
+              selectedCategory === cat ? 'bg-ink text-white border-ink' : 'bg-white text-ink border-line hover:border-gray-300'
+            }`}
+          >
+            {cat}
+          </button>
+        ))}
+      </div>
 
-          <div className="grid grid-cols-3 gap-2">
-            <a
-              href="https://wa.me/919876543210"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center justify-center gap-1.5 py-3 px-2 rounded-2xl bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-black text-xs transition-all shadow-xs"
-            >
-              <MessageCircle className="w-4 h-4 shrink-0" />
-              <span className="truncate">WhatsApp</span>
-            </a>
-            <a
-              href="tel:+919876543210"
-              className="flex items-center justify-center gap-1.5 py-3 px-2 rounded-2xl bg-blue-50 hover:bg-blue-100 active:scale-95 text-blue-700 font-black text-xs transition-all border border-blue-200/60"
-            >
-              <Phone className="w-4 h-4 shrink-0" />
-              <span className="truncate">Call Desk</span>
-            </a>
-            <a
-              href="mailto:support@medoxatoz.com"
-              className="flex items-center justify-center gap-1.5 py-3 px-2 rounded-2xl bg-gray-900 hover:bg-black active:scale-95 text-white font-black text-xs transition-all shadow-xs"
-            >
-              <Mail className="w-4 h-4 shrink-0" />
-              <span className="truncate">Email Us</span>
-            </a>
-          </div>
+      {/* Scrollable body */}
+      <div className="flex-1 overflow-y-auto overscroll-contain custom-scrollbar px-5 pb-4 border-t border-line">
+
+        {/* FAQs */}
+        <div className="mt-4">
+          {filteredFaqs.length === 0 ? (
+            <div className="py-12 text-center flex flex-col items-center">
+              <Search className="w-7 h-7 text-gray-300 mb-2" />
+              <p className="text-[15px] font-medium text-ink">No matching questions</p>
+              <p className="text-[13px] text-text-muted mt-1 max-w-xs">Try another word, or contact us below.</p>
+            </div>
+          ) : (
+            <div className="rounded-2xl border border-line divide-y divide-line overflow-hidden">
+              {filteredFaqs.map((faq) => {
+                const isExpanded = openIdx === faq.id;
+                const Icon = faq.icon;
+                return (
+                  <div key={faq.id} className="bg-white">
+                    <button
+                      onClick={() => setOpenIdx(isExpanded ? null : faq.id)}
+                      aria-expanded={isExpanded}
+                      className="w-full flex items-center gap-3 px-4 py-3.5 text-left border-none bg-transparent hover:bg-gray-50 active:bg-gray-100 transition-colors"
+                    >
+                      <Icon className="w-[18px] h-[18px] text-gray-400 shrink-0" />
+                      <span className="flex-1 min-w-0">
+                        <span className="block text-[14.5px] font-medium text-ink leading-snug">{faq.q}</span>
+                        <span className="block text-[12px] text-text-muted mt-0.5">{faq.category}</span>
+                      </span>
+                      <ChevronDown
+                        className={`w-4 h-4 text-gray-400 shrink-0 transition-transform duration-300 ease-[var(--ease-out-expo)] ${isExpanded ? 'rotate-180' : ''}`}
+                      />
+                    </button>
+                    <div
+                      className={`grid transition-[grid-template-rows,opacity] duration-300 ease-[var(--ease-out-expo)] ${
+                        isExpanded ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'
+                      }`}
+                    >
+                      <div className="overflow-hidden">
+                        <p className="px-4 pb-4 pl-[46px] text-[14px] text-gray-600 leading-relaxed">{faq.a}</p>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       </div>
-    </div>
+
+      {/* Contact */}
+      <div className="shrink-0 border-t border-line px-5 pt-3 pb-[max(16px,env(safe-area-inset-bottom))] bg-white">
+        <p className="text-[12.5px] text-text-muted mb-2.5">Still need help? Contact us</p>
+        <div className="grid grid-cols-3 gap-2">
+          <a
+            href="https://wa.me/919876543210"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="pressable h-11 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-[13.5px] font-medium flex items-center justify-center gap-1.5"
+          >
+            <MessageCircle className="w-4 h-4" /> WhatsApp
+          </a>
+          <a
+            href="tel:+919876543210"
+            className="pressable h-11 rounded-xl border border-line bg-white hover:bg-gray-50 text-ink text-[13.5px] font-medium flex items-center justify-center gap-1.5"
+          >
+            <Phone className="w-4 h-4" /> Call
+          </a>
+          <a
+            href="mailto:support@medoxatoz.com"
+            className="pressable h-11 rounded-xl border border-line bg-white hover:bg-gray-50 text-ink text-[13.5px] font-medium flex items-center justify-center gap-1.5"
+          >
+            <Mail className="w-4 h-4" /> Email
+          </a>
+        </div>
+      </div>
+    </Sheet>
   );
 }

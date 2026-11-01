@@ -83,7 +83,7 @@ export default function HowToUseEditor({ value, onChange }: HowToUseEditorProps)
       <div className="mb-3">
         {hasPdf ? (
           <div className="flex items-center gap-2 px-3.5 py-2.5 border border-gray-300 rounded-xl bg-gray-50">
-            <FileText className="w-4 h-4 text-gold-hover shrink-0" />
+            <FileText className="w-4 h-4 text-gold-ink shrink-0" />
             <span className="flex-1 text-sm text-gray-700 truncate">
               {value.pdfFileName || 'How-to-use.pdf'}
             </span>

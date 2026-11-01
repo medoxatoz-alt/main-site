@@ -59,7 +59,7 @@ export default function ProductsTab({ products, isFetching, fetchError, onDelete
         <div className="flex justify-end">
           <button
             onClick={onAdd}
-            className="flex items-center gap-2 px-5 py-2.5 bg-gold-primary hover:bg-gold-hover text-text-main font-bold rounded-xl transition-all shadow-md shadow-amber-200/50 hover:shadow-lg hover:shadow-amber-200/60 active:scale-[0.98] cursor-pointer text-sm"
+            className="flex items-center gap-2 px-5 py-2.5 bg-gold-primary hover:bg-gold-hover text-text-main font-bold rounded-xl transition-all shadow-md hover:shadow-lg active:scale-[0.98] cursor-pointer text-sm"
           >
             <Plus className="w-4 h-4" /> Add Product
           </button>

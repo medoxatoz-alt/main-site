@@ -7,10 +7,9 @@ import ConditionalFooter from '@/components/ConditionalFooter';
 import ServiceWorkerRegistrar from '@/components/ServiceWorkerRegistrar';
 import OfflineOverlay from '@/components/OfflineOverlay';
 import ExitConfirmationModal from '@/components/ExitConfirmationModal';
-import DynamicWalkthrough from '@/components/DynamicWalkthrough';
 import HelpSectionModal from '@/components/HelpSectionModal';
 
-const inter = Inter({ subsets: ['latin'] });
+const inter = Inter({ subsets: ['latin'], variable: '--font-inter', display: 'swap' });
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://medoxatoz.com'),
@@ -77,10 +76,11 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: '#0d1117',
+  themeColor: '#0b0d10',
   width: 'device-width',
   initialScale: 1,
   maximumScale: 5,
+  viewportFit: 'cover',
 };
 
 const structuredData = {
@@ -102,20 +102,37 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" data-scroll-behavior="smooth">
+    <html lang="en" data-scroll-behavior="smooth" className={inter.variable}>
       <head>
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
         />
       </head>
-      <body className={inter.className} style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
+      <body className={inter.className} style={{ display: 'flex', flexDirection: 'column', minHeight: '100dvh' }}>
         <AuthProvider>
           <ServiceWorkerRegistrar />
-          <Toaster position="top-center" />
+          <Toaster
+            position="top-center"
+            containerStyle={{ top: 'calc(env(safe-area-inset-top) + 12px)' }}
+            toastOptions={{
+              duration: 2400,
+              style: {
+                background: '#0f1115',
+                color: '#fff',
+                fontSize: '14px',
+                fontWeight: 500,
+                padding: '10px 14px',
+                borderRadius: '999px',
+                boxShadow: '0 8px 30px rgba(0,0,0,0.18)',
+                maxWidth: 'calc(100vw - 32px)',
+              },
+              success: { iconTheme: { primary: '#34d399', secondary: '#0f1115' } },
+              error: { iconTheme: { primary: '#f87171', secondary: '#0f1115' } },
+            }}
+          />
           <OfflineOverlay />
           <ExitConfirmationModal />
-          <DynamicWalkthrough />
           <HelpSectionModal />
           {children}
           <ConditionalFooter />

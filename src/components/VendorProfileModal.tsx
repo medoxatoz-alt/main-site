@@ -74,7 +74,7 @@ export default function VendorProfileModal({
 
   return (
     <div className="fixed inset-0 z-[3100] flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm sm:p-4">
-      <div className="bg-white rounded-t-[2rem] sm:rounded-2xl shadow-2xl w-full sm:max-w-md max-h-[92vh] sm:max-h-[85vh] flex flex-col overflow-hidden animate-in slide-in-from-bottom-full sm:slide-in-from-bottom-0 sm:zoom-in duration-300 border border-gray-100 pb-safe">
+      <div className="bg-white rounded-t-[2rem] sm:rounded-2xl shadow-2xl w-full sm:max-w-md max-h-[92vh] sm:max-h-[85vh] flex flex-col overflow-hidden animate-in slide-in-from-bottom-full sm:slide-in-from-bottom-0 sm:zoom-in-95 sm:fade-in duration-300 border border-gray-100 pb-safe">
         {/* Mobile Drag Indicator Pill */}
         <div className="w-full flex justify-center pt-3 pb-1 bg-gray-50/80 sm:hidden flex-shrink-0 rounded-t-[2rem]">
           <div className="w-12 h-1.5 bg-gray-300 rounded-full" />
@@ -135,7 +135,7 @@ export default function VendorProfileModal({
                   <Building2 className="w-6 h-6 text-blue-600" />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <h4 className="font-extrabold text-gray-900 text-base leading-snug truncate">
+                  <h4 className="font-semibold text-gray-900 text-base leading-snug truncate">
                     {vendor.storeName || 'N/A'}
                   </h4>
                   <div className="flex items-center gap-1.5 mt-1">
@@ -212,7 +212,7 @@ export default function VendorProfileModal({
         <div className="px-6 py-4 border-t border-gray-100 bg-gray-50 flex justify-end flex-shrink-0">
           <button
             onClick={onClose}
-            className="px-5 py-2 bg-[#2b3036] hover:bg-[#1e2226] text-white hover:text-gold-primary border border-transparent active:scale-95 transition-all font-bold rounded-xl text-sm cursor-pointer shadow-sm"
+            className="px-5 py-2 bg-ink hover:bg-nav-bg text-white hover:text-gold-primary border border-transparent active:scale-95 transition-all font-bold rounded-xl text-sm cursor-pointer shadow-sm"
           >
             Close
           </button>

@@ -1,9 +1,10 @@
-'use client';
+﻿'use client';
 
 import { useEffect, useState, useRef, useMemo } from 'react';
 import Link from 'next/link';
 import { getCategoriesCached } from '@/lib/api';
 import { usePathname } from 'next/navigation';
+import Sheet from '@/components/ui/Sheet';
 import {
   LayoutGrid,
   Scissors,
@@ -24,7 +25,25 @@ import {
 } from 'lucide-react';
 
 // Maps category IDs or keywords to custom icons matching the image style
-const getCategoryIcon = (id: string, name: string) => {
+// 3D category artwork in /public/categories/<id>.webp. Categories not listed
+// here (e.g. ones added later in admin) fall back to the line icon.
+const CATEGORY_IMAGES = new Set([
+  'for-you',
+  'all',
+  'skin-hair-care',
+  'dermatology-equipment',
+  'makeup-beauty',
+  'medical-products',
+  'surgical-products',
+  'diagnostic-products',
+  'health-wellness',
+  'home-lifestyle',
+  'puja-items',
+]);
+export const categoryImage = (id: string) =>
+  CATEGORY_IMAGES.has(id) ? `/categories/${id}.webp` : undefined;
+
+export const getCategoryIcon = (id: string, name: string) => {
   const lowerId = (id || '').toLowerCase();
   const lowerName = (name || '').toLowerCase();
 
@@ -94,18 +113,6 @@ export default function MegaMenu() {
     fetchCategories();
   }, []);
 
-  // Lock body scroll when drawer is open
-  useEffect(() => {
-    if (isMobileMenuOpen) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = 'unset';
-    }
-    return () => {
-      document.body.style.overflow = 'unset';
-    };
-  }, [isMobileMenuOpen]);
-
   const getCatUrl = (mainCat: { id: string }, subCatId?: string) => {
     let url = `/categories/${encodeURIComponent(mainCat.id)}`;
     if (subCatId) {
@@ -162,14 +169,25 @@ export default function MegaMenu() {
     checkScroll();
   }, [pathname, categoriesConfig.mainCategories.length]);
 
+  // Close the drawer when navigating.
+  useEffect(() => {
+    setIsMobileMenuOpen(false);
+  }, [pathname]);
+
+  const shortName = (name: string) =>
+    name
+      .replace('All Hosp Dept Wise Products', 'Hospital Supplies')
+      .replace('Healing Puja Products', 'Healing & Puja')
+      .replace('Makeup & Beauty Products', 'Makeup & Beauty');
+
   if (loading) {
     return (
-      <div className="bg-[#0d1117] md:bg-[#12161b] border-b border-white/5 py-2.5">
-        <div className="max-w-[1500px] mx-auto px-4 flex items-center gap-3 sm:gap-6 overflow-hidden">
-          {Array.from({ length: 8 }).map((_, i) => (
-            <div key={i} className="flex flex-col items-center gap-1.5 shrink-0 min-w-[64px] animate-pulse">
-              <div className="w-9 h-9 rounded-full bg-white/10" />
-              <div className="w-12 h-2.5 bg-white/10 rounded" />
+      <div className="bg-white border-b border-line">
+        <div className="max-w-[1500px] mx-auto px-4 py-3 flex items-center gap-4 overflow-hidden">
+          {Array.from({ length: 9 }).map((_, i) => (
+            <div key={i} className="flex flex-col items-center gap-2 shrink-0 min-w-[64px]">
+              <div className="w-14 h-14 rounded-2xl bg-gray-100 animate-pulse" />
+              <div className="w-12 h-2.5 bg-gray-100 rounded animate-pulse" />
             </div>
           ))}
         </div>
@@ -177,378 +195,300 @@ export default function MegaMenu() {
     );
   }
 
+  const renderItem = ({
+    href,
+    onClick,
+    icon: Icon,
+    image,
+    label,
+    title,
+    active,
+    highlighted,
+  }: {
+    href?: string;
+    onClick?: () => void;
+    icon: React.ElementType;
+    image?: string;
+    label: string;
+    title?: string;
+    active: boolean;
+    highlighted?: boolean;
+  }) => {
+    const on = active || highlighted;
+    const inner = (
+      <>
+        {image ? (
+          <span
+            className={`w-14 h-14 grid place-items-center transition-transform duration-300 ease-[var(--ease-out-expo)] ${
+              active ? 'scale-110' : on ? 'scale-105' : 'group-hover/item:scale-105'
+            }`}
+          >
+            <img src={image} alt="" width={56} height={56} loading="lazy" decoding="async" className="w-full h-full object-contain" />
+          </span>
+        ) : (
+          <span
+            className={`w-14 h-14 rounded-full grid place-items-center transition-colors duration-200 ${
+              active ? 'bg-gold-light text-gold-ink' : on ? 'bg-gray-200 text-ink' : 'bg-gray-100 text-gray-600 group-hover/item:bg-gray-200 group-hover/item:text-ink'
+            }`}
+          >
+            <Icon className="w-5 h-5 stroke-[1.9]" />
+          </span>
+        )}
+        <span
+          title={title}
+          className={`mt-1 text-[11.5px] leading-tight whitespace-nowrap truncate max-w-[92px] lg:max-w-full transition-colors ${
+            on ? 'text-ink font-semibold' : 'text-gray-500 font-medium group-hover/item:text-ink'
+          }`}
+        >
+          {label}
+        </span>
+        <span
+          className={`absolute -bottom-[11px] left-3 right-3 h-[2px] rounded-full bg-gold-primary origin-center transition-transform duration-300 ease-[var(--ease-out-expo)] ${
+            active ? 'scale-x-100' : 'scale-x-0'
+          }`}
+        />
+      </>
+    );
+    const cls =
+      'pressable group/item relative flex flex-col items-center justify-center min-w-[72px] lg:w-full px-2 border-none bg-transparent';
+    return href ? (
+      <Link href={href} className={cls} aria-current={active ? 'page' : undefined}>{inner}</Link>
+    ) : (
+      <button type="button" onClick={onClick} className={cls}>{inner}</button>
+    );
+  };
+
+  const hoveredCat = mainCategories.find((c) => c.id === hoveredDesktopCat);
+
   return (
     <>
-      {/* UNIFIED HORIZONTAL CATEGORY STRIP (AT TOP, SCROLLS AWAY NATURALLY ON MOBILE AND PC) */}
+      {/* Category strip */}
       <div
-        className="bg-[#0d1117] md:bg-[#12161b] border-b border-white/5 relative z-30 select-none shadow-sm"
+        className="bg-white border-b border-line relative z-30 select-none"
         onMouseLeave={handleMouseLeaveMenu}
       >
-        <div className="w-full max-w-[1600px] mx-auto relative group px-1 sm:px-3 lg:px-6">
-          {/* Tablet Scroll Buttons (hidden on mobile and full PC) */}
+        <div className="w-full max-w-[1500px] mx-auto relative px-1 md:px-4">
           {showLeftScroll && (
             <button
               onClick={() => scrollByAmount(-280)}
               aria-label="Scroll left"
-              className="hidden md:flex lg:hidden absolute left-0 top-0 bottom-0 z-20 w-8 items-center justify-center bg-gradient-to-r from-[#12161b] via-[#12161b]/95 to-transparent text-white/70 hover:text-white transition-colors"
+              className="hidden md:flex lg:hidden absolute left-0 top-0 bottom-0 z-20 w-10 items-center justify-start pl-1 bg-gradient-to-r from-white via-white to-transparent text-gray-500 hover:text-ink border-none"
             >
-              <ChevronLeft className="w-4 h-4 drop-shadow" />
+              <ChevronLeft className="w-5 h-5" />
             </button>
           )}
 
-          {/* Categories Row: Scrollable on mobile, spanning the full length on PC */}
           <ul
             ref={scrollContainerRef}
             onScroll={checkScroll}
-            className="flex items-center gap-2 sm:gap-2.5 overflow-x-auto no-scrollbar scroll-smooth py-2.5 px-2.5 lg:px-0 lg:py-2.5 lg:overflow-visible lg:w-full lg:justify-between lg:items-stretch"
-            style={{
-              scrollbarWidth: 'none',
-              msOverflowStyle: 'none',
-              WebkitOverflowScrolling: 'touch',
-            }}
+            className="flex items-stretch gap-1 overflow-x-auto no-scrollbar scroll-smooth snap-x pt-2 pb-2.5 px-2 lg:overflow-visible lg:justify-between lg:px-0"
+            style={{ WebkitOverflowScrolling: 'touch' }}
           >
-            {/* 1. "For You" / All Products Tab (like in image) */}
-            <li
-              ref={isForYouActive ? activeItemRef : null}
-              className="shrink-0 lg:shrink lg:flex-1 lg:min-w-0 lg:flex lg:justify-center relative"
-            >
-              <Link
-                href="/"
-                className={`group/item flex flex-col items-center justify-center min-w-[70px] sm:min-w-[78px] lg:w-full px-2 py-1 lg:py-1.5 rounded-xl transition-all duration-200 relative ${
-                  isForYouActive
-                    ? 'text-gold-primary'
-                    : 'text-white/75 hover:text-white hover:bg-white/[0.04]'
-                }`}
-              >
-                <div
-                  className={`w-10 h-10 sm:w-10.5 sm:h-10.5 lg:w-9 lg:h-9 rounded-full flex items-center justify-center transition-all duration-200 mb-1.5 lg:mb-1 ${
-                    isForYouActive
-                      ? 'bg-gold-primary/20 text-gold-primary scale-110 shadow-[0_0_14px_rgba(212,175,55,0.35)]'
-                      : 'bg-white/5 text-white/80 group-hover/item:bg-white/10 group-hover/item:text-white group-hover/item:scale-105'
-                  }`}
-                >
-                  <LayoutGrid className="w-5 h-5 sm:w-5 sm:h-5 lg:w-4.5 lg:h-4.5 stroke-[2]" />
-                </div>
-                <span
-                  className={`text-[11px] sm:text-[11.5px] lg:text-[11.5px] font-semibold text-center leading-tight tracking-tight whitespace-nowrap px-0.5 truncate lg:max-w-full ${
-                    isForYouActive
-                      ? 'font-bold text-gold-primary'
-                      : 'text-gray-300 group-hover/item:text-white'
-                  }`}
-                >
-                  For you
-                </span>
-
-                {/* Active Underline Indicator */}
-                {isForYouActive && (
-                  <span className="absolute bottom-0 left-2 right-2 lg:left-3 lg:right-3 h-[2.5px] bg-gold-primary rounded-full shadow-[0_0_8px_rgba(212,175,55,0.6)] animate-in fade-in zoom-in-75 duration-200" />
-                )}
-              </Link>
+            <li ref={isForYouActive ? activeItemRef : null} className="shrink-0 snap-start lg:flex-1 lg:min-w-0 flex justify-center">
+              {renderItem({ href: "/", icon: LayoutGrid, image: categoryImage('for-you'), label: "For you", active: isForYouActive })}
             </li>
 
-            {/* 2. Main Categories with Icons */}
             {mainCategories.map((mainCat) => {
-              const subs = subcategories[mainCat.id] || [];
-              const isHovered = hoveredDesktopCat === mainCat.id;
               const isCurrentPage = isCatActivePage(mainCat.id);
               const IconComponent = getCategoryIcon(mainCat.id, mainCat.name);
-
-              // Short clean name for mobile & desktop pill view
-              const displayName = mainCat.name
-                .replace('All Hosp Dept Wise Products', 'Hospital Supplies')
-                .replace('Healing Puja Products', 'Healing & Puja')
-                .replace('Makeup & Beauty Products', 'Makeup & Beauty');
-
               return (
                 <li
                   key={mainCat.id}
                   ref={isCurrentPage ? activeItemRef : null}
-                  className="shrink-0 lg:shrink lg:flex-1 lg:min-w-0 lg:flex lg:justify-center relative"
+                  className="shrink-0 snap-start lg:flex-1 lg:min-w-0 flex justify-center"
                   onMouseEnter={() => handleMouseEnterCat(mainCat.id)}
                 >
-                  <Link
-                    href={getCatUrl(mainCat)}
-                    className={`group/item flex flex-col items-center justify-center min-w-[74px] sm:min-w-[82px] lg:w-full px-2 py-1 lg:py-1.5 rounded-xl transition-all duration-200 relative ${
-                      isHovered || isCurrentPage
-                        ? 'text-gold-primary'
-                        : 'text-white/75 hover:text-white hover:bg-white/[0.04]'
-                    }`}
-                  >
-                    <div
-                      className={`w-10 h-10 sm:w-10.5 sm:h-10.5 lg:w-9 lg:h-9 rounded-full flex items-center justify-center transition-all duration-200 mb-1.5 lg:mb-1 ${
-                        isCurrentPage || isHovered
-                          ? 'bg-gold-primary/20 text-gold-primary scale-110 shadow-[0_0_14px_rgba(212,175,55,0.35)]'
-                          : 'bg-white/5 text-white/80 group-hover/item:bg-white/10 group-hover/item:text-white group-hover/item:scale-105'
-                      }`}
-                    >
-                      <IconComponent className="w-5 h-5 sm:w-5 sm:h-5 lg:w-4.5 lg:h-4.5 stroke-[2]" />
-                    </div>
-                    <span
-                      className={`text-[10.5px] sm:text-[11.5px] lg:text-[11.5px] font-semibold text-center leading-tight tracking-tight whitespace-nowrap max-w-[88px] sm:max-w-[102px] lg:max-w-full truncate px-0.5 ${
-                        isCurrentPage || isHovered
-                          ? 'font-bold text-gold-primary'
-                          : 'text-gray-300 group-hover/item:text-white'
-                      }`}
-                      title={mainCat.name}
-                    >
-                      {displayName}
-                    </span>
-
-                    {/* Active Underline Indicator */}
-                    {(isCurrentPage || isHovered) && (
-                      <span className="absolute bottom-0 left-2 right-2 lg:left-3 lg:right-3 h-[2.5px] bg-gold-primary rounded-full shadow-[0_0_8px_rgba(212,175,55,0.6)] animate-in fade-in zoom-in-75 duration-200" />
-                    )}
-                  </Link>
+                  {renderItem({
+                    href: getCatUrl(mainCat),
+                    icon: IconComponent,
+                    image: categoryImage(mainCat.id),
+                    label: shortName(mainCat.name),
+                    title: mainCat.name,
+                    active: isCurrentPage,
+                    highlighted: hoveredDesktopCat === mainCat.id,
+                  })}
                 </li>
               );
             })}
 
-            {/* 3. "More / All" Button (opens full drawer) */}
-            <li className="shrink-0 lg:shrink lg:flex-1 lg:min-w-0 lg:flex lg:justify-center relative">
-              <button
-                onClick={() => setIsMobileMenuOpen(true)}
-                aria-label="View all categories"
-                className="group/item flex flex-col items-center justify-center min-w-[62px] sm:min-w-[70px] lg:w-full px-2 py-1 lg:py-1.5 rounded-xl transition-all duration-200 text-white/70 hover:text-gold-primary hover:bg-white/[0.04] cursor-pointer"
-              >
-                <div className="w-10 h-10 sm:w-10.5 sm:h-10.5 lg:w-9 lg:h-9 rounded-full flex items-center justify-center bg-white/5 text-white/80 group-hover/item:bg-gold-primary/15 group-hover/item:text-gold-primary transition-all duration-200 mb-1.5 lg:mb-1 group-hover/item:scale-105">
-                  <MoreHorizontal className="w-5 h-5 sm:w-5 sm:h-5 lg:w-4.5 lg:h-4.5 stroke-[2]" />
-                </div>
-                <span className="text-[10.5px] sm:text-[11px] lg:text-[11.5px] font-semibold text-center leading-tight tracking-tight whitespace-nowrap text-gray-300 group-hover/item:text-gold-primary truncate lg:max-w-full">
-                  More
-                </span>
-              </button>
+            <li className="shrink-0 snap-start lg:flex-1 lg:min-w-0 flex justify-center" onMouseEnter={() => setHoveredDesktopCat(null)}>
+              {renderItem({ onClick: () => setIsMobileMenuOpen(true), icon: MoreHorizontal, image: categoryImage('all'), label: "All", active: false })}
             </li>
           </ul>
 
-          {/* Tablet Right Scroll Button */}
           {showRightScroll && (
             <button
               onClick={() => scrollByAmount(280)}
               aria-label="Scroll right"
-              className="hidden md:flex lg:hidden absolute right-0 top-0 bottom-0 z-20 w-8 items-center justify-center bg-gradient-to-l from-[#12161b] via-[#12161b]/95 to-transparent text-white/70 hover:text-white transition-colors"
+              className="hidden md:flex lg:hidden absolute right-0 top-0 bottom-0 z-20 w-10 items-center justify-end pr-1 bg-gradient-to-l from-white via-white to-transparent text-gray-500 hover:text-ink border-none"
             >
-              <ChevronRight className="w-4 h-4 drop-shadow" />
+              <ChevronRight className="w-5 h-5" />
             </button>
           )}
         </div>
 
-        {/* Full-width Mega Dropdown Panel on Desktop Hover */}
-        {hoveredDesktopCat && (
-          <div
-            className="hidden md:block absolute top-full left-0 right-0 w-full z-50 animate-in fade-in slide-in-from-top-1 duration-150"
-            onMouseEnter={handleMouseEnterPanel}
-            onMouseLeave={handleMouseLeaveMenu}
-          >
-            {/* Gold highlight accent line */}
-            <div className="h-px w-full bg-gradient-to-r from-transparent via-gold-primary/50 to-transparent" />
-
-            <div className="bg-[#0d1117] border-b border-white/10 shadow-[0_25px_60px_rgba(0,0,0,0.7)] backdrop-blur-md">
+        {/* Desktop mega dropdown */}
+        <div
+          className={`hidden md:block absolute top-full inset-x-0 z-50 transition-[opacity,transform] duration-200 ease-[var(--ease-out-expo)] ${
+            hoveredCat ? 'opacity-100 translate-y-0 pointer-events-auto' : 'opacity-0 -translate-y-1 pointer-events-none'
+          }`}
+          onMouseEnter={handleMouseEnterPanel}
+          onMouseLeave={handleMouseLeaveMenu}
+        >
+          {hoveredCat && (
+            <div className="bg-white border-b border-line shadow-[0_24px_48px_-12px_rgba(16,24,40,0.18)]">
               <div className="max-w-[1500px] mx-auto px-6 lg:px-8 py-6">
-                <div className="flex items-center justify-between pb-4 mb-4 border-b border-white/10">
-                  <div className="flex items-center gap-3">
-                    <span className="w-2.5 h-2.5 rounded-full bg-gold-primary animate-pulse" />
-                    <h3 className="text-white text-base font-bold uppercase tracking-wider">
-                      {mainCategories.find((c) => c.id === hoveredDesktopCat)?.name}
-                    </h3>
-                  </div>
+                <div className="flex items-center justify-between pb-4 mb-4 border-b border-line">
+                  <h3 className="text-ink text-[15px] font-semibold">{hoveredCat.name}</h3>
                   <Link
-                    href={getCatUrl({ id: hoveredDesktopCat })}
-                    className="inline-flex items-center gap-1.5 text-gold-primary hover:text-white text-xs font-bold transition-colors uppercase tracking-wider"
+                    href={getCatUrl(hoveredCat)}
+                    className="inline-flex items-center gap-1 text-[13px] font-medium text-gray-600 hover:text-ink transition-colors"
                   >
-                    View All Products <ChevronRight className="w-3.5 h-3.5" />
+                    View all <ChevronRight className="w-4 h-4" />
                   </Link>
                 </div>
 
                 {activeDropdown.length > 0 ? (
-                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-x-8 gap-y-3.5 max-h-[380px] overflow-y-auto custom-scrollbar pr-2">
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-x-6 gap-y-0.5 max-h-[380px] overflow-y-auto custom-scrollbar pr-2">
                     {activeDropdown.map((subCat) => (
                       <Link
                         key={subCat.id}
-                        href={getCatUrl({ id: hoveredDesktopCat }, subCat.id)}
-                        className="group/link flex items-center gap-2 text-white/70 hover:text-white text-[13px] font-medium transition-colors py-1 px-1.5 rounded hover:bg-white/[0.04]"
+                        href={getCatUrl(hoveredCat, subCat.id)}
+                        className="block truncate text-[14px] text-gray-600 hover:text-ink hover:bg-gray-50 rounded-md px-2 py-2 transition-colors"
                       >
-                        <span className="w-1.5 h-1.5 rounded-full bg-white/20 group-hover/link:bg-gold-primary transition-colors shrink-0" />
-                        <span className="truncate group-hover/link:text-gold-primary transition-colors">
-                          {subCat.name}
-                        </span>
+                        {subCat.name}
                       </Link>
                     ))}
                   </div>
                 ) : (
-                  <div className="flex flex-col items-start gap-3 py-3">
-                    <p className="text-[13px] text-white/50">
-                      No specific subcategories. Explore all products in this category.
-                    </p>
-                    <Link
-                      href={getCatUrl({ id: hoveredDesktopCat })}
-                      className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-gold-primary/10 border border-gold-primary/30 text-gold-primary text-[12px] font-bold hover:bg-gold-primary/20 transition-colors"
-                    >
-                      Explore Products <ChevronRight className="w-3.5 h-3.5" />
-                    </Link>
-                  </div>
+                  <p className="text-[14px] text-text-muted py-2">
+                    Browse every product in this category.{' '}
+                    <Link href={getCatUrl(hoveredCat)} className="text-ink font-medium underline underline-offset-2">Explore</Link>
+                  </p>
                 )}
               </div>
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
-      {/* FULL CATEGORIES DRAWER (Mobile + Accessible from "More") */}
-      {isMobileMenuOpen && (
-        <div className="fixed inset-0 z-[5000] flex">
-          {/* Backdrop */}
-          <div
-            className="absolute inset-0 bg-black/70 backdrop-blur-sm animate-in fade-in duration-300"
-            onClick={() => setIsMobileMenuOpen(false)}
-          />
-
-          {/* Drawer Sidebar */}
-          <div className="absolute inset-y-0 left-0 w-[88%] max-w-[360px] bg-[#0d1117] shadow-2xl flex flex-col animate-in slide-in-from-left duration-300 border-r border-white/10 z-10">
-            {/* Drawer Header */}
-            <div className="flex items-center justify-between p-4 border-b border-white/10 bg-[#12161b]">
-              <div className="flex items-center gap-2.5">
-                <LayoutGrid className="w-5 h-5 text-gold-primary" />
-                <h2 className="text-base font-bold text-white tracking-wider uppercase">
-                  All Categories
-                </h2>
-              </div>
-              <button
-                onClick={() => setIsMobileMenuOpen(false)}
-                className="p-1.5 bg-white/5 hover:bg-white/10 rounded-full text-gray-300 transition-colors cursor-pointer"
-                aria-label="Close categories menu"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            {/* Quick Search inside Drawer */}
-            <div className="p-3 border-b border-white/10 bg-[#12161b]/50">
-              <div className="flex items-center bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm">
-                <Search className="w-4 h-4 text-gray-400 mr-2 shrink-0" />
-                <input
-                  type="text"
-                  value={searchDrawerQuery}
-                  onChange={(e) => setSearchDrawerQuery(e.target.value)}
-                  placeholder="Filter categories..."
-                  className="bg-transparent border-none outline-none text-white text-xs w-full placeholder-gray-500"
-                />
-                {searchDrawerQuery && (
-                  <button
-                    onClick={() => setSearchDrawerQuery('')}
-                    className="text-gray-400 hover:text-white"
-                  >
-                    <X className="w-3.5 h-3.5" />
-                  </button>
-                )}
-              </div>
-            </div>
-
-            {/* Categories List */}
-            <div className="flex-1 overflow-y-auto custom-scrollbar p-3 space-y-1.5">
-              {/* "For You" / Home Link */}
-              <Link
-                href="/"
-                onClick={() => setIsMobileMenuOpen(false)}
-                className={`flex items-center gap-3 p-3.5 rounded-xl transition-all ${
-                  isForYouActive
-                    ? 'bg-gold-primary/10 border border-gold-primary/30 text-gold-primary'
-                    : 'text-white/90 hover:bg-white/5'
-                }`}
-              >
-                <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-gold-primary shrink-0">
-                  <LayoutGrid className="w-4 h-4" />
-                </div>
-                <div className="flex-1">
-                  <span className="font-bold text-sm">For You (All Products)</span>
-                  <p className="text-[11px] text-gray-400">Featured & trending supplies</p>
-                </div>
-                <ChevronRight className="w-4 h-4 text-gray-400" />
-              </Link>
-
-              {mainCategories
-                .filter(
-                  (c) =>
-                    !searchDrawerQuery ||
-                    c.name.toLowerCase().includes(searchDrawerQuery.toLowerCase())
-                )
-                .map((mainCat) => {
-                  const subs = subcategories[mainCat.id] || [];
-                  const isExpanded = expandedMobileCat === mainCat.id;
-                  const isCurrent = isCatActivePage(mainCat.id);
-                  const Icon = getCategoryIcon(mainCat.id, mainCat.name);
-
-                  return (
-                    <div key={mainCat.id} className="rounded-xl overflow-hidden">
-                      <button
-                        onClick={() =>
-                          setExpandedMobileCat((prev) =>
-                            prev === mainCat.id ? null : mainCat.id
-                          )
-                        }
-                        className={`w-full flex items-center justify-between p-3 rounded-xl transition-all ${
-                          isExpanded || isCurrent
-                            ? 'bg-white/10 text-gold-primary'
-                            : 'bg-white/[0.02] text-white/90 hover:bg-white/5'
-                        }`}
-                      >
-                        <div className="flex items-center gap-3 min-w-0">
-                          <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center text-gold-primary shrink-0">
-                            <Icon className="w-4 h-4" />
-                          </div>
-                          <span className="font-semibold text-xs text-left truncate">
-                            {mainCat.name}
-                          </span>
-                        </div>
-                        {subs.length > 0 ? (
-                          <ChevronDown
-                            className={`w-4 h-4 transition-transform duration-200 shrink-0 ${
-                              isExpanded ? 'rotate-180 text-gold-primary' : 'text-gray-400'
-                            }`}
-                          />
-                        ) : (
-                          <ChevronRight className="w-4 h-4 text-gray-400 shrink-0" />
-                        )}
-                      </button>
-
-                      {/* Subcategories dropdown */}
-                      {isExpanded && subs.length > 0 && (
-                        <div className="mt-1 mb-2 pl-11 pr-2 py-1.5 space-y-1 border-l-2 border-gold-primary/30 ml-4 animate-in slide-in-from-top-1 duration-150">
-                          <Link
-                            href={getCatUrl(mainCat)}
-                            onClick={() => setIsMobileMenuOpen(false)}
-                            className="block py-1.5 text-xs text-gold-primary font-bold hover:underline"
-                          >
-                            Explore All {mainCat.name} →
-                          </Link>
-                          {subs.map((subCat) => (
-                            <Link
-                              key={subCat.id}
-                              href={getCatUrl(mainCat, subCat.id)}
-                              onClick={() => setIsMobileMenuOpen(false)}
-                              className="block py-2 text-xs text-gray-300 hover:text-white transition-colors border-b border-white/5 last:border-0"
-                            >
-                              {subCat.name}
-                            </Link>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
+      {/* All categories drawer */}
+      <Sheet
+        open={isMobileMenuOpen}
+        onClose={() => setIsMobileMenuOpen(false)}
+        side="left"
+        label="All categories"
+        zIndex={5000}
+        className="w-[86%] max-w-[380px]"
+      >
+        <div className="pt-safe shrink-0 border-b border-line">
+          <div className="h-14 px-4 flex items-center justify-between">
+            <h2 className="text-[17px] font-semibold text-ink">Categories</h2>
+            <button
+              onClick={() => setIsMobileMenuOpen(false)}
+              className="pressable -mr-2 w-10 h-10 grid place-items-center rounded-full text-gray-500 hover:bg-gray-100 border-none bg-transparent"
+              aria-label="Close categories"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+          <div className="px-4 pb-3">
+            <div className="flex items-center h-10 bg-gray-100 rounded-xl px-3">
+              <Search className="w-4 h-4 text-gray-400 mr-2 shrink-0" />
+              <input
+                type="text"
+                value={searchDrawerQuery}
+                onChange={(e) => setSearchDrawerQuery(e.target.value)}
+                placeholder="Find a category"
+                className="bg-transparent border-none outline-none text-ink text-[15px] w-full placeholder:text-gray-400"
+              />
+              {searchDrawerQuery && (
+                <button onClick={() => setSearchDrawerQuery('')} className="text-gray-400 hover:text-ink border-none bg-transparent" aria-label="Clear">
+                  <X className="w-4 h-4" />
+                </button>
+              )}
             </div>
           </div>
         </div>
-      )}
 
-      <style
-        dangerouslySetInnerHTML={{
-          __html: `
-        .custom-scrollbar::-webkit-scrollbar { width: 4px; height: 4px; }
-        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 4px; }
-      `,
-        }}
-      />
+        <div className="flex-1 overflow-y-auto overscroll-contain custom-scrollbar py-2 pb-safe">
+          <Link
+            href="/"
+            onClick={() => setIsMobileMenuOpen(false)}
+            className={`flex items-center gap-3 mx-2 px-3 h-12 rounded-xl transition-colors ${
+              isForYouActive ? 'bg-gray-100 text-ink font-semibold' : 'text-ink hover:bg-gray-50'
+            }`}
+          >
+            <img src="/categories/for-you.webp" alt="" width={32} height={32} className="w-8 h-8 rounded-lg object-contain shrink-0" />
+            <span className="flex-1 text-[15px]">All products</span>
+          </Link>
+
+          {mainCategories
+            .filter((c) => !searchDrawerQuery || c.name.toLowerCase().includes(searchDrawerQuery.toLowerCase()))
+            .map((mainCat) => {
+              const subs = subcategories[mainCat.id] || [];
+              const isExpanded = expandedMobileCat === mainCat.id;
+              const isCurrent = isCatActivePage(mainCat.id);
+              const Icon = getCategoryIcon(mainCat.id, mainCat.name);
+
+              const row = `flex items-center gap-3 w-[calc(100%-16px)] mx-2 px-3 h-12 rounded-xl text-left transition-colors border-none ${
+                isCurrent ? 'bg-gray-100 font-semibold' : 'bg-transparent hover:bg-gray-50'
+              }`;
+
+              return (
+                <div key={mainCat.id}>
+                  {subs.length > 0 ? (
+                    <button
+                      onClick={() => setExpandedMobileCat((prev) => (prev === mainCat.id ? null : mainCat.id))}
+                      className={row}
+                      aria-expanded={isExpanded}
+                    >
+                      {categoryImage(mainCat.id) ? <img src={categoryImage(mainCat.id)} alt="" width={32} height={32} loading="lazy" className="w-8 h-8 rounded-lg object-contain shrink-0" /> : <Icon className="w-[18px] h-[18px] text-gray-500 shrink-0" />}
+                      <span className="flex-1 text-[15px] text-ink truncate">{mainCat.name}</span>
+                      <ChevronDown className={`w-4 h-4 text-gray-400 shrink-0 transition-transform duration-300 ease-[var(--ease-out-expo)] ${isExpanded ? 'rotate-180' : ''}`} />
+                    </button>
+                  ) : (
+                    <Link href={getCatUrl(mainCat)} onClick={() => setIsMobileMenuOpen(false)} className={row}>
+                      {categoryImage(mainCat.id) ? <img src={categoryImage(mainCat.id)} alt="" width={32} height={32} loading="lazy" className="w-8 h-8 rounded-lg object-contain shrink-0" /> : <Icon className="w-[18px] h-[18px] text-gray-500 shrink-0" />}
+                      <span className="flex-1 text-[15px] text-ink truncate">{mainCat.name}</span>
+                      <ChevronRight className="w-4 h-4 text-gray-300 shrink-0" />
+                    </Link>
+                  )}
+
+                  {/* Smooth accordion using grid-rows trick (animates to auto height) */}
+                  <div
+                    className={`grid transition-[grid-template-rows,opacity] duration-300 ease-[var(--ease-out-expo)] ${
+                      isExpanded ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'
+                    }`}
+                  >
+                    <div className="overflow-hidden">
+                      <div className="ml-[42px] mr-2 py-1 border-l border-line">
+                        <Link
+                          href={getCatUrl(mainCat)}
+                          onClick={() => setIsMobileMenuOpen(false)}
+                          className="block pl-4 py-2.5 text-[14px] font-medium text-ink"
+                        >
+                          View all
+                        </Link>
+                        {subs.map((subCat) => (
+                          <Link
+                            key={subCat.id}
+                            href={getCatUrl(mainCat, subCat.id)}
+                            onClick={() => setIsMobileMenuOpen(false)}
+                            className="block pl-4 py-2.5 text-[14px] text-gray-600 active:bg-gray-50 hover:text-ink transition-colors"
+                          >
+                            {subCat.name}
+                          </Link>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+        </div>
+      </Sheet>
     </>
   );
 }
+

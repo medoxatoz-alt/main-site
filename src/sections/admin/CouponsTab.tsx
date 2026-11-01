@@ -255,7 +255,7 @@ export default function CouponsTab() {
           </div>
           <div>
             <div className="text-sm font-medium text-gray-500">Total Coupons</div>
-            <div className="text-2xl font-black text-gray-900">{stats.total}</div>
+            <div className="text-2xl font-bold text-gray-900">{stats.total}</div>
           </div>
         </div>
 
@@ -265,7 +265,7 @@ export default function CouponsTab() {
           </div>
           <div>
             <div className="text-sm font-medium text-gray-500">Active & Live</div>
-            <div className="text-2xl font-black text-emerald-600">{stats.active}</div>
+            <div className="text-2xl font-bold text-emerald-600">{stats.active}</div>
           </div>
         </div>
 
@@ -275,7 +275,7 @@ export default function CouponsTab() {
           </div>
           <div>
             <div className="text-sm font-medium text-gray-500">Total Redemptions</div>
-            <div className="text-2xl font-black text-amber-600">{stats.totalRedemptions}</div>
+            <div className="text-2xl font-bold text-amber-600">{stats.totalRedemptions}</div>
           </div>
         </div>
       </div>
@@ -372,7 +372,7 @@ export default function CouponsTab() {
                       {/* Code */}
                       <td className="py-4 px-4">
                         <div className="flex items-center gap-2">
-                          <span className="font-mono font-black text-gray-900 bg-gray-100 border border-gray-200 px-2.5 py-1 rounded-lg text-xs tracking-wider">
+                          <span className="font-mono font-bold text-gray-900 bg-gray-100 border border-gray-200 px-2.5 py-1 rounded-lg text-xs tracking-wider">
                             {coupon.code}
                           </span>
                           <button
@@ -396,7 +396,7 @@ export default function CouponsTab() {
                         <div className="font-bold text-gray-900 flex items-center gap-1.5">
                           {coupon.discountType === 'PERCENTAGE' ? (
                             <>
-                              <span className="text-teal-600 bg-teal-50 px-2 py-0.5 rounded-md text-xs font-black">
+                              <span className="text-teal-600 bg-teal-50 px-2 py-0.5 rounded-md text-xs font-bold">
                                 {coupon.discountValue}% OFF
                               </span>
                               {coupon.maxDiscountAmount && (
@@ -406,7 +406,7 @@ export default function CouponsTab() {
                               )}
                             </>
                           ) : (
-                            <span className="text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md text-xs font-black">
+                            <span className="text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md text-xs font-bold">
                               ₹{coupon.discountValue.toLocaleString('en-IN')} FLAT OFF
                             </span>
                           )}

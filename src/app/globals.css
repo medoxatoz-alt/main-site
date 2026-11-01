@@ -1,63 +1,120 @@
-@import url('https://fonts.googleapis.com/css2?family=Segoe+UI&family=Roboto:wght@300;400;500;700;800&display=swap');
 @import "tailwindcss";
+@import "tw-animate-css";
 
+/* ------------------------------------------------------------------
+   Design tokens
+   One neutral scale + one restrained accent. Gold is reserved for
+   the primary action and small highlights, never for glows.
+   ------------------------------------------------------------------ */
 @theme {
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+
   --color-gold-primary: var(--gold-primary);
   --color-gold-hover: var(--gold-hover);
   --color-gold-light: var(--gold-light);
+  --color-gold-ink: var(--gold-ink);
   --color-nav-bg: var(--nav-bg);
   --color-text-main: var(--text-main);
   --color-text-muted: var(--text-muted);
-  
-  --animate-slide-up: slideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-  --animate-fade-in: fadeIn 0.4s ease-out forwards;
+  --color-ink: var(--ink);
+  --color-surface: var(--surface);
+  --color-page: var(--bg-page);
+  --color-line: var(--line);
+
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-sheet: cubic-bezier(0.32, 0.72, 0, 1);
+
+  --animate-slide-up: slideUp 0.45s var(--ease-out-expo) both;
+  --animate-fade-in: fadeIn 0.3s ease-out both;
+  --animate-shimmer: shimmer 1.4s ease-in-out infinite;
 }
 
 :root {
-  --bg-page: #f4f5f7;
-  --nav-bg: #1e2226;
+  --bg-page: #f5f6f8;
+  --surface: #ffffff;
+  --nav-bg: #0b0d10;
+  --ink: #0f1115;
+  --line: #e6e8ec;
+
   --gold-primary: #d4af37;
-  --gold-hover: #bda036;
-  --gold-light: #fef8e7;
-  --text-main: #333a40;
-  --text-muted: #6c757d;
+  --gold-hover: #c29e2c;
+  --gold-light: #faf6e8;
+  --gold-ink: #8a6d12; /* gold for text on white — passes contrast */
+
+  --text-main: #1f2329;
+  --text-muted: #6b7280;
   --card-bg: #ffffff;
   --text-white: #ffffff;
-  --footer-bg: #1e2226;
-  --radius-main: 8px;
-  --shadow-soft: 0 4px 15px rgba(0, 0, 0, 0.05);
-  --shadow-hover: 0 8px 20px rgba(0, 0, 0, 0.1);
-  --transition: all 0.3s ease;
+  --footer-bg: #0b0d10;
+  --radius-main: 12px;
+  --shadow-soft: 0 1px 2px rgba(16, 24, 40, 0.04), 0 1px 3px rgba(16, 24, 40, 0.06);
+  --shadow-hover: 0 8px 24px rgba(16, 24, 40, 0.08);
+  --transition: all 0.2s ease;
+
+  /* Mobile tab bar height (without the home-indicator inset). */
+  --tabbar-h: 62px;
 }
 
 html {
   scroll-behavior: smooth;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 }
 
 body {
   background-color: var(--bg-page);
   color: var(--text-main);
-  font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  font-family: var(--font-sans);
   font-size: 14px;
+  line-height: 1.5;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
   margin: 0;
   padding: 0;
   box-sizing: border-box;
+  /* Stop the whole page rubber-banding sideways on mobile. */
+  overscroll-behavior-x: none;
 }
 
 * {
   box-sizing: inherit;
 }
 
-/* Base styles for migration */
 @layer base {
-  h1, h2, h3, h4, h5, h6 { margin: 0; }
+  h1, h2, h3, h4, h5, h6 { margin: 0; letter-spacing: -0.01em; }
   a { text-decoration: none; }
   button { font-family: inherit; }
+
+  /* Native feel: no grey flash on tap, no 300ms double-tap delay. */
+  a, button, [role='button'], input, select, textarea, label {
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+
+  button:not(:disabled), [role='button'] { cursor: pointer; }
+
+  /* Keyboard focus only — never show rings on tap/click. */
+  :focus { outline: none; }
+  :focus-visible {
+    outline: 2px solid var(--gold-primary);
+    outline-offset: 2px;
+    border-radius: 6px;
+  }
+
+  ::selection { background: rgba(212, 175, 55, 0.25); }
+
+  img { -webkit-user-drag: none; }
+
+  /* Default curve for every enter/exit animation in the app:
+     fast start, soft landing — the way iOS/Android sheets move. */
+  .animate-in, .animate-out {
+    --tw-ease: var(--ease-out-expo);
+  }
 }
 
 @keyframes slideUp {
-  0% { transform: translateY(30px); opacity: 0; }
+  0% { transform: translateY(12px); opacity: 0; }
   100% { transform: translateY(0); opacity: 1; }
 }
 
@@ -66,18 +123,66 @@ body {
   100% { opacity: 1; }
 }
 
+@keyframes shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+@keyframes badgePop {
+  0% { transform: scale(1); }
+  40% { transform: scale(1.35); }
+  100% { transform: scale(1); }
+}
+
 @utility no-scrollbar {
-  -ms-overflow-style: none;  /* IE and Edge */
-  scrollbar-width: none;  /* Firefox */
+  -ms-overflow-style: none;
+  scrollbar-width: none;
   &::-webkit-scrollbar {
-    display: none; /* Chrome, Safari and Opera */
+    display: none;
   }
 }
 
-/* Ensure all main page contents clear the mobile bottom navigation bar */
+@utility custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0, 0, 0, 0.15) transparent;
+  &::-webkit-scrollbar { width: 6px; height: 6px; }
+  &::-webkit-scrollbar-track { background: transparent; }
+  &::-webkit-scrollbar-thumb { background: rgba(0, 0, 0, 0.15); border-radius: 6px; }
+}
+
+/* Pressable: the small "give" a native button has under your finger. */
+@utility pressable {
+  transition-property: transform, background-color, color, border-color, opacity, box-shadow;
+  transition-duration: 160ms;
+  transition-timing-function: var(--ease-out-expo);
+  &:active:not(:disabled) { transform: scale(0.97); }
+}
+
+@utility badge-pop {
+  animation: badgePop 0.45s var(--ease-out-expo);
+}
+
+@utility pb-safe {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+@utility pt-safe {
+  padding-top: env(safe-area-inset-top);
+}
+
+/* Keep page content clear of the mobile bottom tab bar. */
 @media (max-width: 767px) {
   main {
-    padding-bottom: 112px !important; /* 72px nav bar + 40px safe buffer */
+    padding-bottom: calc(var(--tabbar-h) + max(10px, env(safe-area-inset-bottom)) + 28px) !important;
   }
 }
 
+/* Respect users who turn motion off at the OS level. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

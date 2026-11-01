@@ -1,9 +1,28 @@
-'use client';
+﻿'use client';
 
 import Link from 'next/link';
+import { displayContact } from '@/lib/format';
 import { useAuth } from '@/context/AuthContext';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
-import { Home, Heart, ShoppingBag as LucideShoppingBag, User, Download, Package, X, MapPin, ChevronDown, CheckCircle2, HelpCircle } from 'lucide-react';
+import {
+  Home,
+  Heart,
+  ShoppingBag,
+  User,
+  Download,
+  Package,
+  MapPin,
+  ChevronDown,
+  ChevronRight,
+  CheckCircle2,
+  HelpCircle,
+  Search,
+  X,
+  LogOut,
+  LayoutDashboard,
+  Store,
+  Navigation,
+} from 'lucide-react';
 import { useState, useEffect, Suspense, useRef } from 'react';
 import api from '@/lib/api';
 import toast from 'react-hot-toast';
@@ -11,12 +30,21 @@ import { useIsInApp } from '@/hooks/useIsInApp';
 import { GooglePlayButton, AppStoreButton } from '@/components/AppStoreBadges';
 import MegaMenu from '@/components/MegaMenu';
 import CartDrawer from '@/components/CartDrawer';
+import Sheet from '@/components/ui/Sheet';
 import { useGeolocatedAddress } from '@/hooks/useGeolocatedAddress';
+
+/* ---------------------------------------------------------------- */
+/* Search                                                            */
+/* ---------------------------------------------------------------- */
+
+const searchShell =
+  'order-3 md:order-2 w-full md:flex-1 md:max-w-[640px] flex items-center h-10 md:h-11 rounded-xl bg-white/[0.08] border border-white/[0.06] transition-colors duration-200 focus-within:bg-white focus-within:border-white';
 
 function SearchBarInput() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [searchQuery, setSearchQuery] = useState('');
+  const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     setSearchQuery(searchParams.get('search') || '');
@@ -24,6 +52,7 @@ function SearchBarInput() {
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
+    inputRef.current?.blur(); // dismiss the mobile keyboard
     if (searchQuery.trim()) {
       router.push(`/?search=${encodeURIComponent(searchQuery.trim())}`);
     } else {
@@ -32,71 +61,195 @@ function SearchBarInput() {
   };
 
   return (
-    <form 
-      onSubmit={handleSearch} 
-      className="order-3 md:order-2 w-full md:w-auto md:flex-1 max-w-full md:max-w-[600px] mt-3 md:mt-0 flex items-center bg-white/5 border border-white/10 backdrop-blur-md rounded-full transition-all duration-300 py-[3px] pr-[5px] pl-5 focus-within:bg-white/10 focus-within:border-gold-primary focus-within:shadow-[0_0_20px_rgba(212,175,55,0.15)]"
-    >
-      <input 
-        type="text" 
+    <form onSubmit={handleSearch} role="search" className={`group ${searchShell}`}>
+      <Search className="w-[18px] h-[18px] ml-3.5 shrink-0 text-white/50 group-focus-within:text-gray-500 transition-colors" />
+      <input
+        ref={inputRef}
+        type="search"
+        enterKeyHint="search"
         value={searchQuery}
         onChange={(e) => setSearchQuery(e.target.value)}
-        placeholder="Search premium medical supplies..."
-        className="flex-1 border-none outline-none bg-transparent text-white text-[15px] py-2 w-full focus:text-white placeholder-[#a0aab5]"
+        placeholder="Search medical supplies"
+        aria-label="Search products"
+        className="flex-1 min-w-0 h-full bg-transparent border-none outline-none px-3 text-[15px] text-white placeholder:text-white/50 group-focus-within:text-ink group-focus-within:placeholder:text-gray-400 [&::-webkit-search-cancel-button]:hidden"
         suppressHydrationWarning
       />
-      <button 
-        type="submit" 
-        className="bg-gold-primary border-none rounded-full min-w-[36px] h-[36px] flex items-center justify-center text-nav-bg cursor-pointer transition-all duration-300 ml-2.5 hover:brightness-110 hover:scale-105 hover:shadow-[0_0_10px_rgba(212,175,55,0.4)]"
-        suppressHydrationWarning
-      >
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-          <circle cx="11" cy="11" r="8"></circle>
-          <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-        </svg>
-      </button>
+      {searchQuery && (
+        <button
+          type="button"
+          onClick={() => { setSearchQuery(''); inputRef.current?.focus(); }}
+          aria-label="Clear search"
+          className="pressable w-8 h-8 mr-1 grid place-items-center rounded-full text-white/60 group-focus-within:text-gray-400 hover:bg-black/5 border-none bg-transparent"
+        >
+          <X className="w-4 h-4" />
+        </button>
+      )}
     </form>
   );
 }
 
-export default function Navbar() {
+/* ---------------------------------------------------------------- */
+/* Account menu content (shared by desktop popover + mobile sheet)   */
+/* ---------------------------------------------------------------- */
+
+function MenuRow({
+  href,
+  onClick,
+  icon: Icon,
+  children,
+  tone = 'default',
+}: {
+  href?: string;
+  onClick?: () => void;
+  icon: React.ElementType;
+  children: React.ReactNode;
+  tone?: 'default' | 'danger';
+}) {
+  const cls = `pressable w-full flex items-center gap-3 px-3 h-11 rounded-lg text-[14px] text-left border-none bg-transparent ${
+    tone === 'danger' ? 'text-red-600 hover:bg-red-50' : 'text-ink hover:bg-gray-50'
+  }`;
+  const inner = (
+    <>
+      <Icon className={`w-[18px] h-[18px] shrink-0 ${tone === 'danger' ? 'text-red-500' : 'text-gray-400'}`} />
+      <span className="flex-1">{children}</span>
+      {href && <ChevronRight className="w-4 h-4 text-gray-300 md:hidden" />}
+    </>
+  );
+  return href ? (
+    <Link href={href} onClick={onClick} className={cls}>{inner}</Link>
+  ) : (
+    <button type="button" onClick={onClick} className={cls}>{inner}</button>
+  );
+}
+
+function AccountMenu({ onNavigate, onLogout }: { onNavigate: () => void; onLogout: () => void }) {
+  const { user, loading } = useAuth();
+  const { isInApp } = useIsInApp();
+
+  return (
+    <div className="flex flex-col">
+      {!loading && !user ? (
+        <div className="px-3 pt-1 pb-4 mb-2 border-b border-line">
+          <p className="text-[13px] text-text-muted mb-3">Sign in to track orders, save items and check out faster.</p>
+          <div className="flex gap-2">
+            <Link
+              href="/signin"
+              onClick={onNavigate}
+              className="pressable flex-1 h-10 grid place-items-center rounded-full bg-ink text-white text-sm font-semibold hover:bg-black"
+            >
+              Sign in
+            </Link>
+            <Link
+              href="/signup"
+              onClick={onNavigate}
+              className="pressable flex-1 h-10 grid place-items-center rounded-full border border-line text-ink text-sm font-semibold hover:bg-gray-50"
+            >
+              Create account
+            </Link>
+          </div>
+        </div>
+      ) : user ? (
+        <div className="px-3 pt-1 pb-3 mb-2 border-b border-line flex items-center gap-3">
+          <div className="w-10 h-10 rounded-full bg-gold-light text-gold-ink grid place-items-center font-semibold">
+            {(user.name || 'U').charAt(0).toUpperCase()}
+          </div>
+          <div className="min-w-0">
+            <div className="text-[15px] font-semibold text-ink truncate">{user.name || 'Your account'}</div>
+            {user.email && <div className="text-[12px] text-text-muted truncate">{displayContact(user.email)}</div>}
+          </div>
+        </div>
+      ) : null}
+
+      <MenuRow href="/account" onClick={onNavigate} icon={User}>Your account</MenuRow>
+      <MenuRow href="/account/orders" onClick={onNavigate} icon={Package}>Orders</MenuRow>
+      <MenuRow href="/account/wishlist" onClick={onNavigate} icon={Heart}>Wishlist</MenuRow>
+      <MenuRow
+        onClick={() => { onNavigate(); window.dispatchEvent(new Event('open-help-modal')); }}
+        icon={HelpCircle}
+      >
+        Help &amp; guides
+      </MenuRow>
+
+      {user?.role === 'admin' && (
+        <MenuRow href="/admin" onClick={onNavigate} icon={LayoutDashboard}>Admin dashboard</MenuRow>
+      )}
+      {user?.role === 'vendor' && (
+        <MenuRow href="/vendor/dashboard" onClick={onNavigate} icon={LayoutDashboard}>Seller dashboard</MenuRow>
+      )}
+      {(!user || user.role === 'buyer') && (
+        <MenuRow href="/vendor/register" onClick={onNavigate} icon={Store}>Sell on MedoxAtoZ</MenuRow>
+      )}
+
+      {!isInApp && (!user || user.role === 'buyer') && (
+        <div className="mt-2 pt-3 px-3 border-t border-line">
+          <div className="text-[12px] font-medium text-text-muted mb-2">Get the app</div>
+          <div className="flex flex-wrap gap-2">
+            <GooglePlayButton size="md" />
+            <AppStoreButton size="md" />
+          </div>
+        </div>
+      )}
+
+      {user && (
+        <div className="mt-2 pt-2 border-t border-line">
+          <MenuRow onClick={onLogout} icon={LogOut} tone="danger">Sign out</MenuRow>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ---------------------------------------------------------------- */
+/* Navbar                                                            */
+/* ---------------------------------------------------------------- */
+
+export default function Navbar({ hideTabBar = false }: { hideTabBar?: boolean } = {}) {
   const { user, logout, loading } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
   const [cartCount, setCartCount] = useState(0);
-  const [cartBouncing, setCartBouncing] = useState(false);
+  const [cartPulse, setCartPulse] = useState(0);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [location, setLocation] = useState('India');
   const { detect: detectLocationRaw, detecting: loadingLocation } = useGeolocatedAddress({ onError: (msg) => toast.error(msg) });
   const { isInApp } = useIsInApp();
-  
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
 
-  const [isLocationPickerOpen, setIsLocationPickerOpen] = useState(false);
+  // Desktop account popover (hover-intent + click) and mobile account sheet.
+  const [isAccountOpen, setIsAccountOpen] = useState(false);
+  const [isAccountSheetOpen, setIsAccountSheetOpen] = useState(false);
+  const accountRef = useRef<HTMLDivElement>(null);
+  const hoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const [isLocationOpen, setIsLocationOpen] = useState(false);
   const [savedAddresses, setSavedAddresses] = useState<any[]>([]);
   const [addressesLoaded, setAddressesLoaded] = useState(false);
   const [settingLocationId, setSettingLocationId] = useState<string | null>(null);
-  const locationPickerRef = useRef<HTMLDivElement>(null);
+  const locationRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const savedLoc = localStorage.getItem('medox_location');
-    if (savedLoc) {
-      setLocation(savedLoc);
-    }
+    if (savedLoc) setLocation(savedLoc);
   }, []);
 
+  // Close desktop popovers on outside click.
   useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (locationPickerRef.current && !locationPickerRef.current.contains(event.target as Node)) {
-        setIsLocationPickerOpen(false);
-      }
+    const handle = (event: MouseEvent) => {
+      const t = event.target as Node;
+      if (locationRef.current && !locationRef.current.contains(t)) setIsLocationOpen(false);
+      if (accountRef.current && !accountRef.current.contains(t)) setIsAccountOpen(false);
     };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener('mousedown', handle);
+    return () => document.removeEventListener('mousedown', handle);
   }, []);
 
-  const openLocationPicker = () => {
-    setIsLocationPickerOpen(o => !o);
+  // Close menus on route change.
+  useEffect(() => {
+    setIsAccountOpen(false);
+    setIsLocationOpen(false);
+    setIsAccountSheetOpen(false);
+  }, [pathname]);
+
+  const loadAddresses = () => {
     if (!addressesLoaded && user) {
       api.get('/user/addresses')
         .then(res => setSavedAddresses(res.data || []))
@@ -105,14 +258,19 @@ export default function Navbar() {
     }
   };
 
+  const openLocationPicker = () => {
+    setIsLocationOpen(o => !o);
+    loadAddresses();
+  };
+
   const detectLocation = async () => {
-    setIsLocationPickerOpen(false);
+    setIsLocationOpen(false);
     try {
       const parsed = await detectLocationRaw();
       const displayLoc = parsed.city ? `${parsed.city}, ${parsed.state}` : parsed.state || 'India';
       localStorage.setItem('medox_location', displayLoc);
       setLocation(displayLoc);
-      toast.success(`Location set to ${displayLoc}`);
+      toast.success(`Delivering to ${displayLoc}`);
     } catch {
       // error toast already shown by the hook
     }
@@ -122,7 +280,7 @@ export default function Navbar() {
     const displayLoc = `${addr.city}, ${addr.state}`;
     localStorage.setItem('medox_location', displayLoc);
     setLocation(displayLoc);
-    setIsLocationPickerOpen(false);
+    setIsLocationOpen(false);
     if (addr.isDefault) return;
     setSettingLocationId(addr.id);
     try {
@@ -143,7 +301,7 @@ export default function Navbar() {
             const totalItems = res.data.reduce((acc: number, item: any) => acc + item.quantity, 0);
             setCartCount(totalItems);
           })
-          .catch(err => console.error("Failed to fetch cart count", err));
+          .catch(err => console.error('Failed to fetch cart count', err));
       } else {
         setCartCount(0);
       }
@@ -153,12 +311,10 @@ export default function Navbar() {
 
     const handleCartUpdated = () => {
       fetchCartCount();
-      setCartBouncing(true);
-      setTimeout(() => setCartBouncing(false), 900);
+      setCartPulse(p => p + 1); // re-keys the badge so the pop animation replays
     };
-
     const handleOpenCart = () => setIsCartOpen(true);
-    
+
     window.addEventListener('cart-updated', handleCartUpdated);
     window.addEventListener('open-cart', handleOpenCart);
     return () => {
@@ -167,337 +323,281 @@ export default function Navbar() {
     };
   }, [user]);
 
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setIsDropdownOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
   const handleLogout = async () => {
     await logout();
-    setIsDropdownOpen(false);
+    setIsAccountOpen(false);
+    setIsAccountSheetOpen(false);
     router.push('/');
   };
 
+  const openAccountHover = () => {
+    if (hoverTimer.current) clearTimeout(hoverTimer.current);
+    hoverTimer.current = setTimeout(() => setIsAccountOpen(true), 80);
+  };
+  const closeAccountHover = () => {
+    if (hoverTimer.current) clearTimeout(hoverTimer.current);
+    hoverTimer.current = setTimeout(() => setIsAccountOpen(false), 160);
+  };
+
+  const firstName = !loading && user?.name ? user.name.split(' ')[0] : null;
+
+  const popover = (open: boolean) =>
+    `absolute top-full right-0 mt-2 bg-white rounded-2xl border border-line shadow-[0_12px_40px_rgba(16,24,40,0.14)] origin-top-right transition-[opacity,transform] duration-200 ease-[var(--ease-out-expo)] ${
+      open ? 'opacity-100 scale-100 translate-y-0 pointer-events-auto' : 'opacity-0 scale-[0.97] -translate-y-1 pointer-events-none'
+    }`;
+
+  const navBtn =
+    'pressable hidden md:flex items-center gap-2 h-10 px-3 rounded-lg text-[14px] font-medium text-white/80 hover:text-white hover:bg-white/[0.08] border-none bg-transparent';
+
+  const tabs = [
+    { href: '/', label: 'Home', icon: Home, active: pathname === '/' },
+    { href: '/account/wishlist', label: 'Wishlist', icon: Heart, active: pathname === '/account/wishlist' },
+    { href: null, label: 'Cart', icon: ShoppingBag, active: isCartOpen },
+    { href: '/account/orders', label: 'Orders', icon: Package, active: !!pathname?.startsWith('/account/orders') },
+    { href: '/account', label: 'Account', icon: User, active: pathname === '/account' },
+  ];
+  // While the cart is open, highlight Cart; otherwise the current page's tab.
+  const activeTab = isCartOpen ? 2 : tabs.findIndex((t) => t.active);
+
   return (
     <>
-      <header className="bg-[#0d1117] border-b border-white/5 sticky top-0 z-[1000] shadow-[0_4px_20px_rgba(0,0,0,0.4)]">
-        <div className="max-w-[1500px] mx-auto flex items-center justify-between py-3 px-3.5 md:px-5 gap-y-3 md:gap-[30px] flex-wrap">
-          
+      <header className="bg-nav-bg sticky top-0 z-[1000] pt-safe">
+        <div className="max-w-[1500px] mx-auto flex flex-wrap md:flex-nowrap items-center justify-between gap-x-6 gap-y-2.5 px-4 md:px-6 py-2.5 md:py-0 md:h-[72px]">
+
           {/* Logo */}
-          <div className="order-1">
-            <Link href="/" className="flex items-center gap-2 transition-transform duration-300 hover:scale-105">
-              <img src="/logo.webp" alt="MedoxAtoZ Logo" className="h-18 md:h-22 w-auto object-contain" />
-            </Link>
-          </div>
-          
-          {/* Search Bar */}
-          <Suspense fallback={
-            <div className="order-3 md:order-2 w-full md:w-auto md:flex-1 max-w-full md:max-w-[600px] mt-3 md:mt-0 flex items-center bg-white/5 border border-white/10 rounded-full py-[3px] pr-[5px] pl-5">
-              <input type="text" placeholder="Search premium medical supplies..." className="flex-1 border-none outline-none bg-transparent text-white text-[15px] py-2 w-full placeholder-[#a0aab5]" disabled />
-            </div>
-          }>
+          <Link href="/" className="order-1 shrink-0 flex items-center pressable" aria-label="MedoxAtoZ home">
+            <img src="/logo.webp" alt="MedoxAtoZ" className="h-10 md:h-14 w-auto object-contain" />
+          </Link>
+
+          {/* Search */}
+          <Suspense
+            fallback={
+              <div className={searchShell}>
+                <Search className="w-[18px] h-[18px] ml-3.5 text-white/50" />
+                <span className="px-3 text-[15px] text-white/50">Search medical supplies</span>
+              </div>
+            }
+          >
             <SearchBarInput />
           </Suspense>
 
           {/* Actions */}
-          <div className="order-2 flex items-center gap-4 md:gap-6">
-            
-            <div className="relative hidden md:block" ref={locationPickerRef}>
-              <button onClick={openLocationPicker} className="flex items-center gap-2 text-white/80 hover:text-gold-primary transition-all duration-300 font-medium bg-transparent border-none cursor-pointer outline-none group">
-                <svg className="w-5 h-5 stroke-current fill-none stroke-2 group-hover:scale-110 transition-transform" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
-                  <circle cx="12" cy="10" r="3"></circle>
-                </svg>
-                <span className="text-sm truncate max-w-[120px]">{loadingLocation ? 'Detecting...' : location}</span>
-                <ChevronDown className={`w-3.5 h-3.5 transition-transform ${isLocationPickerOpen ? 'rotate-180' : ''}`} />
+          <div className="order-2 md:order-3 flex items-center gap-1">
+
+            {/* Mobile: compact location + account */}
+            <button
+              onClick={detectLocation}
+              className="pressable md:hidden flex items-center gap-1 h-9 px-2.5 rounded-full text-[12px] text-white/75 bg-white/[0.06] border-none max-w-[150px]"
+              aria-label="Set delivery location"
+            >
+              <MapPin className="w-3.5 h-3.5 shrink-0" />
+              <span className="truncate">{loadingLocation ? 'Locating…' : location}</span>
+            </button>
+            <button
+              onClick={() => setIsAccountSheetOpen(true)}
+              aria-label="Account menu"
+              className="pressable md:hidden w-9 h-9 grid place-items-center rounded-full text-white/85 bg-white/[0.06] border-none ml-1"
+            >
+              <User className="w-[18px] h-[18px]" />
+            </button>
+
+            {/* Desktop: location */}
+            <div className="relative hidden md:block" ref={locationRef}>
+              <button onClick={openLocationPicker} className={navBtn} aria-expanded={isLocationOpen}>
+                <MapPin className="w-[18px] h-[18px] text-white/60" />
+                <span className="flex flex-col items-start leading-tight">
+                  <span className="text-[11px] text-white/50 font-normal">Deliver to</span>
+                  <span className="text-[13px] max-w-[130px] truncate">{loadingLocation ? 'Detecting…' : location}</span>
+                </span>
               </button>
 
-              {isLocationPickerOpen && (
-                <div className="absolute top-full right-0 mt-3 w-80 bg-white rounded-xl shadow-[0_8px_25px_rgba(0,0,0,0.15)] border border-[#e1e4e8] overflow-hidden z-[1100] animate-in fade-in slide-in-from-top-1 duration-150 text-text-main">
+              <div className={`${popover(isLocationOpen)} w-80 overflow-hidden z-[1100] text-text-main`}>
+                <div className="p-2">
                   <button
                     onClick={detectLocation}
                     disabled={loadingLocation}
-                    className="w-full flex items-center gap-2.5 px-4 py-3 text-sm font-bold text-gold-hover hover:bg-gold-light/40 transition-colors cursor-pointer disabled:opacity-50 border-b border-gray-100"
+                    className="pressable w-full flex items-center gap-3 px-3 h-11 rounded-lg text-[14px] font-medium text-ink hover:bg-gray-50 disabled:opacity-50 border-none bg-transparent"
                   >
-                    <MapPin className="w-4 h-4" /> {loadingLocation ? 'Detecting current location...' : 'Use Current Location'}
-                  </button>
-
-                  {user && (
-                    <div className="max-h-64 overflow-y-auto">
-                      {!addressesLoaded ? (
-                        <div className="px-4 py-3 text-xs text-gray-400">Loading saved addresses...</div>
-                      ) : savedAddresses.length === 0 ? (
-                        <div className="px-4 py-3 text-xs text-gray-400">No saved addresses yet.</div>
-                      ) : (
-                        savedAddresses.map(addr => (
-                          <button
-                            key={addr.id}
-                            onClick={() => selectSavedAddress(addr)}
-                            disabled={settingLocationId === addr.id}
-                            className="w-full text-left px-4 py-3 text-sm border-b border-gray-50 last:border-0 hover:bg-gray-50 transition-colors flex items-start gap-2 cursor-pointer disabled:opacity-50"
-                          >
-                            {addr.isDefault ? (
-                              <CheckCircle2 className="w-4 h-4 text-gold-hover shrink-0 mt-0.5" />
-                            ) : (
-                              <span className="w-4 h-4 shrink-0" />
-                            )}
-                            <span className="min-w-0">
-                              <span className="font-bold text-gray-900 block truncate">{addr.fullName}</span>
-                              <span className="text-gray-500 text-xs block truncate">{addr.address}, {addr.city}, {addr.state} {addr.pincode}</span>
-                            </span>
-                          </button>
-                        ))
-                      )}
-                    </div>
-                  )}
-
-                  <Link
-                    href={user ? '/account' : '/signin'}
-                    onClick={() => setIsLocationPickerOpen(false)}
-                    className="block text-center py-2.5 text-xs font-bold text-gold-hover hover:text-gold-primary hover:bg-gray-50 transition-colors border-t border-gray-100"
-                  >
-                    {user ? '+ Add a new address' : 'Sign in to use a saved address'}
-                  </Link>
-                </div>
-              )}
-            </div>
-
-            {/* Account Dropdown (Simplified for brevity, keep your original dropdown logic here) */}
-            <div className="relative flex items-center md:pb-[25px] md:mb-[-25px] group" ref={dropdownRef}>
-              <div onClick={() => setIsDropdownOpen(!isDropdownOpen)} className="flex items-center gap-2 text-white hover:text-gold-primary transition-all duration-300 font-medium cursor-pointer bg-white/5 px-4 py-2 rounded-full border border-white/10 hover:border-gold-primary/30 hover:bg-white/10">
-                <User className="w-4 h-4" />
-                <span className="text-sm hidden md:inline">
-                  {!loading && user && user.name ? `${user.name.split(' ')[0]} ▾` : 'Sign In ▾'}
-                </span>
-              </div>
-              {/* Two-column Dropdown Panel */}
-              <div className={`
-              ${isDropdownOpen ? 'flex' : 'hidden'} md:group-hover:flex 
-              flex-col 
-              fixed inset-0 bg-white z-[3000] overflow-y-auto
-              md:absolute md:inset-auto md:top-full md:right-[-60px] md:bg-white 
-              text-text-main 
-              w-full md:w-[450px] rounded-none md:rounded-lg 
-              shadow-none md:shadow-[0_8px_25px_rgba(0,0,0,0.15)] 
-              border-none md:border md:border-[#e1e4e8] 
-              p-5 md:p-6 cursor-default mt-0 
-              transition-all duration-300 
-              md:before:content-[''] md:before:absolute md:before:top-[-7px] 
-              md:before:right-[80px] md:before:w-3 md:before:h-3 md:before:bg-white 
-              md:before:rotate-45 md:before:border-t md:before:border-l md:before:border-[#e1e4e8]
-            `}>
-                {/* Mobile Header */}
-                <div className="md:hidden pt-4 flex items-center justify-between pb-4 mb-4 border-b border-gray-100">
-                  <div className="font-bold text-lg text-gray-900">Your Account</div>
-                  <button onClick={() => setIsDropdownOpen(false)} className="p-2 text-gray-500 hover:bg-gray-100 rounded-full">
-                    <X className="w-6 h-6" />
+                    <Navigation className="w-4 h-4 text-gold-ink" />
+                    {loadingLocation ? 'Detecting location…' : 'Use current location'}
                   </button>
                 </div>
 
-                {!loading && !user && (
-                  <>
-                    <Link
-                      href="/signin"
-                      onClick={() => setIsDropdownOpen(false)}
-                      className="bg-gradient-to-br from-[#e4c563] to-[#d4af37] text-[#111111] border-none block text-center py-3 px-5 rounded-full font-bold text-[15px] cursor-pointer shadow-[0_4px_10px_rgba(212,175,55,0.3)] mb-4 transition-all duration-300 hover:from-[#ecd17d] hover:to-[#c5a02e] hover:-translate-y-0.5 hover:shadow-[0_6px_15px_rgba(212,175,55,0.45)]"
-                    >
-                      Sign in
-                    </Link>
-                    <div className="text-center text-[13px] mb-3 text-[#333]">
-                      New customer?{' '}
-                      <Link href="/signup" onClick={() => setIsDropdownOpen(false)} className="text-[#007185] hover:text-[#c7511f] hover:underline font-semibold">
-                        Start here.
-                      </Link>
-                    </div>
-                  </>
+                {user && (
+                  <div className="max-h-64 overflow-y-auto border-t border-line p-2">
+                    <div className="px-3 pt-1 pb-2 text-[11px] font-medium uppercase tracking-wide text-text-muted">Saved addresses</div>
+                    {!addressesLoaded ? (
+                      <div className="px-3 py-2 text-[13px] text-text-muted">Loading…</div>
+                    ) : savedAddresses.length === 0 ? (
+                      <div className="px-3 py-2 text-[13px] text-text-muted">No saved addresses yet.</div>
+                    ) : (
+                      savedAddresses.map(addr => (
+                        <button
+                          key={addr.id}
+                          onClick={() => selectSavedAddress(addr)}
+                          disabled={settingLocationId === addr.id}
+                          className="w-full text-left px-3 py-2.5 rounded-lg text-sm hover:bg-gray-50 transition-colors flex items-start gap-2.5 disabled:opacity-50 border-none bg-transparent"
+                        >
+                          {addr.isDefault ? (
+                            <CheckCircle2 className="w-4 h-4 text-gold-ink shrink-0 mt-0.5" />
+                          ) : (
+                            <span className="w-4 h-4 shrink-0" />
+                          )}
+                          <span className="min-w-0">
+                            <span className="font-medium text-ink block truncate">{addr.fullName}</span>
+                            <span className="text-text-muted text-xs block truncate">{addr.address}, {addr.city}, {addr.state} {addr.pincode}</span>
+                          </span>
+                        </button>
+                      ))
+                    )}
+                  </div>
                 )}
 
-                <div className="flex flex-col md:flex-row gap-4 md:gap-5 mt-2 md:mt-4 border-t border-gray-100 pt-4 md:pt-5" style={!user ? {} : { marginTop: 0, borderTop: 'none', paddingTop: 0 }}>
-                  {/* Lists Column */}
-                  <div className="flex-1">
-                    <div className="font-bold mb-2 md:mb-3 text-[15px] text-black">Your Lists</div>
-                    <ul className="list-none p-0 m-0 space-y-2 md:space-y-1">
-                      <li>
-                        <Link href="/account/wishlist" onClick={() => setIsDropdownOpen(false)} className="block py-1 text-[#555] hover:text-gold-primary hover:underline hover:pl-1 transition-all duration-300 text-[13px] text-left w-full">
-                          Create a Wish List
-                        </Link>
-                      </li>
-                      <li>
-                        <Link href="/account" onClick={() => setIsDropdownOpen(false)} className="block py-1 text-[#555] hover:text-gold-primary hover:underline hover:pl-1 transition-all duration-300 text-[13px] text-left w-full">
-                          Saved Items
-                        </Link>
-                      </li>
-                    </ul>
-                  </div>
-
-                  {/* Accounts Column */}
-                  <div className="flex-1 md:border-l md:border-gray-100 md:pl-5 mt-2 md:mt-0 pt-4 md:pt-0 border-t md:border-t-0 border-gray-100">
-                    <div className="font-bold mb-2 md:mb-3 text-[15px] text-black">Your Account</div>
-                    <ul className="list-none p-0 m-0 space-y-2 md:space-y-1">
-                      <li>
-                        <Link href="/account" onClick={() => setIsDropdownOpen(false)} className="block py-1 text-[#555] hover:text-gold-primary hover:underline hover:pl-1 transition-all duration-300 text-[13px] text-left w-full">
-                          Your Account
-                        </Link>
-                      </li>
-                      <li>
-                        <Link href="/account/orders" onClick={() => setIsDropdownOpen(false)} className="block py-1 text-[#555] hover:text-gold-primary hover:underline hover:pl-1 transition-all duration-300 text-[13px] text-left w-full">
-                          Your Orders
-                        </Link>
-                      </li>
-                      <li>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setIsDropdownOpen(false);
-                            window.dispatchEvent(new Event('open-help-modal'));
-                          }}
-                          className="flex items-center gap-1.5 py-1 text-[#555] hover:text-gold-primary hover:underline hover:pl-1 transition-all duration-300 text-[13px] text-left w-full bg-transparent border-none cursor-pointer"
-                        >
-                          <HelpCircle className="w-3.5 h-3.5 text-gold-primary" />
-                          <span>Help & Guides</span>
-                        </button>
-                      </li>
-                      {user?.role === 'admin' && (
-                        <li className="mt-3 md:mt-4 border-t border-gray-100 pt-3 md:pt-4">
-                          <Link href="/admin" onClick={() => setIsDropdownOpen(false)} className="block py-1 text-[#007185] hover:text-gold-primary hover:underline hover:pl-1 transition-all duration-300 text-[13px] font-bold text-left w-full">
-                            Admin Dashboard
-                          </Link>
-                        </li>
-                      )}
-                      {user?.role === 'vendor' && (
-                        <li className="mt-3 md:mt-4 border-t border-gray-100 pt-3 md:pt-4">
-                          <Link href="/vendor/dashboard" onClick={() => setIsDropdownOpen(false)} className="block py-1 text-[#28a745] hover:text-gold-primary hover:underline hover:pl-1 transition-all duration-300 text-[13px] font-bold text-left w-full">
-                            Seller Dashboard
-                          </Link>
-                        </li>
-                      )}
-                      {user && (
-                        <li className="mt-3 md:mt-4 border-t border-gray-100 pt-3 md:pt-4">
-                          <button
-                            onClick={handleLogout}
-                            className="block py-1 text-[#d9534f] hover:text-red-700 hover:underline hover:pl-1 transition-all duration-300 text-[13px] font-semibold bg-transparent border-none cursor-pointer text-left w-full"
-                          >
-                            Sign Out
-                          </button>
-                        </li>
-                      )}
-                    </ul>
-
-                    {!user || user.role === 'buyer' ? (
-                      <>
-                        <div className="font-bold mb-2 md:mb-3 text-[15px] text-black mt-4 md:mt-6">Sellers</div>
-                        <ul className="list-none p-0 m-0 space-y-1">
-                          <li>
-                            <Link href="/vendor/register" onClick={() => setIsDropdownOpen(false)} className="block py-1 text-[#555] hover:text-gold-primary hover:underline hover:pl-1 transition-all duration-300 text-[13px] text-left w-full">
-                              Register as a Seller
-                            </Link>
-                          </li>
-                        </ul>
-                        {!isInApp && (
-                          <div className="mt-4 pt-3 border-t border-gray-100">
-                            <div className="font-bold mb-2 text-[14px] text-black">Get the App</div>
-                            <div className="flex flex-col gap-2.5 items-start">
-                              <GooglePlayButton size="md" />
-                              <AppStoreButton size="md" />
-                            </div>
-                          </div>
-                        )}
-                      </>
-                    ) : null}
-                  </div>
-                </div>
+                <Link
+                  href={user ? '/account' : '/signin'}
+                  onClick={() => setIsLocationOpen(false)}
+                  className="block text-center py-3 text-[13px] font-medium text-ink hover:bg-gray-50 transition-colors border-t border-line"
+                >
+                  {user ? 'Add a new address' : 'Sign in to use a saved address'}
+                </Link>
               </div>
             </div>
 
-            {/* UPGRADED: Download App Button */}
-            {!isInApp && (
-              <Link 
-                href="/download" 
-                className="hidden md:flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 border border-white/10 hover:bg-white/10 hover:border-gold-primary/40 hover:shadow-[0_0_15px_rgba(212,175,55,0.15)] transition-all duration-300 text-white hover:text-gold-primary group"
+            {/* Desktop: account */}
+            <div
+              className="relative hidden md:block"
+              ref={accountRef}
+              onMouseEnter={openAccountHover}
+              onMouseLeave={closeAccountHover}
+            >
+              <button
+                onClick={() => setIsAccountOpen(o => !o)}
+                className={navBtn}
+                aria-expanded={isAccountOpen}
+                aria-haspopup="menu"
               >
-                <Download className="w-4 h-4 group-hover:-translate-y-0.5 transition-transform duration-300" />
-                <span className="text-sm font-semibold tracking-wide">App</span>
+                <User className="w-[18px] h-[18px] text-white/60" />
+                <span className="flex flex-col items-start leading-tight">
+                  <span className="text-[11px] text-white/50 font-normal">{firstName ? `Hello, ${firstName}` : 'Hello, sign in'}</span>
+                  <span className="text-[13px] flex items-center gap-1">
+                    Account
+                    <ChevronDown className={`w-3.5 h-3.5 text-white/50 transition-transform duration-200 ${isAccountOpen ? 'rotate-180' : ''}`} />
+                  </span>
+                </span>
+              </button>
+              {/* Invisible bridge so the pointer can travel into the popover. */}
+              <div className="absolute top-full right-0 h-3 w-full" aria-hidden />
+              <div className={`${popover(isAccountOpen)} w-[300px] p-2 z-[1100]`} role="menu">
+                <AccountMenu onNavigate={() => setIsAccountOpen(false)} onLogout={handleLogout} />
+              </div>
+            </div>
+
+            {!isInApp && (
+              <Link href="/download" className={navBtn}>
+                <Download className="w-[18px] h-[18px] text-white/60" />
+                <span>App</span>
               </Link>
             )}
 
-            {/* UPGRADED: Orders Button */}
-            <Link 
-              href="/account" 
-              className="hidden md:flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 border border-white/10 hover:bg-white/10 hover:border-gold-primary/40 hover:shadow-[0_0_15px_rgba(212,175,55,0.1)] transition-all duration-300 text-white hover:text-gold-primary group"
-            >
-              <Package className="w-4 h-4 group-hover:rotate-12 transition-transform duration-300" />
-              <span className="text-sm font-semibold tracking-wide">Orders</span>
+            <Link href="/account/orders" className={navBtn}>
+              <Package className="w-[18px] h-[18px] text-white/60" />
+              <span>Orders</span>
             </Link>
 
-            {/* UPGRADED: Cart Button */}
-            <button 
+            {/* Desktop: cart */}
+            <button
               onClick={() => setIsCartOpen(true)}
-              className="relative hidden md:flex items-center gap-2 bg-gradient-to-tr from-gold-primary/20 to-transparent py-2 px-5 rounded-full border border-gold-primary/40 text-gold-primary hover:bg-gold-primary hover:text-[#0d1117] transition-all duration-500 shadow-[0_0_15px_rgba(212,175,55,0.15)] hover:shadow-[0_0_25px_rgba(212,175,55,0.4)] group cursor-pointer"
+              className="pressable relative hidden md:flex items-center gap-2 h-10 pl-3 pr-4 ml-2 rounded-lg bg-gold-primary text-ink text-[14px] font-semibold hover:bg-gold-hover border-none"
             >
-              <LucideShoppingBag className="w-5 h-5 group-hover:scale-110 transition-transform duration-300" />
+              <ShoppingBag className="w-[18px] h-[18px]" />
+              <span>Cart</span>
               {cartCount > 0 && (
-                <span className={`bg-white text-[#0d1117] font-extrabold text-[11px] h-[20px] min-w-[20px] rounded-full flex items-center justify-center px-1 absolute -top-1.5 -right-1.5 z-[2] shadow-[0_2px_5px_rgba(0,0,0,0.2)] transition-transform duration-300 ${
-                  cartBouncing ? 'animate-bounce scale-125 !bg-gold-primary !text-black shadow-[0_0_12px_rgba(212,175,55,0.7)]' : ''
-                }`}>
+                <span
+                  key={cartPulse}
+                  className="badge-pop ml-0.5 min-w-[20px] h-5 px-1.5 rounded-full bg-ink text-white text-[11px] font-semibold grid place-items-center tabular-nums"
+                >
                   {cartCount}
                 </span>
               )}
-              <span className="text-sm font-bold tracking-wide">Cart</span>
             </button>
           </div>
         </div>
       </header>
 
-      {/* Categories Mega Menu (At the top, non-sticky so it scrolls away on mobile and PC) */}
+      {/* Categories strip (home + category pages) */}
       {(pathname === '/' || pathname?.startsWith('/categories')) && <MegaMenu />}
 
-      {/* UPGRADED: Mobile Sticky Bottom Tab Bar */}
-      <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white/80 backdrop-blur-xl border-t border-gray-200 shadow-[0_-10px_30px_rgba(0,0,0,0.08)] z-[999] flex justify-around items-end h-[72px] pb-3 px-2">
-        
-        <Link href="/" className={`flex flex-col items-center justify-center flex-1 h-full transition-all duration-300 ${pathname === '/' ? 'text-gold-primary -translate-y-1' : 'text-gray-400 hover:text-gray-600'}`}>
-          <Home className={`w-6 h-6 stroke-[1.5px] ${pathname === '/' ? 'fill-gold-primary/10 stroke-2' : ''}`} />
-          <span className="text-[10px] font-bold mt-1 tracking-wide">Home</span>
-        </Link>
-
-        <Link href="/account/wishlist" className={`flex flex-col items-center justify-center flex-1 h-full transition-all duration-300 ${pathname === '/account/wishlist' ? 'text-gold-primary -translate-y-1' : 'text-gray-400 hover:text-gray-600'}`}>
-          <Heart className={`w-6 h-6 stroke-[1.5px] ${pathname === '/account/wishlist' ? 'fill-gold-primary/10 stroke-2' : ''}`} />
-          <span className="text-[10px] font-bold mt-1 tracking-wide">Wishlist</span>
-        </Link>
-
-        {/* Floating Action Button (FAB) for Cart on Mobile */}
-        <div className="flex-1 flex justify-center relative h-full">
-          <button onClick={() => setIsCartOpen(true)} className="absolute -top-6 flex flex-col items-center justify-center transition-transform duration-300 active:scale-95 group cursor-pointer border-none bg-transparent">
-            <div className={`relative flex items-center justify-center w-14 h-14 rounded-full shadow-[0_8px_20px_rgba(212,175,55,0.3)] border-[3px] border-white transition-colors duration-300 ${isCartOpen ? 'bg-gold-primary text-white' : 'bg-[#0d1117] text-gold-primary'} ${cartBouncing ? 'animate-bounce shadow-[0_0_20px_rgba(212,175,55,0.6)]' : ''}`}>
-              <LucideShoppingBag className="w-6 h-6 stroke-2 group-hover:scale-110 transition-transform" />
-              {cartCount > 0 && (
-                <span className={`bg-red-500 text-white font-extrabold text-[10px] h-[18px] min-w-[18px] rounded-full inline-flex items-center justify-center px-1 border-2 border-white absolute -top-1 -right-1 z-[2] transition-transform duration-300 ${
-                  cartBouncing ? 'scale-125 !bg-gold-primary !text-black !border-gold-primary' : ''
-                }`}>
-                  {cartCount}
-                </span>
-              )}
-            </div>
-            <span className={`text-[10px] font-bold mt-1.5 tracking-wide ${isCartOpen ? 'text-gold-primary' : 'text-gray-400'}`}>Cart</span>
-          </button>
+      {/* Mobile bottom tab bar — floating dark capsule that matches the header */}
+      {!hideTabBar && (
+      <nav
+        className="md:hidden fixed inset-x-0 bottom-0 z-[999] px-3 pb-[max(10px,env(safe-area-inset-bottom))] pointer-events-none"
+        aria-label="Primary"
+      >
+        <div className="pointer-events-auto relative mx-auto max-w-[480px] h-[var(--tabbar-h)] rounded-[22px] bg-nav-bg/95 backdrop-blur-xl backdrop-saturate-150 border border-white/[0.08] shadow-[0_10px_30px_rgba(0,0,0,0.28)] p-1.5">
+          <div className="relative flex h-full">
+            {/* Sliding highlight */}
+            {activeTab >= 0 && (
+              <span
+                aria-hidden
+                className="absolute inset-y-0 left-0 rounded-[16px] bg-white/[0.09] transition-transform duration-500 ease-[var(--ease-out-expo)]"
+                style={{ width: `${100 / tabs.length}%`, transform: `translateX(${activeTab * 100}%)` }}
+              />
+            )}
+            {tabs.map(({ href, label, icon: Icon, active }) => {
+              const content = (
+                <>
+                  <span className="relative">
+                    <Icon
+                      className={`w-[22px] h-[22px] transition-[color,transform] duration-300 ease-[var(--ease-out-expo)] ${
+                        active ? 'text-gold-primary stroke-[2.2] -translate-y-px' : 'text-white/55 stroke-[1.8]'
+                      }`}
+                    />
+                    {label === 'Cart' && cartCount > 0 && (
+                      <span
+                        key={cartPulse}
+                        className="badge-pop absolute -top-1.5 -right-2.5 min-w-[17px] h-[17px] px-1 rounded-full bg-gold-primary text-ink text-[10px] font-bold grid place-items-center ring-2 ring-nav-bg tabular-nums"
+                      >
+                        {cartCount > 99 ? '99+' : cartCount}
+                      </span>
+                    )}
+                  </span>
+                  <span className={`text-[10.5px] mt-1 leading-none transition-colors duration-300 ${active ? 'text-white font-semibold' : 'text-white/50 font-medium'}`}>
+                    {label}
+                  </span>
+                </>
+              );
+              const cls = 'pressable relative flex-1 flex flex-col items-center justify-center rounded-[16px] border-none bg-transparent';
+              return href ? (
+                <Link key={label} href={href} className={cls} aria-current={active ? 'page' : undefined}>
+                  {content}
+                </Link>
+              ) : (
+                <button key={label} type="button" onClick={() => setIsCartOpen(true)} className={cls}>
+                  {content}
+                </button>
+              );
+            })}
+          </div>
         </div>
+      </nav>
+      )}
 
-        <Link href="/account/orders" className={`flex flex-col items-center justify-center flex-1 h-full transition-all duration-300 ${pathname?.startsWith('/account/orders') ? 'text-gold-primary -translate-y-1' : 'text-gray-400 hover:text-gray-600'}`}>
-          <Package className={`w-6 h-6 stroke-[1.5px] ${pathname?.startsWith('/account/orders') ? 'fill-gold-primary/10 stroke-2' : ''}`} />
-          <span className="text-[10px] font-bold mt-1 tracking-wide">Orders</span>
-        </Link>
+      {/* Mobile account sheet */}
+      <Sheet
+        open={isAccountSheetOpen}
+        onClose={() => setIsAccountSheetOpen(false)}
+        side="bottom"
+        label="Account menu"
+        zIndex={3000}
+      >
+        <div data-sheet-handle className="px-5 pt-1 pb-3 touch-none">
+          <h2 className="text-[17px] font-semibold text-ink">Account</h2>
+        </div>
+        <div className="overflow-y-auto overscroll-contain px-2 pb-4">
+          <AccountMenu onNavigate={() => setIsAccountSheetOpen(false)} onLogout={handleLogout} />
+        </div>
+      </Sheet>
 
-        <Link href="/account" className={`flex flex-col items-center justify-center flex-1 h-full transition-all duration-300 ${pathname === '/account' ? 'text-gold-primary -translate-y-1' : 'text-gray-400 hover:text-gray-600'}`}>
-          <User className={`w-6 h-6 stroke-[1.5px] ${pathname === '/account' ? 'fill-gold-primary/10 stroke-2' : ''}`} />
-          <span className="text-[10px] font-bold mt-1 tracking-wide">Account</span>
-        </Link>
-        
-      </div>
-      
       <CartDrawer isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} />
     </>
   );

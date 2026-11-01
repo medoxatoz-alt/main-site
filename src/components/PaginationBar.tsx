@@ -42,7 +42,7 @@ export default function PaginationBar({ page, totalPages, total, pageSize, setPa
         <button
           onClick={() => setPage(Math.max(1, page - 1))}
           disabled={page === 1}
-          className="p-1.5 rounded-lg border border-gray-200 text-gray-400 hover:border-gold-primary hover:text-gold-primary disabled:opacity-30 disabled:cursor-not-allowed transition-all cursor-pointer"
+          className="pressable p-1.5 rounded-lg border border-line text-gray-400 hover:border-gray-400 hover:text-ink disabled:opacity-30 disabled:cursor-not-allowed transition-all cursor-pointer"
         >
           <ChevronLeft className="w-3.5 h-3.5" />
         </button>
@@ -55,8 +55,8 @@ export default function PaginationBar({ page, totalPages, total, pageSize, setPa
               onClick={() => setPage(p as number)}
               className={`min-w-[30px] h-7 px-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                 p === page
-                  ? 'bg-gold-primary text-text-main shadow-sm'
-                  : 'border border-gray-200 text-gray-500 hover:border-gold-primary hover:text-gold-primary'
+                  ? 'bg-ink text-white border border-ink'
+                  : 'border border-gray-200 text-gray-500 hover:border-gray-400 hover:text-ink'
               }`}
             >
               {p}
@@ -66,7 +66,7 @@ export default function PaginationBar({ page, totalPages, total, pageSize, setPa
         <button
           onClick={() => setPage(Math.min(totalPages, page + 1))}
           disabled={page === totalPages}
-          className="p-1.5 rounded-lg border border-gray-200 text-gray-400 hover:border-gold-primary hover:text-gold-primary disabled:opacity-30 disabled:cursor-not-allowed transition-all cursor-pointer"
+          className="pressable p-1.5 rounded-lg border border-line text-gray-400 hover:border-gray-400 hover:text-ink disabled:opacity-30 disabled:cursor-not-allowed transition-all cursor-pointer"
         >
           <ChevronRight className="w-3.5 h-3.5" />
         </button>

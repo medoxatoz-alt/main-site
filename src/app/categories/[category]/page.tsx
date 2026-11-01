@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useEffect, useState, use, useMemo, useRef } from 'react';
 import Navbar from '@/components/Navbar';
@@ -10,35 +10,9 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import EmptyState from '@/components/EmptyState';
 import ErrorState from '@/components/ErrorState';
 import { ProductGridSkeleton } from '@/components/Skeleton';
-import { X } from 'lucide-react';
+import { ChevronRight, ChevronDown } from 'lucide-react';
+import Link from 'next/link';
 import React from 'react';
-
-function ProductSkeleton() {
-  return (
-    <div className="bg-white p-3 sm:p-5 rounded-lg flex flex-col justify-between relative border border-gray-200 animate-pulse">
-      {/* Image Frame Skeleton */}
-      <div className="h-[160px] sm:h-[240px] w-full bg-gray-100 rounded-md mb-4" />
-      
-      {/* Details Section Skeleton */}
-      <div className="flex-1 flex flex-col">
-        {/* Title Lines */}
-        <div className="h-4 bg-gray-100 rounded w-5/6 mb-2" />
-        <div className="h-4 bg-gray-100 rounded w-1/2 mb-4" />
-        
-        {/* Price & Add to Cart Section */}
-        <div className="flex items-center justify-between mt-auto pt-2 border-t border-gray-50">
-          {/* Pricing */}
-          <div className="flex flex-col gap-1 w-1/3">
-            <div className="h-3 bg-gray-100 rounded w-2/3" />
-            <div className="h-5 bg-gray-100 rounded w-full" />
-          </div>
-          {/* Button */}
-          <div className="h-8 w-16 bg-gray-100 rounded-full" />
-        </div>
-      </div>
-    </div>
-  );
-}
 
 
 
@@ -52,6 +26,7 @@ export default function CategoryPage({ params }: { params: Promise<{ category: s
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState(false);
   const [visibleCount, setVisibleCount] = useState(20);
+  const [sortBy, setSortBy] = useState<'relevance' | 'price-asc' | 'price-desc' | 'discount' | 'newest'>('relevance');
   const sentinelRef = useRef<HTMLDivElement | null>(null);
   
   const [categoriesConfig, setCategoriesConfig] = useState<{mainCategories: {id: string, name: string}[], subcategories: Record<string, {id: string, name: string}[]>}>({ mainCategories: [], subcategories: {} });
@@ -257,97 +232,137 @@ export default function CategoryPage({ params }: { params: Promise<{ category: s
     return () => window.removeEventListener('scroll', handleScroll);
   }, [loading, filteredProducts.length]);
 
-  const displayedProducts = filteredProducts.slice(0, visibleCount);
-  const hasMore = visibleCount < filteredProducts.length;
+  const mainCat = categoriesConfig.mainCategories.find(c =>
+    c.id === categoryStr || c.id === categoryStr.replace(/\s+/g, '-') || c.name.toLowerCase() === categoryStr
+  );
+  const resolvedCatName = mainCat ? mainCat.name : categoryStr.replace(/-/g, ' ');
+  const activeSub = filters.subcategories.length === 1 ? filters.subcategories[0] : null;
+  const activeSubName = availableSubcats.find(s => s.id === activeSub)?.name;
+
+  const priceOf = (p: any) => (typeof p.price === 'string' ? parseFloat(p.price.replace(/,/g, '')) : Number(p.price)) || 0;
+  const mrpOf = (p: any) => (typeof p.mrp === 'string' ? parseFloat(p.mrp.replace(/,/g, '')) : Number(p.mrp)) || 0;
+  const offOf = (p: any) => (mrpOf(p) > priceOf(p) ? (mrpOf(p) - priceOf(p)) / mrpOf(p) : 0);
+
+  const sortedProducts = useMemo(() => {
+    const list = [...filteredProducts];
+    if (sortBy === 'price-asc') list.sort((a, b) => priceOf(a) - priceOf(b));
+    else if (sortBy === 'price-desc') list.sort((a, b) => priceOf(b) - priceOf(a));
+    else if (sortBy === 'discount') list.sort((a, b) => offOf(b) - offOf(a));
+    else if (sortBy === 'newest') list.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+    return list;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filteredProducts, sortBy]);
+
+  const displayedProducts = sortedProducts.slice(0, visibleCount);
+  const hasMore = visibleCount < sortedProducts.length;
+
+  const chip = (active: boolean) =>
+    `pressable shrink-0 h-9 px-4 rounded-full text-[13px] font-medium border whitespace-nowrap ${
+      active ? 'bg-ink text-white border-ink' : 'bg-white text-ink border-line hover:border-gray-300'
+    }`;
 
   return (
-    <main className="min-h-screen bg-[var(--bg-page)] pb-20">
+    <main className="min-h-screen bg-page pb-20">
       <Navbar />
 
-      {/* Hero Banner for Category */}
-      <div className="bg-gradient-to-br from-[#1e2226] to-nav-bg pt-10 pb-[80px] md:pb-[100px] flex justify-center relative mb-8">
-        <div className="w-full max-w-[1500px] px-5 text-white z-[2]">
-          <h1 className="text-4xl md:text-[2.8rem] mb-2.5 font-light leading-tight capitalize">
-            {(() => {
-              const mainCat = categoriesConfig.mainCategories.find(c => 
-                c.id === categoryStr || c.id === categoryStr.replace(/\s+/g, '-') || c.name.toLowerCase() === categoryStr
-              );
-              const resolvedCatId = mainCat ? mainCat.id : categoryStr;
-              const resolvedCatName = mainCat ? mainCat.name : categoryStr.replace(/-/g, ' ');
-              const subCatName = categoriesConfig.subcategories[resolvedCatId]?.find(s => s.id === subCategoryQuery)?.name ;
-              
-              if (subCategoryQuery) {
-                return <>{subCatName} <span className="text-gold-primary font-bold">Products</span></>;
-              }
-              return <>{resolvedCatName} <span className="text-gold-primary font-bold">Products</span></>;
-            })()}
-          </h1>
-          <p className="text-gray-300 text-base md:text-lg">
-            {(() => {
-              const mainCat = categoriesConfig.mainCategories.find(c => 
-                c.id === categoryStr || c.id === categoryStr.replace(/\s+/g, '-') || c.name.toLowerCase() === categoryStr
-              );
-              const resolvedCatId = mainCat ? mainCat.id : categoryStr;
-              const resolvedCatName = mainCat ? mainCat.name : categoryStr.replace(/-/g, ' ');
-              const subCatName = categoriesConfig.subcategories[resolvedCatId]?.find(s => s.id === subCategoryQuery)?.name  ;
-              
-              return `Premium supplies ${subCategoryQuery ? `for ${subCatName} in` : 'for'} ${resolvedCatName}.`;
-            })()}
-          </p>
-        </div>
-        <div className="absolute bottom-0 w-full h-[80px] bg-gradient-to-b from-transparent to-[var(--bg-page)] z-[1]"></div>
-      </div>
-
-      {/* Main Content Area */}
-      <div className="max-w-[1500px] mx-auto p-3 sm:p-5 relative z-[5]">
-        <div className="flex flex-col lg:flex-row gap-6">
-
-          {/* Product Grid Area */}
-          <div className="flex-1">
-            {loading ? (
-              <ProductGridSkeleton count={8} />
-            ) : fetchError ? (
-              <ErrorState message="Failed to load products. Please try again later." />
-            ) : filteredProducts.length === 0 ? (
-              <EmptyState message={`No products found for these filters.`} />
-            ) : (
+      <div className="max-w-[1500px] mx-auto">
+        {/* Header */}
+        <div className="px-4 md:px-6 pt-5 md:pt-8 animate-in fade-in duration-300">
+          <nav className="flex items-center gap-1 text-[12.5px] text-text-muted mb-2" aria-label="Breadcrumb">
+            <Link href="/" className="hover:text-ink">Home</Link>
+            <ChevronRight className="w-3.5 h-3.5" />
+            <span className={`capitalize ${activeSubName ? '' : 'text-ink font-medium'}`}>{resolvedCatName}</span>
+            {activeSubName && (
               <>
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-6 mb-8">
-                  {displayedProducts.map(p => (
-                    <ProductCard key={p.id} product={p} onAddToCart={handleAddToCart} />
-                  ))}
-                </div>
-
-                {/* End of list Sentinel for Infinite Scroll */}
-                {hasMore ? (
-                  <div
-                    ref={sentinelRef}
-                    className="col-span-full flex flex-col items-center justify-center py-8 gap-2"
-                  >
-                    <div className="w-6 h-6 border-2 border-gold-primary border-t-transparent rounded-full animate-spin" />
-                    <span className="text-xs font-bold text-gray-500">Loading more products...</span>
-                    <button
-                      type="button"
-                      onClick={() => setVisibleCount((prev) => Math.min(prev + 20, filteredProducts.length))}
-                      className="mt-2 text-xs font-bold text-gold-hover hover:underline cursor-pointer bg-transparent border-none"
-                    >
-                      Click to load more ({filteredProducts.length - visibleCount} remaining)
-                    </button>
-                  </div>
-                ) : (
-                  <div className="col-span-full text-center py-10 border-t border-gray-100 mt-6">
-                    <p className="text-xs sm:text-sm font-bold text-gray-400">
-                      You've viewed all {filteredProducts.length} products ✓
-                    </p>
-                  </div>
-                )}
+                <ChevronRight className="w-3.5 h-3.5" />
+                <span className="text-ink font-medium">{activeSubName}</span>
               </>
             )}
+          </nav>
+          <div className="flex items-end justify-between gap-3">
+            <div className="min-w-0">
+              <h1 className="text-[22px] md:text-[30px] leading-tight font-semibold tracking-tight text-ink capitalize">
+                {activeSubName || resolvedCatName}
+              </h1>
+              {!loading && (
+                <p className="text-[13px] text-text-muted mt-0.5">
+                  {sortedProducts.length} {sortedProducts.length === 1 ? 'product' : 'products'}
+                </p>
+              )}
+            </div>
+            <label className="relative shrink-0">
+              <span className="sr-only">Sort products</span>
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
+                className="appearance-none h-9 pl-3.5 pr-9 rounded-full bg-white border border-line text-[13px] font-medium text-ink cursor-pointer hover:border-gray-300 focus:outline-none"
+              >
+                <option value="relevance">Sort: Featured</option>
+                <option value="price-asc">Price: Low to high</option>
+                <option value="price-desc">Price: High to low</option>
+                <option value="discount">Biggest discount</option>
+                <option value="newest">Newest first</option>
+              </select>
+              <ChevronDown className="w-4 h-4 text-gray-500 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+            </label>
           </div>
         </div>
+
+        {/* Sub-category chips */}
+        {availableSubcats.length > 0 && (
+          <div className="mt-3">
+            <div className="flex gap-2 overflow-x-auto no-scrollbar px-4 md:px-6 py-2.5">
+              <button
+                type="button"
+                onClick={() => setFilters(prev => ({ ...prev, subcategories: [] }))}
+                className={chip(filters.subcategories.length === 0)}
+              >
+                All
+              </button>
+              {availableSubcats.map(s => (
+                <button
+                  key={s.id}
+                  type="button"
+                  onClick={() => setFilters(prev => ({ ...prev, subcategories: activeSub === s.id ? [] : [s.id] }))}
+                  className={chip(activeSub === s.id)}
+                >
+                  {s.name}
+                  <span className={`ml-1.5 text-[11.5px] ${activeSub === s.id ? 'text-white/60' : 'text-text-muted'}`}>
+                    {counts.subcategories[s.id] || 0}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Grid */}
+        <div className="px-2.5 sm:px-4 md:px-6 pt-3 md:pt-4">
+          {loading ? (
+            <ProductGridSkeleton count={10} />
+          ) : fetchError ? (
+            <ErrorState message="Failed to load products. Please try again later." showHomeButton />
+          ) : sortedProducts.length === 0 ? (
+            <EmptyState message="No products found here yet." showHomeButton />
+          ) : (
+            <>
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 2xl:grid-cols-6 gap-2.5 sm:gap-4">
+                {displayedProducts.map(p => (
+                  <ProductCard key={p.id} product={p} onAddToCart={handleAddToCart} />
+                ))}
+              </div>
+
+              {hasMore ? (
+                <div ref={sentinelRef} className="flex justify-center py-8">
+                  <div className="w-5 h-5 border-2 border-gray-300 border-t-ink rounded-full animate-spin" />
+                </div>
+              ) : (
+                <p className="text-center text-[13px] text-text-muted py-10">You&apos;ve seen everything in {activeSubName || resolvedCatName}</p>
+              )}
+            </>
+          )}
+        </div>
       </div>
-
-
     </main>
   );
 }

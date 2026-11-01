@@ -44,7 +44,7 @@ export default function VendorNotApprovedPage() {
 
   if (loading || (user && user.status === 'approved')) {
     return (
-      <div className="min-h-screen bg-[var(--bg-page)] flex items-center justify-center">
+      <div className="min-h-screen bg-page flex items-center justify-center">
         <Loader2 className="w-12 h-12 text-gold-primary animate-spin" />
       </div>
     );
@@ -54,7 +54,7 @@ export default function VendorNotApprovedPage() {
   const isRejected = user?.status === 'rejected';
 
   return (
-    <main className="bg-[var(--bg-page)] min-h-screen flex flex-col pb-10">
+    <main className="bg-page min-h-screen flex flex-col pb-10">
       <Navbar />
 
       <div className="flex-1 flex items-center justify-center px-4 py-12">
@@ -76,7 +76,7 @@ export default function VendorNotApprovedPage() {
           )}
 
           {/* Heading */}
-          <h1 className="text-2xl font-extrabold text-gray-900 mb-3 tracking-tight">
+          <h1 className="text-2xl font-semibold text-gray-900 mb-3 tracking-tight">
             {isPending ? 'Application Under Review' : isRejected ? 'Application Rejected' : 'Verification Required'}
           </h1>
 
@@ -105,7 +105,7 @@ export default function VendorNotApprovedPage() {
             <button
               onClick={handleCheckStatus}
               disabled={checking}
-              className="w-full py-3 bg-gold-primary hover:bg-gold-hover text-[#2b3036] font-bold rounded-xl text-sm transition-all shadow-md shadow-amber-500/10 flex items-center justify-center gap-2 cursor-pointer active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full py-3 bg-gold-primary hover:bg-gold-hover text-ink font-bold rounded-xl text-sm transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <RefreshCw className={`w-4 h-4 ${checking ? 'animate-spin' : ''}`} />
               {checking ? 'Refreshing...' : 'Check Status Again'}

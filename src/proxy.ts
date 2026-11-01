@@ -9,10 +9,13 @@ export function proxy(request: NextRequest) {
                       pathname.startsWith('/vendor/dashboard') ||
                       pathname.startsWith('/account');
 
+  // UX-only guard: the API enforces authorization on every request. The
+  // marker cookie (set by saveToken) just says "signed in"; medox_token is
+  // still accepted so sessions from before the marker existed aren't bounced.
   if (isProtected) {
-    const token = request.cookies.get('medox_token')?.value;
+    const signedIn = request.cookies.get('medox_session')?.value || request.cookies.get('medox_token')?.value;
 
-    if (!token) {
+    if (!signedIn) {
       const signInUrl = new URL('/signin', request.url);
       signInUrl.searchParams.set('redirect', pathname);
       return NextResponse.redirect(signInUrl);

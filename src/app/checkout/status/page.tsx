@@ -56,7 +56,7 @@ function AppBridgePage({ cashfreeOrderId }: { cashfreeOrderId: string }) {
         </div>
       </div>
 
-      <h1 className="text-2xl font-extrabold text-gray-900 mb-2 tracking-tight">
+      <h1 className="text-2xl font-semibold text-gray-900 mb-2 tracking-tight">
         Payment Complete!
       </h1>
 
@@ -64,7 +64,7 @@ function AppBridgePage({ cashfreeOrderId }: { cashfreeOrderId: string }) {
       {!autoFailed && countdown > 0 && (
         <p className="text-gray-500 text-sm mb-6 max-w-xs mx-auto leading-relaxed">
           Returning you to the app in{' '}
-          <span className="font-extrabold text-[#d4af37]">{countdown}s</span>…
+          <span className="font-semibold text-gold-primary">{countdown}s</span>…
         </p>
       )}
       {!autoFailed && countdown === 0 && (
@@ -82,7 +82,7 @@ function AppBridgePage({ cashfreeOrderId }: { cashfreeOrderId: string }) {
         {/* Always show manual button as fallback */}
         <button
           onClick={triggerAppReturn}
-          className="w-full py-4 bg-[#d4af37] hover:bg-[#bda036] active:scale-[0.98] text-[#2b3036] font-extrabold rounded-2xl shadow-lg transition-all flex items-center justify-center gap-2.5"
+          className="w-full py-4 bg-gold-primary hover:bg-gold-hover active:scale-[0.98] text-ink font-semibold rounded-2xl shadow-lg transition-all flex items-center justify-center gap-2.5"
         >
           {countdown > 0 ? (
             <Loader2 className="w-5 h-5 animate-spin" />
@@ -154,7 +154,7 @@ function VerificationFlow({ cashfreeOrderId }: { cashfreeOrderId: string }) {
   if (status === 'LOADING') {
     return (
       <div className="flex flex-col items-center justify-center py-32 px-4 text-center min-h-[60vh]">
-        <Loader2 className="w-16 h-16 text-[#d4af37] animate-spin mb-6" />
+        <Loader2 className="w-16 h-16 text-gold-primary animate-spin mb-6" />
         <h1 className="text-2xl font-bold text-gray-900 mb-2">Verifying Payment…</h1>
         <p className="text-gray-500">Please wait while we confirm your order with the bank.</p>
       </div>
@@ -170,7 +170,7 @@ function VerificationFlow({ cashfreeOrderId }: { cashfreeOrderId: string }) {
             <CheckCircle2 className="w-12 h-12 text-emerald-500" />
           </div>
         </div>
-        <h1 className="text-3xl font-extrabold text-gray-900 mb-4 tracking-tight">
+        <h1 className="text-3xl font-semibold text-gray-900 mb-4 tracking-tight">
           Payment Successful!
         </h1>
         <p className="text-lg text-gray-600 mb-8 max-w-md mx-auto">
@@ -179,7 +179,7 @@ function VerificationFlow({ cashfreeOrderId }: { cashfreeOrderId: string }) {
         <div className="flex flex-col gap-3 w-full max-w-sm mx-auto">
           <Link
             href="/account/orders"
-            className="w-full py-4 bg-[#d4af37] hover:bg-[#bda036] text-[#2b3036] font-extrabold rounded-2xl shadow-md transition-all active:scale-[0.98] flex items-center justify-center"
+            className="w-full py-4 bg-gold-primary hover:bg-gold-hover text-ink font-semibold rounded-2xl shadow-md transition-all active:scale-[0.98] flex items-center justify-center"
           >
             View My Orders
           </Link>
@@ -199,14 +199,14 @@ function VerificationFlow({ cashfreeOrderId }: { cashfreeOrderId: string }) {
       <div className="w-24 h-24 bg-red-50 rounded-full flex items-center justify-center mb-6">
         <XCircle className="w-12 h-12 text-red-500" />
       </div>
-      <h1 className="text-3xl font-extrabold text-gray-900 mb-4 tracking-tight">Payment Failed</h1>
+      <h1 className="text-3xl font-semibold text-gray-900 mb-4 tracking-tight">Payment Failed</h1>
       <p className="text-base text-gray-600 mb-8 max-w-md mx-auto">
         {errorMessage || 'Your transaction could not be completed.'}
       </p>
       <div className="flex flex-col gap-3 w-full max-w-sm mx-auto">
         <button
           onClick={() => router.back()}
-          className="w-full py-4 bg-[#d4af37] hover:bg-[#bda036] text-[#2b3036] font-extrabold rounded-2xl shadow-md transition-all active:scale-[0.98] flex items-center justify-center"
+          className="w-full py-4 bg-gold-primary hover:bg-gold-hover text-ink font-semibold rounded-2xl shadow-md transition-all active:scale-[0.98] flex items-center justify-center"
         >
           Try Again
         </button>
@@ -233,7 +233,7 @@ function CheckoutStatusContent() {
         <XCircle className="w-16 h-16 text-red-400 mb-6" />
         <h1 className="text-2xl font-bold text-gray-900 mb-2">Invalid Link</h1>
         <p className="text-gray-500 mb-8">No order ID was found in this link.</p>
-        <Link href="/" className="py-3 px-6 bg-[#d4af37] text-[#2b3036] font-bold rounded-xl">
+        <Link href="/" className="py-3 px-6 bg-gold-primary text-ink font-bold rounded-xl">
           Go Home
         </Link>
       </div>
@@ -257,7 +257,7 @@ export default function CheckoutStatusPage() {
           <Suspense
             fallback={
               <div className="flex justify-center items-center h-[50vh]">
-                <Loader2 className="w-12 h-12 text-[#d4af37] animate-spin" />
+                <Loader2 className="w-12 h-12 text-gold-primary animate-spin" />
               </div>
             }
           >

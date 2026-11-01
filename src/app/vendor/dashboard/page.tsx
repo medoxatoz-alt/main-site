@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { displayContact } from '@/lib/format';
 import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
 import api from '@/lib/api';
@@ -81,7 +82,7 @@ export default function VendorDashboard() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[var(--bg-page)] flex items-center justify-center">
+      <div className="min-h-screen bg-page flex items-center justify-center">
         <div className="text-center">
           <Loader2 className="w-12 h-12 text-gold-primary animate-spin mx-auto" />
           <p className="mt-4 text-gray-500 font-semibold">Loading Vendor Dashboard...</p>
@@ -110,7 +111,7 @@ export default function VendorDashboard() {
         <div className="w-16 h-16 rounded-2xl bg-amber-500/10 flex items-center justify-center mb-6 border border-amber-500/20">
           <Store className="w-8 h-8 text-gold-primary" />
         </div>
-        <h1 className="text-xl font-extrabold tracking-tight mb-2 text-white">Desktop Optimization Required</h1>
+        <h1 className="text-xl font-semibold tracking-tight mb-2 text-white">Desktop Optimization Required</h1>
         <p className="text-sm text-slate-400 max-w-sm leading-relaxed mb-6">
           The MedoxAtoZ Vendor Portal contains complex metrics, inventory tables, and order controls designed for desktop monitors. Please sign in from a PC to manage your store.
         </p>
@@ -122,11 +123,11 @@ export default function VendorDashboard() {
         </button>
       </div>
 
-      <div className="hidden lg:flex min-h-screen bg-[var(--bg-page)]">
+      <div className="hidden lg:flex min-h-screen bg-page">
       {/* Sidebar */}
-      <div className="w-64 flex-shrink-0 bg-[#1a2233] flex flex-col">
+      <div className="w-64 flex-shrink-0 bg-nav-bg flex flex-col">
         <div className="px-6 py-5 border-b border-white/10">
-          <h1 className="text-gold-primary font-extrabold text-lg tracking-tight">MedoxAtoZ</h1>
+          <h1 className="text-gold-primary font-semibold text-lg tracking-tight">MedoxAtoZ</h1>
           <p className="text-[11px] text-[#8892a0] mt-0.5 uppercase tracking-widest font-semibold">Vendor Portal</p>
         </div>
         <nav className="flex flex-col py-2 flex-1">
@@ -142,14 +143,14 @@ export default function VendorDashboard() {
         </nav>
         <div className="px-6 py-4 border-t border-white/10">
           <div className="text-[11px] text-[#8892a0]">Signed in as</div>
-          <div className="text-white text-xs font-semibold truncate mt-0.5">{user.email}</div>
+          <div className="text-white text-xs font-semibold truncate mt-0.5">{displayContact(user.email)}</div>
         </div>
       </div>
 
       {/* Main Content */}
       <div className="flex-1 p-6 md:p-10 overflow-y-auto">
         <div className="flex justify-between items-center mb-8">
-          <h1 className="text-2xl md:text-3xl font-extrabold text-gray-900">{TAB_LABELS[activeTab]}</h1>
+          <h1 className="text-2xl md:text-3xl font-semibold text-gray-900">{TAB_LABELS[activeTab]}</h1>
           <button onClick={() => router.push('/')} className="px-4 py-2 bg-white text-gray-700 hover:bg-gray-50 border border-gray-300 font-semibold rounded-lg text-sm cursor-pointer">
             Back to Store
           </button>

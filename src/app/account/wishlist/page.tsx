@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useEffect, useState } from 'react';
 import Navbar from '@/components/Navbar';
@@ -10,6 +10,7 @@ import ProductCard from '@/components/ProductCard';
 import Pagination from '@/components/Pagination';
 import EmptyState from '@/components/EmptyState';
 import ErrorState from '@/components/ErrorState';
+import { ProductGridSkeleton } from '@/components/Skeleton';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
 
@@ -91,67 +92,76 @@ export default function WishlistPage() {
     }
   };
 
-  const handleAddToCart = (product: any) => {
-    // Dispatch same cart logic
-    toast.success(`${product.title} added to cart`);
+  const handleAddToCart = async (product: any) => {
+    try {
+      await api.post(`/cart/${product.id}`);
+      toast.success('Added to cart');
+      window.dispatchEvent(new Event('cart-updated'));
+    } catch {
+      toast.error('Could not add to cart');
+    }
   };
+
+  const header = (
+    <div className="flex items-end justify-between gap-3 mb-5 sm:mb-7">
+      <div>
+        <h1 className="text-[22px] md:text-[28px] font-semibold tracking-tight text-ink">Wishlist</h1>
+        <p className="text-[13px] text-text-muted mt-0.5">Items you&apos;ve saved for later</p>
+      </div>
+      {!loading && (
+        <span className="text-[12.5px] font-medium text-text-muted bg-white border border-line rounded-full px-3 h-8 inline-flex items-center tabular-nums">
+          {wishlistIds.length} / 10 saved
+        </span>
+      )}
+    </div>
+  );
 
   if (authLoading || loading) {
     return (
-      <div className="min-h-screen bg-[var(--bg-page)] flex flex-col">
+      <main className="min-h-screen bg-page">
         <Navbar />
-        <div className="flex flex-col items-center justify-center flex-1 py-20">
-          <Loader2 className="w-12 h-12 text-gold-primary animate-spin" />
-          <p className="mt-4 text-gray-500 font-semibold">Loading Wishlist...</p>
+        <div className="max-w-[1500px] mx-auto px-2.5 sm:px-4 md:px-6 py-6 sm:py-10">
+          <div className="px-1.5 sm:px-0">{header}</div>
+          <ProductGridSkeleton count={5} />
         </div>
-      </div>
+      </main>
     );
   }
   if (!user) return null;
 
   return (
-    <main className="bg-[var(--bg-page)] min-h-screen pb-20">
+    <main className="bg-page min-h-screen pb-20">
       <Navbar />
- 
 
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-10">
-
-        {/* Header */}
-        <div className="flex items-center gap-3 mb-6 sm:mb-8">
-          <Heart className="w-6 h-6 sm:w-7 sm:h-7 text-red-400 fill-red-400" />
-          <h1 className="text-2xl md:text-3xl font-extrabold text-gray-900">My Wishlist</h1>
-          <span className="ml-auto text-sm text-gray-500 font-medium bg-gray-100 sm:bg-transparent px-2.5 py-1 sm:p-0 rounded-lg">
-            {wishlistIds.length}/10 saved
-          </span>
-        </div>
+      <div className="max-w-[1500px] mx-auto px-2.5 sm:px-4 md:px-6 py-6 sm:py-10">
+        <div className="px-1.5 sm:px-0">{header}</div>
 
         {fetchError ? (
-          <ErrorState message="Failed to load wishlist. Please try again." />
+          <ErrorState message="Failed to load wishlist. Please try again." showHomeButton />
         ) : products.length === 0 ? (
-          <div className="text-center py-10">
-            <EmptyState message="Your wishlist is empty." />
-            <Link href="/" className="mt-6 inline-block px-6 py-3 bg-gold-primary hover:bg-gold-hover text-text-main font-bold rounded-xl transition-all">
-              Explore Products
+          <div className="flex flex-col items-center text-center py-16 animate-in fade-in duration-300">
+            <div className="w-16 h-16 rounded-full bg-white border border-line grid place-items-center mb-4">
+              <Heart className="w-7 h-7 text-gray-300" />
+            </div>
+            <h2 className="text-[17px] font-semibold text-ink">No saved items yet</h2>
+            <p className="text-[14px] text-text-muted mt-1 max-w-xs">Tap the heart on any product to save it here.</p>
+            <Link href="/" className="pressable mt-6 h-11 px-6 inline-flex items-center rounded-full bg-ink text-white text-[14px] font-semibold hover:bg-black">
+              Browse products
             </Link>
           </div>
         ) : (
           <Pagination items={products} pageSize={12} showPageInfo renderPage={(slice) => (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 2xl:grid-cols-6 gap-2.5 sm:gap-4">
               {slice.map(product => (
-                <div key={product.id} className="relative group">
+                <div key={product.id} className="relative grid">
                   <ProductCard product={product} onAddToCart={handleAddToCart} />
-                  {/* Remove from wishlist overlay */}
                   <button
                     onClick={() => handleRemove(product.id)}
                     disabled={removingId === product.id}
-                    className="absolute top-2 right-2 z-30 p-1.5 bg-white/90 backdrop-blur-sm rounded-full shadow-md text-red-400 hover:text-red-600 hover:bg-white transition-all cursor-pointer disabled:opacity-50"
-                    title="Remove from wishlist"
+                    className="pressable absolute top-3.5 right-3.5 z-30 w-8 h-8 grid place-items-center bg-white rounded-full shadow-sm border border-line text-gray-500 hover:text-red-600 disabled:opacity-50"
+                    aria-label="Remove from wishlist"
                   >
-                    {removingId === product.id ? (
-                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                    ) : (
-                      <Trash2 className="w-3.5 h-3.5" />
-                    )}
+                    {removingId === product.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
                   </button>
                 </div>
               ))}

@@ -244,7 +244,7 @@ export default function SubcategoriesTab({ isFetching, fetchError }: Subcategori
               <button
                 onClick={handleSaveOrder}
                 disabled={isSavingOrder}
-                className="flex items-center gap-1.5 bg-amber-500 hover:bg-amber-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition-colors disabled:opacity-50"
+                className="flex items-center gap-1.5 bg-gold-primary hover:bg-gold-hover text-ink px-3 py-1.5 rounded-lg text-xs font-bold transition-colors disabled:opacity-50"
               >
                 {isSavingOrder ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
                 {isSavingOrder ? 'Saving...' : 'Save Order'}

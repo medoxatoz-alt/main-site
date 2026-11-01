@@ -1,6 +1,6 @@
-import { useState, useEffect, useMemo } from 'react';
+﻿import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
-import { Loader2, Check } from 'lucide-react';
+import { Loader2, Check, Plus } from 'lucide-react';
 
 interface Product {
   id: string;
@@ -60,6 +60,7 @@ export default function ProductCard({ product, onAddToCart }: ProductCardProps) 
   const [isHovered, setIsHovered] = useState(false);
   const [isAdding, setIsAdding] = useState(false);
   const [isAddedRecently, setIsAddedRecently] = useState(false);
+  const [imgLoaded, setImgLoaded] = useState(false);
 
   // Parse data
   const images = useMemo(() => {
@@ -119,35 +120,20 @@ export default function ProductCard({ product, onAddToCart }: ProductCardProps) 
     }
   };
 
+
   return (
     <div
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
-      className="bg-white p-3 sm:p-5 rounded-xl flex flex-col justify-between relative border border-gray-200 transition-all duration-300 hover:shadow-2xl hover:-translate-y-1.5 hover:border-gold-primary/60 active:scale-[0.98] group cursor-pointer"
+      className="group relative flex flex-col bg-white rounded-2xl border border-line p-2 sm:p-2.5 transition-[box-shadow,border-color,transform] duration-300 ease-[var(--ease-out-expo)] hover:border-gray-300 hover:shadow-[0_10px_30px_-8px_rgba(16,24,40,0.14)] active:scale-[0.985] animate-in fade-in animation-duration-500"
     >
-      {/* Badges Container */}
-      <div className="absolute top-2 left-2 sm:top-3 sm:left-3 z-20 flex flex-col gap-1.5">
-        {/* Dynamic Discount Badge */}
-        {discountPercentage > 0 && (
-          <div className="bg-red-600 text-white text-[9px] sm:text-[11px] uppercase tracking-wider font-bold px-1.5 py-0.5 sm:px-2 sm:py-1 rounded shadow-sm self-start">
-            {discountPercentage}% OFF
-          </div>
-        )}
-        {/* Out of Stock Badge */}
-        {isOutOfStock && (
-          <div className="bg-gray-900/90 text-white text-[9px] sm:text-[11px] uppercase tracking-wider font-bold px-1.5 py-0.5 sm:px-2 sm:py-1 rounded shadow-sm self-start border border-gray-700">
-            Out of Stock
-          </div>
-        )}
-      </div>
-
-      {/* Image Frame - Independently Wrapped in Link */}
-      <Link 
-        href={`/product/${product.id}`} 
-        className="block outline-none" 
+      {/* Image tile — uniform grey backdrop so mixed product photos look consistent */}
+      <Link
+        href={`/product/${product.id}`}
+        className="block"
         aria-label={`View details for ${product.title}`}
       >
-        <div className="h-[140px] sm:h-[240px] w-full flex items-center justify-center mb-3 sm:mb-4 overflow-hidden bg-white relative rounded-md">
+        <div className="relative aspect-square w-full overflow-hidden rounded-xl bg-[#f3f4f6]">
           {/* Only mount the extra images once hovered — otherwise every card in
               the grid would eagerly fetch every image up front. */}
           {(isHovered ? images : images.slice(0, 1)).map((imgUrl, idx) => (
@@ -155,23 +141,36 @@ export default function ProductCard({ product, onAddToCart }: ProductCardProps) 
               key={idx}
               src={imgUrl}
               alt={`${product.title} - view ${idx + 1}`}
-              loading={idx === 0 ? "eager" : "lazy"}
-              className={`absolute max-w-full max-h-full object-contain p-1 transition-all duration-500 ease-in-out ${
-                idx === currentImageIndex
-                  ? 'opacity-100 scale-100'
-                  : 'opacity-0 scale-95 pointer-events-none'
-              } group-hover:scale-105`}
+              loading={idx === 0 ? 'eager' : 'lazy'}
+              decoding="async"
+              onLoad={idx === 0 ? () => setImgLoaded(true) : undefined}
+              onError={idx === 0 ? () => setImgLoaded(true) : undefined}
+              ref={idx === 0 ? (el) => { if (el?.complete) setImgLoaded(true); } : undefined}
+              className={`absolute inset-0 m-auto max-w-[88%] max-h-[88%] object-contain mix-blend-multiply transition-[opacity,transform] duration-500 ease-[var(--ease-out-expo)] ${
+                idx === currentImageIndex && (idx > 0 || imgLoaded) ? 'opacity-100' : 'opacity-0 pointer-events-none'
+              } ${isOutOfStock ? 'grayscale opacity-60' : ''} group-hover:scale-[1.05]`}
             />
           ))}
 
-          {/* Dots Indicator Overlay */}
+          {/* Badge */}
+          {isOutOfStock ? (
+            <span className="absolute top-2 left-2 text-[10.5px] sm:text-[11px] font-semibold text-gray-600 bg-white/95 rounded-md px-1.5 py-0.5 shadow-sm">
+              Out of stock
+            </span>
+          ) : discountPercentage > 0 ? (
+            <span className="absolute top-2 left-2 text-[10.5px] sm:text-[11px] font-semibold text-emerald-700 bg-white/95 rounded-md px-1.5 py-0.5 shadow-sm tabular-nums">
+              {discountPercentage}% off
+            </span>
+          ) : null}
+
+          {/* Image progress (desktop hover) */}
           {images.length > 1 && isHovered && (
-            <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 flex gap-1.5 z-10 bg-black/50 px-2.5 py-1.5 rounded-full backdrop-blur-sm">
+            <div className="absolute bottom-2 inset-x-0 flex justify-center gap-1 animate-in fade-in duration-200">
               {images.map((_, idx) => (
-                <div
+                <span
                   key={idx}
-                  className={`w-1.5 h-1.5 rounded-full transition-all duration-300 ${
-                    idx === currentImageIndex ? 'bg-gold-primary scale-125' : 'bg-white/60'
+                  className={`h-1 rounded-full transition-all duration-300 ${
+                    idx === currentImageIndex ? 'w-4 bg-ink' : 'w-1 bg-black/20'
                   }`}
                 />
               ))}
@@ -180,72 +179,53 @@ export default function ProductCard({ product, onAddToCart }: ProductCardProps) 
         </div>
       </Link>
 
-      {/* Details Section */}
-      <div className="p-0 flex-1 flex flex-col">
-        
-        {/* Title - Independently Wrapped in Link */}
-        <Link 
-          href={`/product/${product.id}`} 
-          className="outline-none group-hover:text-gold-primary transition-colors duration-200"
-        >
-          <h3 className="text-xs sm:text-[15px] font-medium leading-normal text-text-main mb-1.5 sm:mb-2 h-[36px] sm:h-[42px] overflow-hidden line-clamp-2">
+      {/* Details */}
+      <div className="flex-1 flex flex-col px-1 pt-2.5 sm:px-1.5 sm:pt-3">
+        <Link href={`/product/${product.id}`}>
+          <h3 className="text-[13px] sm:text-[14px] leading-[1.4] font-medium text-ink line-clamp-2 min-h-[2.8em]">
             {product.title}
           </h3>
         </Link>
 
-        {/* Price & Add to Cart Section */}
-        <div className="flex items-center justify-between mt-auto pt-2 border-t border-transparent group-hover:border-gray-100 transition-colors duration-300">
-          
-          {/* Pricing */}
-          <div className="flex flex-col gap-0.5">
-            {mrp > price && (
-              <span className="text-[10px] sm:text-[13px] font-semibold text-gray-400 line-through decoration-gray-300 leading-none">
-                ₹{mrp.toLocaleString('en-IN')}
-              </span>
-            )}
-            <span className="text-base sm:text-xl font-extrabold text-gray-900 group-hover:text-gold-primary transition-colors duration-200 leading-none mt-0.5 sm:mt-1">
-              ₹{price.toLocaleString('en-IN')}
-            </span>
-          </div>
-
-          {/* Add to Cart Button */}
-          <button
-            onClick={handleAddToCart}
-            disabled={isOutOfStock || isAdding}
-            className={`relative z-10 px-2.5 py-1.5 sm:px-4 sm:py-2 text-[10px] sm:text-[13px] font-bold rounded-full transition-all duration-300 flex items-center gap-1.5 ${
-              isOutOfStock
-                ? 'bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed shadow-none'
-                : isAddedRecently
-                  ? 'bg-emerald-600 text-white shadow-md shadow-emerald-500/25 scale-105'
-                  : 'text-[#2b3036] bg-gold-primary hover:bg-gold-hover active:scale-95 shadow-md shadow-amber-500/15 cursor-pointer disabled:opacity-50'
-            }`}
-            aria-label={isOutOfStock ? `${product.title} is out of stock` : `Add ${product.title} to cart`}
-          >
-            {isOutOfStock ? (
-              <span>Sold Out</span>
-            ) : isAddedRecently ? (
-              <>
-                <Check className="w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-[2.5] animate-in zoom-in-75 duration-200" />
-                <span>Added!</span>
-              </>
-            ) : isAdding ? (
-              <>
-                <Loader2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-2 animate-spin" />
-                <span>Adding...</span>
-              </>
-            ) : (
-              <>
-                <span>Add</span>
-                <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-current fill-none stroke-2 group-hover:scale-110 transition-transform" viewBox="0 0 24 24">
-                  <circle cx="9" cy="21" r="1"></circle>
-                  <circle cx="20" cy="21" r="1"></circle>
-                  <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
-                </svg>
-              </>
-            )}
-          </button>
-
+        {/* Price */}
+        <div className="flex items-baseline gap-1.5 mt-1.5 whitespace-nowrap overflow-hidden">
+          <span className="text-[15px] sm:text-[16px] font-semibold text-ink tabular-nums">
+            ₹{price.toLocaleString('en-IN')}
+          </span>
+          {mrp > price && (
+            <span className="text-[12px] text-gray-400 line-through tabular-nums">₹{mrp.toLocaleString('en-IN')}</span>
+          )}
         </div>
+
+        {/* Add to cart */}
+        <button
+          onClick={handleAddToCart}
+          disabled={isOutOfStock || isAdding}
+          className={`pressable relative z-10 mt-2.5 w-full h-9 rounded-lg text-[13px] font-semibold flex items-center justify-center gap-1.5 border ${
+            isOutOfStock
+              ? 'bg-gray-50 text-gray-400 border-line cursor-not-allowed'
+              : isAddedRecently
+                ? 'bg-emerald-600 text-white border-emerald-600'
+                : 'bg-white text-ink border-gray-200 hover:bg-ink hover:text-white hover:border-ink disabled:opacity-60'
+          }`}
+          aria-label={isOutOfStock ? `${product.title} is out of stock` : `Add ${product.title} to cart`}
+        >
+          {isOutOfStock ? (
+            <span>Sold out</span>
+          ) : isAddedRecently ? (
+            <>
+              <Check className="w-4 h-4 stroke-[2.5] animate-in zoom-in-50 duration-300" />
+              <span>Added</span>
+            </>
+          ) : isAdding ? (
+            <Loader2 className="w-4 h-4 animate-spin" />
+          ) : (
+            <>
+              <Plus className="w-4 h-4 stroke-[2.25]" />
+              <span>Add to cart</span>
+            </>
+          )}
+        </button>
       </div>
     </div>
   );

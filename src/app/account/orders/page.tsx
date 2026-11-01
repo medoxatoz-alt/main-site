@@ -1,11 +1,12 @@
-'use client';
+﻿'use client';
 
 import { useEffect, useState } from 'react';
 import Navbar from '@/components/Navbar';
 import api from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
-import { Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronRight, Package } from 'lucide-react';
+import { Skeleton } from '@/components/Skeleton';
 import OrderDetailModal from '@/components/OrderDetailModal';
 import Pagination from '@/components/Pagination';
 import EmptyState from '@/components/EmptyState';
@@ -74,139 +75,122 @@ export default function MyOrdersPage() {
 
   useEffect(() => { fetchOrders(); }, [user]);
 
+  const header = (
+    <div className="flex items-end justify-between gap-3 mb-5 sm:mb-7">
+      <div>
+        <h1 className="text-[22px] md:text-[28px] font-semibold tracking-tight text-ink">Orders</h1>
+        <p className="text-[13px] text-text-muted mt-0.5">Track and manage your purchases</p>
+      </div>
+      {!loading && orders.length > 0 && (
+        <span className="text-[12.5px] font-medium text-text-muted bg-white border border-line rounded-full px-3 h-8 inline-flex items-center tabular-nums">
+          {orders.length} {orders.length === 1 ? 'order' : 'orders'}
+        </span>
+      )}
+    </div>
+  );
+
   if (authLoading || loading) {
     return (
-      <div className="min-h-screen bg-[var(--bg-page)] flex flex-col">
+      <main className="min-h-screen bg-page">
         <Navbar />
-        <div className="flex flex-col items-center justify-center flex-1 py-20">
-          <Loader2 className="w-12 h-12 text-gold-primary animate-spin" />
-          <p className="mt-4 text-gray-500 font-semibold">Loading Orders...</p>
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 py-6 sm:py-10">
+          {header}
+          <div className="flex flex-col gap-3">
+            {[0, 1, 2].map(i => (
+              <div key={i} className="bg-white rounded-2xl border border-line p-4 flex gap-3">
+                <Skeleton className="w-14 h-14 rounded-xl" />
+                <div className="flex-1 flex flex-col gap-2 py-1">
+                  <Skeleton className="h-3.5 w-2/3 rounded" />
+                  <Skeleton className="h-3 w-1/3 rounded" />
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
-      </div>
+      </main>
     );
   }
   if (!user) return null;
 
   return (
-    <main className="bg-[var(--bg-page)] min-h-screen pb-safe sm:pb-20">
+    <main className="bg-page min-h-screen pb-20">
       <Navbar />
-      
-      {/* Sticky Back Button Bar - Merges with Navbar */}
-    
 
-      <div className="max-w-4xl mx-auto sm:px-6 sm:py-10">
+      <div className="max-w-3xl mx-auto px-4 sm:px-6 py-6 sm:py-10">
+        {header}
 
-        {/* Header */}
-        <div className="px-4 pt-6 pb-4 sm:px-0 sm:py-0 flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2 sm:mb-8">
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-gray-900">My Orders</h1>
-          <span className="text-sm text-gray-500 font-medium">
-            {orders.length} {orders.length === 1 ? 'order' : 'orders'} total
-          </span>
-        </div>
-
-        <div className="px-4 sm:px-0">
-          {fetchError ? (
-            <ErrorState message="Failed to load orders. Please try again." />
-          ) : orders.length === 0 ? (
-            <div className="text-center ">
-              <EmptyState message="You haven't placed any orders yet." />
-              <Link href="/" className="mt-6 inline-block px-6 py-3 bg-gold-primary hover:bg-gold-hover active:bg-gold-primary/80 text-text-main font-bold rounded-xl transition-all">
-                Start Shopping
-              </Link>
+        {fetchError ? (
+          <ErrorState message="Failed to load orders. Please try again." showHomeButton />
+        ) : orders.length === 0 ? (
+          <div className="flex flex-col items-center text-center py-16 animate-in fade-in duration-300">
+            <div className="w-16 h-16 rounded-full bg-white border border-line grid place-items-center mb-4">
+              <Package className="w-7 h-7 text-gray-300" />
             </div>
-          ) : (
-            <Pagination items={orders} pageSize={8} showPageInfo renderPage={(slice) => (
-              <div className="flex flex-col gap-3 sm:gap-4">
-                {slice.map(order => {
-                  const displayStatus = order.status === 'Pending' ? 'Approved' : order.status;
-                  return (
-                  <div
+            <h2 className="text-[17px] font-semibold text-ink">No orders yet</h2>
+            <p className="text-[14px] text-text-muted mt-1 max-w-xs">When you place an order, it will show up here.</p>
+            <Link href="/" className="pressable mt-6 h-11 px-6 inline-flex items-center rounded-full bg-ink text-white text-[14px] font-semibold hover:bg-black">
+              Start shopping
+            </Link>
+          </div>
+        ) : (
+          <Pagination items={orders} pageSize={8} showPageInfo renderPage={(slice) => (
+            <div className="flex flex-col gap-3">
+              {slice.map((order, idx) => {
+                const displayStatus = order.status === 'Pending' ? 'Approved' : order.status;
+                return (
+                  <button
+                    type="button"
                     key={order.id}
                     onClick={() => setSelectedOrder(order)}
-                    className="bg-white rounded-2xl border border-gray-100 shadow-sm sm:shadow-[var(--shadow-soft)] overflow-hidden hover:border-gold-primary/30 sm:hover:shadow-md active:bg-gray-50 sm:active:bg-white transition-all cursor-pointer group"
+                    style={{ animationDelay: `${Math.min(idx, 6) * 40}ms` }}
+                    className="pressable w-full text-left bg-white rounded-2xl border border-line hover:border-gray-300 hover:shadow-[0_8px_24px_-12px_rgba(16,24,40,0.15)] p-4 sm:p-5 animate-in fade-in slide-in-from-bottom-2 duration-300 fill-mode-both"
                   >
-                    {/* Meta row - Desktop (Amazon Style) */}
-                    <div className="hidden sm:flex bg-gray-50 px-5 py-3.5 justify-between border-b border-gray-100 flex-wrap gap-3 text-sm">
-                      <div>
-                        <div className="text-[10px] text-gray-400 uppercase tracking-wider font-bold">Order Placed</div>
-                        <div className="font-semibold text-gray-800 mt-0.5">{new Date(order.createdAt).toLocaleDateString('en-IN', { dateStyle: 'medium' })}</div>
-                      </div>
-                      <div>
-                        <div className="text-[10px] text-gray-400 uppercase tracking-wider font-bold">Total</div>
-                        <div className="font-bold text-gray-900 mt-0.5">₹{Number(order.totalAmount).toLocaleString('en-IN')}</div>
-                      </div>
-                      <div>
-                        <div className="text-[10px] text-gray-400 uppercase tracking-wider font-bold">Ship To</div>
-                        <div className="font-semibold text-[#007185] mt-0.5">{order.shippingDetails?.fullName || '—'}</div>
-                      </div>
-                      <div className="text-right">
-                        <div className="text-[10px] text-gray-400 uppercase tracking-wider font-bold">Order # {order.orderId}</div>
-                        <div className="mt-1">
-                          <span className={`text-xs font-bold px-2.5 py-0.5 rounded-full inline-block border ${STATUS_COLORS[displayStatus] || 'bg-gray-50 text-gray-700 border-gray-200'}`}>
-                            {displayStatus}
-                          </span>
-                        </div>
-                      </div>
+                    <div className="flex items-center justify-between gap-3 mb-3">
+                      <span className={`text-[11.5px] font-semibold px-2.5 py-0.5 rounded-full border ${STATUS_COLORS[displayStatus] || 'bg-gray-50 text-gray-700 border-gray-200'}`}>
+                        {displayStatus}
+                      </span>
+                      <span className="text-[12.5px] text-text-muted">
+                        {new Date(order.createdAt).toLocaleDateString('en-IN', { dateStyle: 'medium' })}
+                      </span>
                     </div>
 
-                    {/* Meta row - Mobile (Native iOS/Android Style) */}
-                    <div className="sm:hidden bg-white px-4 pt-4 pb-2 flex justify-between items-start">
-                      <div>
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md border mb-2 inline-block ${STATUS_COLORS[displayStatus] || 'bg-gray-50 text-gray-700 border-gray-200'}`}>
-                          {displayStatus}
-                        </span>
-                        <div className="text-[13px] text-gray-500">
-                          {new Date(order.createdAt).toLocaleDateString('en-IN', { dateStyle: 'medium' })}
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <div className="text-[15px] font-extrabold text-gray-900">
-                          ₹{Number(order.totalAmount).toLocaleString('en-IN')}
-                        </div>
-                        <div className="text-[11px] text-gray-400 mt-0.5">
-                          #{order.orderId}
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Items preview */}
-                    <div className="px-4 py-3 sm:px-5 sm:py-4 flex items-center gap-3 sm:gap-4">
-                      <div className="flex -space-x-3">
+                    <div className="flex items-center gap-3 sm:gap-4">
+                      <div className="flex -space-x-3 shrink-0">
                         {order.items.slice(0, 3).map((item: any, i: number) => (
-                          <img key={i} src={item.image || 'https://via.placeholder.com/40'} alt={item.title}
-                            className="w-12 h-12 sm:w-14 sm:h-14 object-contain rounded-lg border-2 border-white bg-gray-50 p-1" style={{ zIndex: 3 - i }}
+                          <img
+                            key={i}
+                            src={item.image || 'https://via.placeholder.com/40'}
+                            alt={item.title}
+                            className="w-12 h-12 sm:w-14 sm:h-14 object-contain rounded-xl border-2 border-white bg-gray-50 p-1"
+                            style={{ zIndex: 3 - i }}
                           />
                         ))}
                         {order.items.length > 3 && (
-                          <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-lg border-2 border-white bg-gray-100 flex items-center justify-center text-xs font-bold text-gray-500">
+                          <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl border-2 border-white bg-gray-100 grid place-items-center text-[12px] font-semibold text-gray-500">
                             +{order.items.length - 3}
                           </div>
                         )}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold text-gray-900 truncate">{order.items[0]?.title}</p>
-                        {order.items.length > 1 ? (
-                          <p className="text-xs text-gray-500 mt-0.5">+ {order.items.length - 1} more item{order.items.length > 2 ? 's' : ''}</p>
-                        ) : (
-                          <p className="text-xs text-gray-500 mt-0.5">Qty: {order.items[0]?.qty}</p>
-                        )}
+                        <p className="text-[14px] font-medium text-ink truncate">{order.items[0]?.title}</p>
+                        <p className="text-[12.5px] text-text-muted mt-0.5">
+                          {order.items.length > 1
+                            ? `+ ${order.items.length - 1} more item${order.items.length > 2 ? 's' : ''}`
+                            : `Qty ${order.items[0]?.qty}`}
+                          <span className="mx-1.5">·</span>#{order.orderId}
+                        </p>
                       </div>
-                      
-                      {/* Desktop Action */}
-                      <span className="hidden sm:block text-xs text-blue-600 font-semibold group-hover:text-blue-800 flex-shrink-0">
-                        View details &rarr;
-                      </span>
-                      
-                      {/* Mobile Chevron (Native feel) */}
-                      <ChevronRight className="w-5 h-5 text-gray-300 sm:hidden flex-shrink-0" />
+                      <div className="text-right shrink-0">
+                        <div className="text-[15px] font-semibold text-ink tabular-nums">₹{Number(order.totalAmount).toLocaleString('en-IN')}</div>
+                      </div>
+                      <ChevronRight className="w-5 h-5 text-gray-300 shrink-0" />
                     </div>
-                  </div>
-                  );
-                })}
-              </div>
-            )} />
-          )}
-        </div>
+                  </button>
+                );
+              })}
+            </div>
+          )} />
+        )}
       </div>
 
       {selectedOrder && (

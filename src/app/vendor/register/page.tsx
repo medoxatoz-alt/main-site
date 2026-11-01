@@ -41,12 +41,12 @@ export default function VendorRegister() {
   };
 
   return (
-    <main className="bg-[var(--bg-page)] min-h-screen pb-20">
+    <main className="bg-page min-h-screen pb-20">
       <Navbar />
       
       <div className="max-w-[600px] mx-auto px-4 py-12">
         <div className="bg-white p-8 md:p-10 rounded-2xl shadow-[var(--shadow-soft)] border border-gray-100">
-          <h1 className="text-2xl md:text-3xl font-extrabold text-gray-900 mb-2 text-center leading-tight">
+          <h1 className="text-2xl md:text-3xl font-semibold text-gray-900 mb-2 text-center leading-tight">
             Become a Seller on MedoxAtoZ
           </h1>
           <p className="text-center text-gray-500 mb-8">Reach thousands of clinics across India.</p>
@@ -56,7 +56,7 @@ export default function VendorRegister() {
               <p className="text-gray-650 font-medium">You need to sign in to register as a seller.</p>
               <button 
                 onClick={() => router.push('/signin')}
-                className="px-6 py-2.5 bg-[#2b3036] hover:bg-[#1e2226] text-white hover:text-gold-primary border border-transparent hover:border-gold-primary font-bold rounded-lg transition-all duration-300 shadow-md active:scale-95 cursor-pointer mt-4"
+                className="px-6 py-2.5 bg-ink hover:bg-nav-bg text-white hover:text-gold-primary border border-transparent hover:border-gold-primary font-bold rounded-lg transition-all duration-300 shadow-md active:scale-95 cursor-pointer mt-4"
               >
                 Sign In Now
               </button>
@@ -131,7 +131,7 @@ export default function VendorRegister() {
               <button 
                 type="submit" 
                 disabled={loading}
-                className="w-full py-3.5 bg-gold-primary hover:bg-gold-hover text-text-main font-bold rounded-lg transition-all duration-300 shadow-md shadow-amber-500/10 hover:shadow-lg active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none cursor-pointer mt-2"
+                className="w-full py-3.5 bg-gold-primary hover:bg-gold-hover text-text-main font-bold rounded-lg transition-all duration-300 shadow-md hover:shadow-lg active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none cursor-pointer mt-2"
               >
                 {loading ? 'Submitting...' : 'Register as Seller'}
               </button>

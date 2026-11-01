@@ -403,7 +403,7 @@ export default function CheckoutModal({ isOpen, onClose, buyNowItem }: { isOpen:
   if (authLoading || loading) {
     return (
       <div className="fixed inset-0 z-[3000] bg-gray-100 md:bg-black/60 md:backdrop-blur-sm flex flex-col md:items-center md:justify-center p-0 md:p-6 animate-in fade-in duration-200">
-        <div className="bg-gray-100 md:bg-[#f8f9fa] w-full h-full md:h-auto md:max-h-[90vh] md:w-full md:max-w-5xl md:rounded-2xl md:shadow-2xl flex flex-col relative overflow-hidden">
+        <div className="bg-gray-100 md:bg-page w-full h-full md:h-auto md:max-h-[90vh] md:w-full md:max-w-5xl md:rounded-2xl md:shadow-2xl flex flex-col relative overflow-hidden">
           {/* Header */}
           <div className="md:bg-white border-b border-gray-100 px-4 py-4 flex justify-between items-center shrink-0 rounded-t-2xl">
             <h2 className="text-xl font-bold text-gray-900 hidden md:block">Secure Checkout</h2>
@@ -501,7 +501,7 @@ export default function CheckoutModal({ isOpen, onClose, buyNowItem }: { isOpen:
 
   return (
     <div className="fixed inset-0 z-[3000] bg-gray-100 md:bg-black/60 md:backdrop-blur-sm flex flex-col md:items-center md:justify-center p-0 md:p-6 animate-in fade-in duration-200">
-      <div className="bg-gray-100 md:bg-[#f8f9fa] w-full h-full md:h-auto md:max-h-[90vh] md:w-full md:max-w-5xl md:rounded-2xl md:shadow-2xl flex flex-col relative overflow-hidden">
+      <div className="bg-gray-100 md:bg-page w-full h-full md:h-auto md:max-h-[90vh] md:w-full md:max-w-5xl md:rounded-2xl md:shadow-2xl flex flex-col relative overflow-hidden">
         
         {/* Header with Close Button */}
         <div className="md:bg-white border-b border-gray-100 px-4 py-4 flex justify-between items-center shrink-0 rounded-t-2xl md:rounded-t-2xl">
@@ -528,7 +528,7 @@ export default function CheckoutModal({ isOpen, onClose, buyNowItem }: { isOpen:
               <div className="bg-white px-5 py-4 border border-gray-100 rounded-2xl shadow-[var(--shadow-soft)] mx-2 md:mx-0">
                 {shipping.address && shipping.fullName ? (
                   <div className="flex items-start gap-4">
-                    <MapPin className="w-6 h-6 text-gold-primary mt-0.5 shrink-0" />
+                    <MapPin className="w-6 h-6 text-gold-ink mt-0.5 shrink-0" />
                     <div className="flex-1 min-w-0">
                       <p className="font-bold text-gray-900 text-[15px] truncate">
                         Delivering to {shipping.fullName}, {shipping.city}
@@ -540,7 +540,7 @@ export default function CheckoutModal({ isOpen, onClose, buyNowItem }: { isOpen:
                     <button 
                       type="button" 
                       onClick={() => setShowAddressSelector(true)} 
-                      className="text-gold-primary hover:text-gold-hover font-bold text-sm bg-transparent border-none cursor-pointer pl-2"
+                      className="text-gold-ink hover:text-ink font-bold text-sm bg-transparent border-none cursor-pointer pl-2"
                     >
                       Change
                     </button>
@@ -551,7 +551,7 @@ export default function CheckoutModal({ isOpen, onClose, buyNowItem }: { isOpen:
                        <MapPin className="w-5 h-5 text-gray-400 shrink-0" />
                        <span className="font-bold text-gray-900">No Delivery Address</span>
                     </div>
-                    <button type="button" onClick={() => setShowAddressSelector(true)} className="text-gold-primary font-bold text-sm bg-transparent border-none cursor-pointer">
+                    <button type="button" onClick={() => setShowAddressSelector(true)} className="text-gold-ink font-semibold text-sm bg-transparent border-none cursor-pointer">
                       Add Address
                     </button>
                   </div>
@@ -606,7 +606,7 @@ export default function CheckoutModal({ isOpen, onClose, buyNowItem }: { isOpen:
                       </div>
                       <div className="min-w-0">
                         <div className="flex items-center gap-1.5">
-                          <span className="font-mono font-black text-emerald-900 text-xs tracking-wider">
+                          <span className="font-mono font-bold text-emerald-900 text-xs tracking-wider">
                             {appliedCoupon.code}
                           </span>
                           <span className="text-[10px] bg-emerald-200 text-emerald-800 font-bold px-1.5 py-0.5 rounded">
@@ -734,7 +734,7 @@ export default function CheckoutModal({ isOpen, onClose, buyNowItem }: { isOpen:
                       <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-2.5 flex items-center justify-between">
                         <div className="min-w-0">
                           <div className="flex items-center gap-1.5">
-                            <span className="font-mono font-black text-emerald-900 text-xs tracking-wider">
+                            <span className="font-mono font-bold text-emerald-900 text-xs tracking-wider">
                               {appliedCoupon.code}
                             </span>
                             <span className="text-[10px] bg-emerald-200 text-emerald-800 font-bold px-1.5 py-0.2 rounded">
@@ -808,7 +808,7 @@ export default function CheckoutModal({ isOpen, onClose, buyNowItem }: { isOpen:
                       <span className="text-emerald-600 font-semibold">FREE</span>
                     </div>
                   </div>
-                  <div className="flex justify-between items-end text-xl font-extrabold text-gray-900">
+                  <div className="flex justify-between items-end text-xl font-semibold text-gray-900">
                     <span>Order Total:</span>
                     <span className="text-2xl text-red-700">₹{totalAmount.toLocaleString('en-IN')}</span>
                   </div>
@@ -875,7 +875,7 @@ export default function CheckoutModal({ isOpen, onClose, buyNowItem }: { isOpen:
                           <div className="flex items-center gap-2 flex-wrap">
                             <strong className="text-gray-900 font-bold">{addr.fullName}</strong>
                             {addr.isDefault && (
-                              <span className="text-[10px] font-bold uppercase tracking-wider text-gold-hover bg-gold-light px-2 py-0.5 rounded-full">Default</span>
+                              <span className="text-[10px] font-bold uppercase tracking-wider text-gold-ink bg-gold-light px-2 py-0.5 rounded-full">Default</span>
                             )}
                           </div>
                           <div className="text-sm mt-1 text-gray-600 leading-relaxed">{addr.address}, {addr.city}, {addr.state} {addr.pincode}</div>
@@ -888,7 +888,7 @@ export default function CheckoutModal({ isOpen, onClose, buyNowItem }: { isOpen:
                   <button
                     type="button"
                     onClick={() => setUseNewAddress(true)}
-                    className="mt-4 flex items-center justify-center gap-2 w-full py-3.5 bg-white border-2 border-dashed border-gray-300 text-gold-primary hover:text-gold-hover font-bold rounded-xl transition-all cursor-pointer shadow-sm"
+                    className="mt-4 flex items-center justify-center gap-2 w-full py-3.5 bg-white border-2 border-dashed border-gray-300 text-gold-ink hover:text-ink font-bold rounded-xl transition-all cursor-pointer shadow-sm"
                   >
                     <Plus className="w-5 h-5" /> Add New Address
                   </button>
@@ -1005,10 +1005,10 @@ export default function CheckoutModal({ isOpen, onClose, buyNowItem }: { isOpen:
                       <div className="flex items-start justify-between gap-3">
                         <div>
                           <div className="flex items-center gap-2">
-                            <span className="font-mono font-black text-gray-900 bg-gray-100 border border-gray-200 px-2 py-0.5 rounded text-xs tracking-wider">
+                            <span className="font-mono font-bold text-gray-900 bg-gray-100 border border-gray-200 px-2 py-0.5 rounded text-xs tracking-wider">
                               {c.code}
                             </span>
-                            <span className="text-xs font-black text-teal-600">
+                            <span className="text-xs font-bold text-teal-600">
                               {c.discountType === 'PERCENTAGE'
                                 ? `${c.discountValue}% OFF`
                                 : `₹${c.discountValue} FLAT OFF`}

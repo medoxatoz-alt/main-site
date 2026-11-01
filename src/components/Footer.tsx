@@ -5,38 +5,20 @@ import { Download } from 'lucide-react';
 
 export default function Footer() {
   return (
-    <footer className="bg-[#0d1117] text-white mt-auto hidden md:block border-t border-white/5">
-      
-      {/* Top promo bar */}
-      <div className="bg-[#11161d] border-b border-white/5 py-4 px-5">
-        <div className="max-w-7xl mx-auto flex items-center justify-center gap-10 flex-wrap text-sm text-[#a0aab5]">
-          <span className="flex items-center gap-2 hover:text-white transition-colors cursor-default">
-            <svg className="w-4 h-4 text-gold-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/></svg>
-            Trusted by 10,000+ Clinics
-          </span>
-          <span className="flex items-center gap-2 hover:text-white transition-colors cursor-default">
-            <svg className="w-4 h-4 text-gold-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M20 7l-8-4-8 4m16 0v10l-8 4m0-14v14m-8-4l8 4"/></svg>
-            Free Shipping on All Orders
-          </span>
-          <span className="flex items-center gap-2 hover:text-white transition-colors cursor-default">
-            <svg className="w-4 h-4 text-gold-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
-            100% Genuine Products
-          </span>
-        </div>
-      </div>
+    <footer className="bg-nav-bg text-white mt-auto hidden md:block">
 
       {/* Main footer grid */}
-      <div className="mx-auto px-5 py-14 grid grid-cols-2 md:grid-cols-5 gap-10 border-b border-white/5">
+      <div className="max-w-[1500px] mx-auto px-6 py-14 grid grid-cols-2 md:grid-cols-5 gap-10 border-b border-white/[0.08]">
 
         {/* Brand Column */}
         <div className="col-span-2">
-          <img src="/logo-footer.webp" alt="MedoxAtoZ" className="h-34 object-contain mb-6 drop-shadow-md" />
-          <p className="text-[#a0aab5] text-[14px] leading-relaxed mb-6 pr-10">
+          <img src="/logo-footer.webp" alt="MedoxAtoZ" className="h-24 object-contain mb-5" />
+          <p className="text-white/55 text-[14px] leading-relaxed mb-6 pr-10">
             India's premier B2B marketplace for premium medical and diagnostic supplies. Engineering the clinical supply chain with clinical precision.
           </p>
           <Link
             href="/download"
-            className="inline-flex items-center gap-2 bg-gradient-to-tr from-gold-primary/20 to-transparent border border-gold-primary/40 text-gold-primary hover:bg-gold-primary hover:text-[#0d1117] px-5 py-2.5 rounded-full text-sm font-bold transition-all duration-300 shadow-[0_0_15px_rgba(212,175,55,0.1)] hover:shadow-[0_0_20px_rgba(212,175,55,0.3)]"
+            className="pressable inline-flex items-center gap-2 h-10 px-4 rounded-full border border-white/15 text-white text-sm font-medium hover:bg-white/[0.08]"
           >
             <Download className="w-4 h-4" /> Get the App
           </Link>
@@ -45,8 +27,8 @@ export default function Footer() {
 
         {/* Column: Shop */}
         <div>
-          <h3 className="text-xs font-extrabold text-white mb-5 tracking-[0.2em] uppercase">Shop</h3>
-          <ul className="space-y-3.5">
+          <h3 className="text-[13px] font-semibold text-white mb-4">Shop</h3>
+          <ul className="space-y-2.5">
             {[
  
               { label: 'Shopping Cart', href: '/cart' },
@@ -54,7 +36,7 @@ export default function Footer() {
               { label: 'Download App', href: '/download' },
             ].map(({ label, href }) => (
               <li key={href}>
-                <Link href={href} className="text-[#a0aab5] text-[14px] hover:text-gold-primary hover:translate-x-1 inline-block transition-all duration-200">
+                <Link href={href} className="text-white/55 text-[14px] hover:text-white transition-colors">
                   {label}
                 </Link>
               </li>
@@ -64,14 +46,14 @@ export default function Footer() {
 
         {/* Column: Company */}
         <div>
-          <h3 className="text-xs font-extrabold text-white mb-5 tracking-[0.2em] uppercase">Company</h3>
-          <ul className="space-y-3.5">
+          <h3 className="text-[13px] font-semibold text-white mb-4">Company</h3>
+          <ul className="space-y-2.5">
             {[
               { label: 'Contact Us', href: 'mailto:medoxatoz@gmail.com' },
               { label: 'Sell on MedoxAtoZ', href: '/vendor/register' },
             ].map(({ label, href }) => (
               <li key={href}>
-                <Link href={href} className="text-[#a0aab5] text-[14px] hover:text-gold-primary hover:translate-x-1 inline-block transition-all duration-200">
+                <Link href={href} className="text-white/55 text-[14px] hover:text-white transition-colors">
                   {label}
                 </Link>
               </li>
@@ -81,8 +63,8 @@ export default function Footer() {
 
         {/* Column: Account & Support */}
         <div>
-          <h3 className="text-xs font-extrabold text-white mb-5 tracking-[0.2em] uppercase">Account & Support</h3>
-          <ul className="space-y-3.5">
+          <h3 className="text-[13px] font-semibold text-white mb-4">Account & Support</h3>
+          <ul className="space-y-2.5">
             {[
               { label: 'Sign In', href: '/signin' },
               { label: 'Create Account', href: '/signup' },
@@ -91,7 +73,7 @@ export default function Footer() {
               { label: 'Saved Wishlist', href: '/account/wishlist' },
             ].map(({ label, href }) => (
               <li key={href}>
-                <Link href={href} className="text-[#a0aab5] text-[14px] hover:text-gold-primary hover:translate-x-1 inline-block transition-all duration-200">
+                <Link href={href} className="text-white/55 text-[14px] hover:text-white transition-colors">
                   {label}
                 </Link>
               </li>
@@ -99,7 +81,7 @@ export default function Footer() {
           </ul>
 
           {/* Developer Credit */}
-          <div className="mt-8 flex flex-col items-start gap-1 text-xs pt-10 text-[#a0aab5]">
+          <div className="mt-8 flex flex-col items-start gap-1 text-xs pt-10 text-white/55">
             <span className="uppercase tracking-widest text-[10px] font-bold opacity-80">Developed By</span>
           
           </div>
@@ -108,15 +90,15 @@ export default function Footer() {
       </div>
 
       {/* Footer Bottom */}
-      <div className=" mx-auto px-5 py-6 flex flex-col md:flex-row items-center justify-between gap-4 text-[13px] text-[#a0aab5]">
+      <div className="max-w-[1500px] mx-auto px-6 py-6 flex flex-col md:flex-row items-center justify-between gap-4 text-[13px] text-white/55">
         <span className="font-medium">© 2026, SREE SAI LAKSHMI GANAPATHI TRADERS (MedoxAtoZ) — All rights reserved.</span>
         <div className="flex items-center gap-5 flex-wrap font-medium">
           <Link href="/privacy-policy" className="hover:text-white transition-colors">Privacy Policy</Link>
-          <span className="opacity-20">|</span>
+          
           <Link href="/terms" className="hover:text-white transition-colors">Terms & Conditions</Link>
-          <span className="opacity-20">|</span>
+          
           <Link href="/refund-policy" className="hover:text-white transition-colors">Return & Refund Policy</Link>
-          <span className="opacity-20">|</span>
+          
           <Link href="/shipping-policy" className="hover:text-white transition-colors">Shipping Policy</Link>
         </div>
       </div>

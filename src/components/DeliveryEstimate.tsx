@@ -154,7 +154,7 @@ export default function DeliveryEstimate({ weightKg }: DeliveryEstimateProps) {
       <div className="bg-gray-50/50 rounded-2xl p-4 border border-gray-100 flex items-center gap-3">
         <Truck className="w-5 h-5 text-gold-primary shrink-0" />
         <p className="text-sm text-gray-600">
-          <Link href="/signin" className="font-bold text-gold-hover hover:underline">Sign in</Link> to see a delivery estimate for your address.
+          <Link href="/signin" className="font-bold text-gold-ink hover:underline">Sign in</Link> to see a delivery estimate for your address.
         </p>
       </div>
     );
@@ -169,7 +169,7 @@ export default function DeliveryEstimate({ weightKg }: DeliveryEstimateProps) {
       <div className="bg-gray-50/50 rounded-2xl p-4 border border-gray-100 flex items-center gap-3">
         <Truck className="w-5 h-5 text-gold-primary shrink-0" />
         <p className="text-sm text-gray-600">
-          <Link href="/account" className="font-bold text-gold-hover hover:underline">Add a delivery address</Link> to see an estimated delivery date.
+          <Link href="/account" className="font-bold text-gold-ink hover:underline">Add a delivery address</Link> to see an estimated delivery date.
         </p>
       </div>
     );
@@ -207,7 +207,7 @@ export default function DeliveryEstimate({ weightKg }: DeliveryEstimateProps) {
               type="button"
               onClick={() => setPickerOpen(o => !o)}
               disabled={updating}
-              className="font-bold text-gold-hover hover:text-gold-primary hover:underline shrink-0 cursor-pointer flex items-center gap-0.5 disabled:opacity-50"
+              className="font-bold text-gold-ink hover:text-ink hover:underline shrink-0 cursor-pointer flex items-center gap-0.5 disabled:opacity-50"
             >
               Change <ChevronDown className={`w-3 h-3 transition-transform ${pickerOpen ? 'rotate-180' : ''}`} />
             </button>
@@ -226,7 +226,7 @@ export default function DeliveryEstimate({ weightKg }: DeliveryEstimateProps) {
                 className={`w-full text-left px-4 py-3 text-sm border-b border-gray-50 last:border-0 hover:bg-gray-50 transition-colors flex items-start gap-2 cursor-pointer ${addr.id === selectedId ? 'bg-gold-light/30' : ''}`}
               >
                 {addr.id === selectedId ? (
-                  <CheckCircle2 className="w-4 h-4 text-gold-hover shrink-0 mt-0.5" />
+                  <CheckCircle2 className="w-4 h-4 text-gold-ink shrink-0 mt-0.5" />
                 ) : (
                   <span className="w-4 h-4 shrink-0" />
                 )}
@@ -239,7 +239,7 @@ export default function DeliveryEstimate({ weightKg }: DeliveryEstimateProps) {
           </div>
           <Link
             href="/account"
-            className="block text-center py-2.5 text-xs font-bold text-gold-hover hover:text-gold-primary hover:bg-gray-50 transition-colors border-t border-gray-100"
+            className="block text-center py-2.5 text-xs font-bold text-gold-ink hover:text-ink hover:bg-gray-50 transition-colors border-t border-gray-100"
           >
             + Add a new address
           </Link>

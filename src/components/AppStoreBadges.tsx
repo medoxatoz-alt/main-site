@@ -89,7 +89,7 @@ export function AppStoreButton({
           </span>
         </div>
       </div>
-      <span className={`${dims.badgeText} ml-1 font-extrabold uppercase rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 shrink-0 whitespace-nowrap`}>
+      <span className={`${dims.badgeText} ml-1 font-semibold uppercase rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 shrink-0 whitespace-nowrap`}>
         Soon
       </span>
     </div>

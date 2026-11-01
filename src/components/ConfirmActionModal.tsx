@@ -103,7 +103,7 @@ export default function ConfirmActionModal({
 
   return (
     <div className="fixed inset-0 z-[3000] flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm sm:p-4">
-      <div className="bg-white rounded-t-[2rem] sm:rounded-2xl shadow-2xl w-full sm:max-w-md max-h-[92vh] sm:max-h-[85vh] flex flex-col overflow-hidden animate-in slide-in-from-bottom-full sm:slide-in-from-bottom-0 sm:zoom-in duration-300 pb-safe">
+      <div className="bg-white rounded-t-[2rem] sm:rounded-2xl shadow-2xl w-full sm:max-w-md max-h-[92vh] sm:max-h-[85vh] flex flex-col overflow-hidden animate-in slide-in-from-bottom-full sm:slide-in-from-bottom-0 sm:zoom-in-95 sm:fade-in duration-300 pb-safe">
         {/* Mobile Drag Indicator Pill */}
         <div className="w-full flex justify-center pt-3 pb-1 bg-gray-50/80 sm:hidden flex-shrink-0 rounded-t-[2rem]">
           <div className="w-12 h-1.5 bg-gray-300 rounded-full" />
@@ -115,7 +115,7 @@ export default function ConfirmActionModal({
             <Icon className={`w-5 h-5 ${t.iconColor}`} />
           </div>
           <div>
-            <h2 className={`text-base font-extrabold ${t.textDark}`}>{title}</h2>
+            <h2 className={`text-base font-semibold ${t.textDark}`}>{title}</h2>
             {description && <p className={`text-xs ${t.textLight} mt-0.5`}>{description}</p>}
           </div>
           <button onClick={onCancel} className={`ml-auto p-1 text-gray-400 hover:text-gray-600 active:scale-90 transition-all cursor-pointer`}>
@@ -137,7 +137,7 @@ export default function ConfirmActionModal({
           </div>
 
           <p className="text-sm text-gray-600">
-            To confirm, type <span className="font-extrabold text-gray-900 bg-gray-100 px-1.5 py-0.5 rounded font-mono">{confirmWord}</span> below, or click the confirmation button.
+            To confirm, type <span className="font-semibold text-gray-900 bg-gray-100 px-1.5 py-0.5 rounded font-mono">{confirmWord}</span> below, or click the confirmation button.
           </p>
 
           <input

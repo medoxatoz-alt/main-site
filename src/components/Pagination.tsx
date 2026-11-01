@@ -63,7 +63,7 @@ export default function Pagination<T>({
             <button
               onClick={() => setPage(p => Math.max(1, p - 1))}
               disabled={safePage === 1}
-              className="p-1.5 rounded-lg border border-gray-200 text-gray-500 hover:border-gold-primary hover:text-gold-primary disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer"
+              className="pressable p-1.5 rounded-lg border border-line text-gray-500 hover:border-gray-400 hover:text-ink disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer"
               aria-label="Previous page"
             >
               <ChevronLeft className="w-4 h-4" />
@@ -78,8 +78,8 @@ export default function Pagination<T>({
                   onClick={() => setPage(p as number)}
                   className={`min-w-[32px] h-8 px-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                     p === safePage
-                      ? 'bg-gold-primary text-text-main shadow-md shadow-amber-500/20'
-                      : 'border border-gray-200 text-gray-600 hover:border-gold-primary hover:text-gold-primary'
+                      ? 'bg-ink text-white border border-ink'
+                      : 'border border-gray-200 text-gray-600 hover:border-gray-400 hover:text-ink'
                   }`}
                 >
                   {p}
@@ -90,7 +90,7 @@ export default function Pagination<T>({
             <button
               onClick={() => setPage(p => Math.min(totalPages, p + 1))}
               disabled={safePage === totalPages}
-              className="p-1.5 rounded-lg border border-gray-200 text-gray-500 hover:border-gold-primary hover:text-gold-primary disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer"
+              className="pressable p-1.5 rounded-lg border border-line text-gray-500 hover:border-gray-400 hover:text-ink disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer"
               aria-label="Next page"
             >
               <ChevronRight className="w-4 h-4" />

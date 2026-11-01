@@ -185,6 +185,9 @@ export default function EditProductModal({ isOpen, onClose, onSuccess, product }
           price: parseFloat(v.price) || 0,
           mrp: v.mrp ? parseFloat(v.mrp) : undefined,
           stock: parseInt(v.stock) || 0,
+          // Stock when the form opened -- lets the server keep sales made
+          // while editing instead of overwriting them.
+          originalStock: product.variants?.find((pv: any) => pv.id === v.id)?.stock,
           images: [...v.existingImages, ...uploaded],
         };
       }));
@@ -222,7 +225,7 @@ export default function EditProductModal({ isOpen, onClose, onSuccess, product }
 
   return (
     <div className="fixed inset-0 z-[2000] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-[640px] overflow-hidden flex flex-col max-h-[92vh] animate-in fade-in zoom-in duration-200">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-[640px] overflow-hidden flex flex-col max-h-[92vh] animate-in fade-in zoom-in-95 duration-200">
 
         {/* Header */}
         <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50 flex-shrink-0">
@@ -400,7 +403,7 @@ export default function EditProductModal({ isOpen, onClose, onSuccess, product }
                                     key={sub.id}
                                     className={`px-3 py-1.5 text-sm rounded-lg cursor-pointer transition-colors ${
                                       newSubCategoryId === sub.id
-                                        ? 'bg-gold-primary/10 text-gold-700 font-semibold'
+                                        ? 'bg-gold-primary/10 text-gold-ink font-semibold'
                                         : 'text-gray-600 hover:bg-gray-50'
                                     }`}
                                     onClick={() => { setNewMainCategoryId(mainCat.id); setNewSubCategoryId(sub.id); setIsSubCatDropdownOpen(false); }}
@@ -453,7 +456,7 @@ export default function EditProductModal({ isOpen, onClose, onSuccess, product }
           </button>
           <button
             type="submit" form="edit-product-form" disabled={isSubmitting}
-            className="px-6 py-2.5 bg-gold-primary hover:bg-gold-hover text-text-main font-bold rounded-xl transition-all duration-300 shadow-md shadow-amber-500/10 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer flex items-center gap-2"
+            className="px-6 py-2.5 bg-gold-primary hover:bg-gold-hover text-text-main font-bold rounded-xl transition-all duration-300 shadow-md disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer flex items-center gap-2"
           >
             <ImageIcon className="w-4 h-4" />
             {isSubmitting ? 'Saving...' : 'Save Changes'}

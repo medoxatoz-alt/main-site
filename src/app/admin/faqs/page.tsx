@@ -39,9 +39,9 @@ function AdminFaqsContent() {
               <ArrowLeft className="w-5 h-5" />
             </Link>
             <div>
-              <h1 className="text-base sm:text-lg font-black text-white flex items-center gap-2">
+              <h1 className="text-base sm:text-lg font-bold text-white flex items-center gap-2">
                 <span>Help & FAQs Management</span>
-                <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-400">
+                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-400">
                   Admin Panel
                 </span>
               </h1>

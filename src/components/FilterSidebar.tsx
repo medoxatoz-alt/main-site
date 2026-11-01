@@ -184,7 +184,7 @@ export default function FilterSidebar({
               {filteredBrands.length > 8 && (
                 <button 
                   onClick={() => setShowAllBrands(!showAllBrands)}
-                  className="text-[13px] font-medium text-gold-primary hover:text-gold-hover mt-2 text-left w-full pl-7"
+                  className="text-[13px] font-medium text-gold-primary hover:text-gold-ink mt-2 text-left w-full pl-7"
                 >
                   {showAllBrands ? '- Show less' : `+ ${filteredBrands.length - 8} more`}
                 </button>

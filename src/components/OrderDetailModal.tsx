@@ -48,8 +48,10 @@ interface Order {
   cashfreePaymentId?: string;
   awbCode?: string;
   courierName?: string;
-  invoiceUrl?: string;
+  invoiceUrl?: string;   // legacy: 30-day link stored on orders created before invoicePath
+  invoicePath?: string;  // invoice exists; a short-lived link is fetched on demand
   refundId?: string;
+  refundStatus?: string; // e.g. PENDING / SUCCESS / FAILED
 }
 
 interface OrderDetailModalProps {
@@ -94,6 +96,7 @@ export default function OrderDetailModal({
   const [trackingLink, setTrackingLink] = useState('');
   const [vendorName, setVendorName] = useState<string | null>(null);
   const [vendorNameLoading, setVendorNameLoading] = useState(false);
+  const [invoiceLoading, setInvoiceLoading] = useState(false);
 
   // Whether this order's seller is the platform (an admin), not a specific
   // vendor. vendorId is always a real Firebase uid on both sides -- there is
@@ -119,6 +122,11 @@ export default function OrderDetailModal({
     : viewerRole === 'admin'
       ? isOrderAdminOwned
       : false;
+
+  // Cancelling (which refunds the customer) is also open to any admin, even on
+  // a vendor's order: payments land in the platform's account, so support must
+  // be able to refund e.g. a shipped order the seller can no longer cancel.
+  const canCancel = canAct || viewerRole === 'admin';
 
   // For a genuine third-party vendor's order, fetch their store name so the
   // admin never sees a raw Firebase uid in the Vendor Information panel.
@@ -174,11 +182,44 @@ export default function OrderDetailModal({
     }
   };
 
+  // Invoice links are minted per request (valid for minutes) after the API
+  // checks the viewer may see this order. Navigating to the URL (rather than
+  // opening a popup after the await) also lets medox-app intercept the .pdf.
+  const handleDownloadInvoice = async () => {
+    setInvoiceLoading(true);
+    try {
+      const { data } = await api.get(`/orders/${order.id}/invoice`);
+      window.location.assign(data.url);
+    } catch (err: any) {
+      toast.error(err?.response?.data?.error || 'Could not fetch the invoice');
+    } finally {
+      setInvoiceLoading(false);
+    }
+  };
+
+  const handleRetryRefund = async () => {
+    setIsUpdating(true);
+    try {
+      await api.post(`/orders/${order.id}/refund/retry`);
+      toast.success('Refund initiated');
+      onStatusChange?.();
+      onClose();
+    } catch (err: any) {
+      toast.error(err?.response?.data?.error || 'Refund retry failed');
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
   const handleCancelOrder = async () => {
     setIsUpdating(true);
     try {
-      await api.post(`/orders/${order.id}/cancel`);
-      toast.success('Order cancelled and refund initiated');
+      const { data } = await api.post(`/orders/${order.id}/cancel`);
+      if (data?.refundFailed) {
+        toast.error(data.message || 'Order cancelled, but the refund could not be started.');
+      } else {
+        toast.success(order.cashfreeOrderId ? 'Order cancelled and refund initiated' : 'Order cancelled');
+      }
       onStatusChange?.();
       onClose();
     } catch (err: any) {
@@ -207,7 +248,7 @@ export default function OrderDetailModal({
           Mobile -> w-full, rounded top corners, slide up animation 
           Desktop -> max-w-2xl, fully rounded, zoom-in animation 
         */}
-        <div className="bg-white w-full sm:max-w-2xl max-h-[92vh] sm:max-h-[90vh] flex flex-col overflow-hidden rounded-t-[2rem] sm:rounded-2xl shadow-2xl animate-in slide-in-from-bottom-full sm:slide-in-from-bottom-0 sm:zoom-in duration-300 pb-safe">
+        <div className="bg-white w-full sm:max-w-2xl max-h-[92vh] sm:max-h-[90vh] flex flex-col overflow-hidden rounded-t-[2rem] sm:rounded-2xl shadow-2xl animate-in slide-in-from-bottom-full sm:slide-in-from-bottom-0 sm:zoom-in-95 sm:fade-in duration-300 pb-safe">
           
           {/* Mobile Drag Indicator Pill */}
           <div className="w-full flex justify-center pt-3 pb-2 bg-gray-50/80 sm:hidden flex-shrink-0 rounded-t-[2rem]">
@@ -220,7 +261,7 @@ export default function OrderDetailModal({
               <Package className="w-5 h-5 text-gold-primary" />
             </div>
             <div className="flex-1 min-w-0">
-              <h2 className="text-base sm:text-lg font-extrabold text-gray-900 truncate">Order #{order.orderId}</h2>
+              <h2 className="text-base sm:text-lg font-semibold text-gray-900 truncate">Order #{order.orderId}</h2>
               <p className="text-xs text-gray-500 mt-0.5 truncate">{order.customerEmail}</p>
             </div>
             <span className={`px-2.5 py-1 rounded-full text-[10px] sm:text-xs font-bold border whitespace-nowrap ${STATUS_COLORS[displayStatus] || 'bg-gray-50 text-gray-700 border-gray-200'}`}>
@@ -249,7 +290,7 @@ export default function OrderDetailModal({
                       <p className="font-semibold text-sm text-gray-900 line-clamp-2">{item.title}</p>
                       <p className="text-xs text-gray-500 mt-1">Qty: {item.qty} × ₹{item.price.toLocaleString('en-IN')}</p>
                     </div>
-                    <div className="font-extrabold text-gray-900 text-sm flex-shrink-0 flex items-center">
+                    <div className="font-semibold text-gray-900 text-sm flex-shrink-0 flex items-center">
                       ₹{item.subtotal.toLocaleString('en-IN')}
                     </div>
                   </div>
@@ -257,7 +298,7 @@ export default function OrderDetailModal({
               </div>
               <div className="mt-4 pt-4 border-t border-gray-100 flex justify-between items-center px-1">
                 <span className="text-sm font-bold text-gray-600">Total</span>
-                <span className="text-xl font-extrabold text-gold-primary">₹{Number(order.totalAmount).toLocaleString('en-IN')}</span>
+                <span className="text-xl font-semibold text-gold-primary">₹{Number(order.totalAmount).toLocaleString('en-IN')}</span>
               </div>
             </section>
 
@@ -289,7 +330,7 @@ export default function OrderDetailModal({
                     <p className="font-mono text-xs text-gray-700 mt-0.5 break-all">{order.cashfreePaymentId}</p>
                   </div>
                 )}
-                {order.invoiceUrl && (
+                {(order.invoicePath || order.invoiceUrl) && (
                   <div className="mt-3 pt-3 border-t border-gray-200">
                     {(new Date().getTime() - new Date(order.createdAt).getTime()) > 30 * 24 * 60 * 60 * 1000 ? (
                       <div className="w-full px-4 py-2 bg-red-50 border border-red-100 text-red-600 text-xs font-bold rounded-xl flex items-center justify-center gap-1.5">
@@ -297,14 +338,14 @@ export default function OrderDetailModal({
                       </div>
                     ) : (
                       <>
-                        <a
-                          href={order.invoiceUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="w-full px-4 py-2 bg-gray-900 hover:bg-black text-white text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                        <button
+                          type="button"
+                          onClick={handleDownloadInvoice}
+                          disabled={invoiceLoading}
+                          className="w-full px-4 py-2 bg-gray-900 hover:bg-black text-white text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-60"
                         >
-                          <Download className="w-3.5 h-3.5" /> Download Invoice
-                        </a>
+                          <Download className="w-3.5 h-3.5" /> {invoiceLoading ? 'Preparing…' : 'Download Invoice'}
+                        </button>
                         <p className="text-[10px] text-gray-400 text-center mt-1.5 italic">
                           Note: Invoices are automatically deleted after 30 days to save space.
                         </p>
@@ -314,7 +355,28 @@ export default function OrderDetailModal({
                 )}
               </section>
 
-              {order.refundId && (
+              {order.refundId && order.refundStatus === 'FAILED' && (
+                <section className="bg-amber-50/50 rounded-xl border border-amber-200 p-4 col-span-1 sm:col-span-2">
+                  <h3 className="text-xs font-bold text-amber-700 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                    <XCircle className="w-4 h-4" /> Refund Pending
+                  </h3>
+                  <p className="text-[13px] text-amber-900 leading-relaxed">
+                    The refund for this order could not be started automatically. Our team has been notified and will process it.
+                  </p>
+                  {viewerRole === 'admin' && (
+                    <button
+                      type="button"
+                      onClick={handleRetryRefund}
+                      disabled={isUpdating}
+                      className="mt-3 px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold rounded-xl transition-all disabled:opacity-60"
+                    >
+                      Retry Refund
+                    </button>
+                  )}
+                </section>
+              )}
+
+              {order.refundId && order.refundStatus !== 'FAILED' && (
                 <section className="bg-red-50/50 rounded-xl border border-red-100 p-4 col-span-1 sm:col-span-2">
                   <h3 className="text-xs font-bold text-red-600 uppercase tracking-wider mb-2 flex items-center gap-1.5">
                     <XCircle className="w-4 h-4" /> Refund Initiated
@@ -418,18 +480,14 @@ export default function OrderDetailModal({
           {/* Action Footer */}
           {(order.status === 'Approved') && (
             <div className="p-4 border-t border-gray-100 bg-gray-50 flex justify-end gap-3 rounded-b-[2rem] sm:rounded-b-2xl">
-              {canAct ? (
+              {canCancel ? (
                 <button
                   onClick={() => setShowCancelConfirm(true)}
                   className="px-4 py-2 bg-red-500 text-white hover:bg-red-600 font-bold text-sm rounded-xl transition-all flex items-center gap-1.5"
                 >
                   <XCircle className="w-4 h-4" /> Cancel Order
                 </button>
-              ) : (
-                viewerRole === 'admin' && (
-                  <p className="text-xs text-gray-400 italic">This order belongs to a vendor — only the vendor can cancel it.</p>
-                )
-              )}
+              ) : null}
             </div>
           )}
 

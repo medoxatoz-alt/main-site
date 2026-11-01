@@ -14,20 +14,25 @@ const api = axios.create({
 });
 
 // ── Token helpers ─────────────────────────────────────────────────────────────
-// Persist/clear token in both localStorage (for Bearer header) and a
-// client-accessible cookie (for Next.js edge middleware route guards).
+// The session token lives in localStorage (sent as a Bearer header). The
+// Next.js proxy only needs to know *whether* someone is signed in to redirect
+// guests away from protected pages, so the JS-readable cookie it checks holds
+// a plain marker -- never the token itself, which would otherwise be copied
+// into every page request and readable from document.cookie.
 
 const TOKEN_KEY = 'medox_token';
+const SESSION_MARKER_COOKIE = 'medox_session';
 
 export function saveToken(token: string) {
   if (typeof window === 'undefined') return;
   try {
     localStorage.setItem(TOKEN_KEY, token);
-    // Set a JS-accessible cookie so the Next.js edge middleware can read it.
     // Add Secure flag on HTTPS (production), omit on HTTP (local dev).
     const isSecure = window.location.protocol === 'https:';
     const secureFlag = isSecure ? '; Secure' : '';
-    document.cookie = `${TOKEN_KEY}=${token}; path=/; max-age=604800; SameSite=Lax${secureFlag}`;
+    document.cookie = `${SESSION_MARKER_COOKIE}=1; path=/; max-age=604800; SameSite=Lax${secureFlag}`;
+    // Remove the token cookie older versions of the site set.
+    document.cookie = `${TOKEN_KEY}=; path=/; max-age=0; SameSite=Lax${secureFlag}`;
   } catch {}
 }
 
@@ -38,6 +43,7 @@ export function clearToken() {
     // Expire the client-side cookie immediately
     const isSecure = window.location.protocol === 'https:';
     const secureFlag = isSecure ? '; Secure' : '';
+    document.cookie = `${SESSION_MARKER_COOKIE}=; path=/; max-age=0; SameSite=Lax${secureFlag}`;
     document.cookie = `${TOKEN_KEY}=; path=/; max-age=0; SameSite=Lax${secureFlag}`;
   } catch {}
 }

@@ -64,9 +64,9 @@ export default function DownloadAppPage() {
   return (
     <>
       <Navbar />
-      <main className="min-h-screen bg-[var(--bg-page)] pb-24">
+      <main className="min-h-screen bg-page pb-24">
         {/* ─── Hero Section ─── */}
-        <section className="bg-[#0d1117] text-white border-b-2 border-gold-primary relative overflow-hidden">
+        <section className="bg-nav-bg text-white border-b-2 border-gold-primary relative overflow-hidden">
           {/* Subtle Ambient Background Gradients */}
           <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-gold-primary/10 rounded-full blur-[120px] pointer-events-none -translate-y-1/2 translate-x-1/3" />
           <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-emerald-500/10 rounded-full blur-[100px] pointer-events-none translate-y-1/3 -translate-x-1/4" />
@@ -79,7 +79,7 @@ export default function DownloadAppPage() {
                   <Smartphone className="w-3.5 h-3.5" /> Official Mobile App
                 </div>
 
-                <h1 className="text-3xl sm:text-5xl font-black text-white leading-[1.15] mb-5 tracking-tight">
+                <h1 className="text-3xl sm:text-5xl font-bold text-white leading-[1.15] mb-5 tracking-tight">
                   MedoxAtoZ on your phone.{' '}
                   <span className="text-gold-primary block mt-1">Faster. Smoother. Smarter.</span>
                 </h1>
@@ -96,7 +96,7 @@ export default function DownloadAppPage() {
                       <CheckCircle2 className="w-7 h-7 text-emerald-400" />
                     </div>
                     <div className="text-left">
-                      <p className="font-extrabold text-white text-base">You're using the MedoxAtoZ App!</p>
+                      <p className="font-semibold text-white text-base">You're using the MedoxAtoZ App!</p>
                       <p className="text-xs text-emerald-200/80 mt-0.5">
                         You have the latest mobile version running with full native capabilities.
                       </p>
@@ -147,7 +147,7 @@ export default function DownloadAppPage() {
               <div className="flex flex-col items-center shrink-0">
                 <div className="relative group">
                   <div className="absolute -inset-1 rounded-[36px] bg-gradient-to-r from-gold-primary/40 to-emerald-500/30 blur-xl opacity-75 group-hover:opacity-100 transition duration-500" />
-                  <div className="relative w-48 h-48 sm:w-56 sm:h-56 rounded-[32px] bg-[#161b22] border-2 border-gold-primary/30 p-6 flex flex-col items-center justify-center shadow-2xl">
+                  <div className="relative w-48 h-48 sm:w-56 sm:h-56 rounded-[32px] bg-nav-bg border-2 border-gold-primary/30 p-6 flex flex-col items-center justify-center shadow-2xl">
                     <img
                       src="/logo.webp"
                       alt="MedoxAtoZ Mobile App"
@@ -186,7 +186,7 @@ export default function DownloadAppPage() {
         {/* ─── Key App Features Grid ─── */}
         <section className="max-w-6xl mx-auto px-6 py-16">
           <div className="text-center max-w-2xl mx-auto mb-12">
-            <h2 className="text-2xl sm:text-3xl font-extrabold text-[var(--text-main)] mb-3 tracking-tight">
+            <h2 className="text-2xl sm:text-3xl font-semibold text-[var(--text-main)] mb-3 tracking-tight">
               Why download the MedoxAtoZ App?
             </h2>
             <p className="text-sm sm:text-base text-[var(--text-muted)]">
@@ -215,9 +215,9 @@ export default function DownloadAppPage() {
         {/* ─── Bottom CTA Banner ─── */}
         {!isInApp && (
           <section className="max-w-4xl mx-auto px-6 pb-12">
-            <div className="bg-gradient-to-br from-[#0d1117] to-[#161b22] border border-gold-primary/30 rounded-3xl p-8 sm:p-10 text-center text-white relative overflow-hidden shadow-xl">
+            <div className="bg-gradient-to-br from-nav-bg to-nav-bg border border-gold-primary/30 rounded-3xl p-8 sm:p-10 text-center text-white relative overflow-hidden shadow-xl">
               <div className="relative z-10 max-w-xl mx-auto">
-                <h3 className="text-2xl sm:text-3xl font-extrabold mb-3">
+                <h3 className="text-2xl sm:text-3xl font-semibold mb-3">
                   Ready to elevate your clinic supply chain?
                 </h3>
                 <p className="text-sm text-gray-300 mb-8 leading-relaxed">
@@ -237,7 +237,7 @@ export default function DownloadAppPage() {
         <div className="text-center pt-4">
           <Link
             href="/"
-            className="inline-flex items-center gap-1.5 text-sm font-bold text-gold-primary hover:text-gold-hover hover:underline"
+            className="inline-flex items-center gap-1.5 text-sm font-bold text-gold-primary hover:text-gold-ink hover:underline"
           >
             ← Back to Store Home
           </Link>

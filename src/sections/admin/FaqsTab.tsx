@@ -227,7 +227,7 @@ export default function FaqsTab() {
             <HelpCircle className="w-6 h-6 stroke-[2]" />
           </div>
           <div>
-            <h3 className="text-lg font-black text-gray-900 tracking-tight">Help & FAQs Manager</h3>
+            <h3 className="text-lg font-bold text-gray-900 tracking-tight">Help & FAQs Manager</h3>
             <p className="text-xs text-gray-500 font-medium">
               Manage questions, answers, categories, and icons displayed in the customer Help Modal
             </p>
@@ -249,7 +249,7 @@ export default function FaqsTab() {
           <button
             type="button"
             onClick={openCreateModal}
-            className="flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 active:scale-95 text-white font-black text-xs sm:text-sm transition-all shadow-md shadow-amber-500/20 cursor-pointer border-none"
+            className="flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-gold-primary hover:bg-gold-hover active:scale-95 text-ink font-bold text-xs sm:text-sm transition-all shadow-md cursor-pointer border-none"
           >
             <Plus className="w-4 h-4 stroke-[2.5]" />
             <span>Add New FAQ</span>
@@ -331,7 +331,7 @@ export default function FaqsTab() {
 
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2 mb-1 flex-wrap">
-                        <span className="text-[10px] font-extrabold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-amber-100/70 text-amber-800">
+                        <span className="text-[10px] font-semibold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-amber-100/70 text-amber-800">
                           {faq.category}
                         </span>
                         <span className="text-[10px] font-bold text-gray-400">
@@ -410,7 +410,7 @@ export default function FaqsTab() {
         <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
           <div className="relative w-full max-w-lg bg-white rounded-3xl p-6 shadow-2xl text-gray-900 animate-in zoom-in-95 duration-200 border border-gray-100 max-h-[90vh] flex flex-col">
             <div className="flex items-center justify-between pb-4 border-b border-gray-100 shrink-0">
-              <h3 className="text-base font-black text-gray-900">
+              <h3 className="text-base font-bold text-gray-900">
                 {editingFaq ? 'Edit FAQ' : 'Add New FAQ'}
               </h3>
               <button
@@ -532,7 +532,7 @@ export default function FaqsTab() {
                 <button
                   type="submit"
                   disabled={saving}
-                  className="px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 active:scale-95 text-white font-black text-xs transition-all shadow-md shadow-amber-500/20 cursor-pointer border-none flex items-center gap-1.5 disabled:opacity-50"
+                  className="px-5 py-2.5 rounded-xl bg-gold-primary hover:bg-gold-hover active:scale-95 text-ink font-bold text-xs transition-all shadow-md cursor-pointer border-none flex items-center gap-1.5 disabled:opacity-50"
                 >
                   {saving && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
                   <span>{editingFaq ? 'Save Changes' : 'Create FAQ'}</span>
@@ -550,7 +550,7 @@ export default function FaqsTab() {
             <div className="w-14 h-14 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center mx-auto mb-3">
               <Trash2 className="w-7 h-7" />
             </div>
-            <h3 className="text-base font-black text-gray-900 mb-1">Delete FAQ?</h3>
+            <h3 className="text-base font-bold text-gray-900 mb-1">Delete FAQ?</h3>
             <p className="text-xs text-gray-600 leading-relaxed mb-6">
               Are you sure you want to delete <strong className="text-gray-900">"{faqToDelete.question}"</strong>?
               This will remove it from the database and customer Help modal.
@@ -568,7 +568,7 @@ export default function FaqsTab() {
                 type="button"
                 onClick={handleDelete}
                 disabled={deleting}
-                className="flex-1 py-2.5 bg-rose-600 hover:bg-rose-700 active:scale-95 text-white text-xs font-black rounded-xl cursor-pointer border-none flex items-center justify-center gap-1.5 disabled:opacity-50"
+                className="flex-1 py-2.5 bg-rose-600 hover:bg-rose-700 active:scale-95 text-white text-xs font-bold rounded-xl cursor-pointer border-none flex items-center justify-center gap-1.5 disabled:opacity-50"
               >
                 {deleting && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
                 <span>Delete</span>

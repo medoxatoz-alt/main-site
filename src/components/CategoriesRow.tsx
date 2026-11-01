@@ -55,7 +55,7 @@ export default function CategoriesRow() {
   return (
     <>
       <div 
-        className="bg-[#12161b] border-t border-b border-white/5 py-2.5 px-4 overflow-x-auto"
+        className="bg-nav-bg border-t border-b border-white/5 py-2.5 px-4 overflow-x-auto"
         style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
       >
         <div className="max-w-[1500px] mx-auto px-3.5 md:px-5 flex items-center gap-6 md:gap-8 text-[14px] whitespace-nowrap [&::-webkit-scrollbar]:hidden">
@@ -94,9 +94,9 @@ export default function CategoriesRow() {
 
       {/* Full Screen Dropdown / Overlay */}
       {isOpen && (
-        <div className="fixed inset-0 z-[5000] bg-[#0d1117] flex flex-col animate-in fade-in zoom-in-95 duration-200">
+        <div className="fixed inset-0 z-[5000] bg-nav-bg flex flex-col animate-in fade-in zoom-in-95 duration-200">
           {/* Header */}
-          <div className="flex items-center justify-between p-4 border-b border-white/10 bg-[#0d1117]">
+          <div className="flex items-center justify-between p-4 border-b border-white/10 bg-nav-bg">
             <h2 className="text-xl font-bold text-white flex items-center gap-2">
               <Menu className="w-6 h-6 text-gold-primary" />
               All Categories
@@ -110,7 +110,7 @@ export default function CategoriesRow() {
           </div>
 
           {/* Search Bar */}
-          <div className="p-4 md:p-6 border-b border-white/5 bg-[#12161b]">
+          <div className="p-4 md:p-6 border-b border-white/5 bg-nav-bg">
             <div className="max-w-4xl mx-auto relative">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
               <input 
@@ -118,13 +118,13 @@ export default function CategoriesRow() {
                 placeholder="Search categories..." 
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full bg-[#0d1117] border border-white/10 rounded-full py-3.5 pl-12 pr-4 text-white outline-none focus:border-gold-primary focus:shadow-[0_0_15px_rgba(212,175,55,0.15)] transition-all text-[15px]"
+                className="w-full bg-nav-bg border border-white/10 rounded-full py-3.5 pl-12 pr-4 text-white outline-none focus:border-gold-primary focus: transition-all text-[15px]"
               />
             </div>
           </div>
 
           {/* Category List */}
-          <div className="flex-1 overflow-y-auto p-4 md:p-6 bg-[#0d1117]">
+          <div className="flex-1 overflow-y-auto p-4 md:p-6 bg-nav-bg">
             <div className="max-w-4xl mx-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               <Link 
                 href="/" 

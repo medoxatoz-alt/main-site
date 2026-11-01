@@ -1,18 +1,54 @@
-'use client';
+﻿'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { displayContact } from '@/lib/format';
 import Navbar from '@/components/Navbar';
 import api from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
-import { Loader2, ChevronRight, Heart, MapPin, Phone, Trash2, Plus, Package, Edit3, X, CheckCircle2, HelpCircle, Compass, Shield } from 'lucide-react';
-import EmptyState from '@/components/EmptyState';
+import { Loader2, ChevronRight, Heart, MapPin, Phone, Trash2, Plus, Package, Edit3, X, CheckCircle2, HelpCircle, Shield, LogOut } from 'lucide-react';
+import Sheet from '@/components/ui/Sheet';
+import { Skeleton } from '@/components/Skeleton';
 import ErrorState from '@/components/ErrorState';
 import Link from 'next/link';
 import { useGeolocatedAddress } from '@/hooks/useGeolocatedAddress';
 
-const inputCls = "w-full px-3.5 py-2.5 border border-gray-200 bg-gray-50/50 rounded-xl text-sm outline-none transition-all focus:border-gold-primary focus:ring-2 focus:ring-gold-primary/20 hover:border-gray-300 disabled:opacity-70 disabled:bg-gray-100 disabled:cursor-not-allowed";
+
+function Row({
+  icon: Icon,
+  title,
+  subtitle,
+  href,
+  onClick,
+  trailing,
+  tone = 'default',
+}: {
+  icon: React.ElementType;
+  title: string;
+  subtitle?: string;
+  href?: string;
+  onClick?: () => void;
+  trailing?: React.ReactNode;
+  tone?: 'default' | 'danger';
+}) {
+  const inner = (
+    <>
+      <span className={`w-9 h-9 rounded-xl grid place-items-center shrink-0 ${tone === 'danger' ? 'bg-red-50 text-red-600' : 'bg-gray-100 text-gray-700'}`}>
+        <Icon className="w-[18px] h-[18px]" />
+      </span>
+      <span className="flex-1 min-w-0">
+        <span className={`block text-[15px] ${tone === 'danger' ? 'text-red-600 font-medium' : 'text-ink'}`}>{title}</span>
+        {subtitle && <span className="block text-[12.5px] text-text-muted truncate mt-0.5">{subtitle}</span>}
+      </span>
+      {trailing ?? (tone !== 'danger' && <ChevronRight className="w-5 h-5 text-gray-300 shrink-0" />)}
+    </>
+  );
+  const cls = 'w-full flex items-center gap-3.5 px-4 py-3 text-left border-none bg-transparent hover:bg-gray-50 active:bg-gray-100 transition-colors';
+  if (href) return <Link href={href} className={cls}>{inner}</Link>;
+  if (onClick) return <button type="button" onClick={onClick} className={cls}>{inner}</button>;
+  return <div className={cls.replace(' hover:bg-gray-50 active:bg-gray-100', '')}>{inner}</div>;
+}
 
 export default function Account() {
   const { user, loading: authLoading } = useAuth();
@@ -92,7 +128,7 @@ export default function Account() {
     address: '',
   });
 
-  const { refreshUser } = useAuth();
+  const { refreshUser, logout } = useAuth();
 
   const handleOpenEdit = async () => {
     setProfileForm({
@@ -152,27 +188,38 @@ export default function Account() {
     if (!authLoading && !user) router.push('/signin');
   }, [user, authLoading, router]);
 
+  const fetchSeq = useRef(0);
   const fetchData = async () => {
     if (!user) {
       setLoading(false);
       return;
     }
+    const seq = ++fetchSeq.current; // ignore responses from older requests
     setFetchError(false);
     try {
       const res = await api.get('/user/addresses');
-      const addrs = res.data;
+      if (seq !== fetchSeq.current) return;
+      const addrs = res.data || [];
       setAddresses(addrs);
-      if (user.role === 'buyer' && addrs.length === 0) {
-        setShowAddForm(true);
-      }
     } catch {
-      setFetchError(true);
+      if (seq === fetchSeq.current) setFetchError(true);
     } finally {
-      setLoading(false);
+      if (seq === fetchSeq.current) setLoading(false);
     }
   };
 
-  useEffect(() => { fetchData(); }, [user]);
+  // Counts for the profile header (best-effort; failures just hide the number).
+  const [counts, setCounts] = useState<{ orders: number | null; wishlist: number | null }>({ orders: null, wishlist: null });
+  useEffect(() => {
+    if (!user?.uid) return;
+    api.get('/orders/my').then(r => setCounts(c => ({ ...c, orders: (r.data || []).length }))).catch(() => {});
+    api.get('/user/wishlist').then(r => setCounts(c => ({ ...c, wishlist: (r.data?.wishlistIds || []).length }))).catch(() => {});
+  }, [user?.uid]);
+
+  const [showAddresses, setShowAddresses] = useState(false);
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { fetchData(); }, [user?.uid]);
 
   const handleSaveAddress = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -227,341 +274,334 @@ export default function Account() {
     }
   };
 
+  const fieldCls =
+    'w-full h-12 px-4 bg-white border border-line rounded-xl text-[15px] text-ink placeholder:text-gray-400 outline-none transition-[border-color,box-shadow] duration-200 focus:border-ink focus:ring-4 focus:ring-black/[0.04] disabled:bg-gray-50 disabled:text-gray-400';
+  const labelCls = 'block text-[13px] font-medium text-ink mb-1.5';
+
+  const handleLogout = async () => {
+    await logout();
+    router.push('/');
+  };
+
   if (authLoading || loading) {
     return (
-      <div className="min-h-screen bg-[var(--bg-page)] flex flex-col">
+      <main className="min-h-screen bg-page">
         <Navbar />
-        <div className="flex flex-col items-center justify-center flex-1 py-20">
-          <Loader2 className="w-12 h-12 text-gold-primary animate-spin" />
-          <p className="mt-4 text-gray-500 font-semibold">Loading Account...</p>
+        <div className="bg-nav-bg rounded-b-[28px] px-4 sm:px-6 pt-4 pb-6">
+          <div className="max-w-2xl mx-auto flex items-center gap-4">
+            <div className="w-16 h-16 rounded-full bg-white/10 animate-pulse" />
+            <div className="flex-1 flex flex-col gap-2">
+              <div className="h-4 w-36 rounded bg-white/10 animate-pulse" />
+              <div className="h-3 w-28 rounded bg-white/10 animate-pulse" />
+            </div>
+          </div>
         </div>
-      </div>
+        <div className="max-w-2xl mx-auto px-4 sm:px-6 py-6 flex flex-col gap-4">
+          <Skeleton className="h-52 rounded-2xl" />
+          <Skeleton className="h-16 rounded-2xl" />
+        </div>
+      </main>
     );
   }
   if (!user) return null;
 
-  const inputCls = "w-full px-4 py-3 sm:py-2.5 bg-gray-50/50 border border-gray-200 rounded-xl text-sm outline-none transition-all focus:bg-white focus:border-gold-primary focus:ring-4 focus:ring-gold-primary/10";
+  const initial = (user.name || 'U').trim().charAt(0).toUpperCase();
+  const roleLabel = user.role === 'buyer' ? 'Customer' : user.role === 'vendor' ? 'Seller' : 'Admin';
+  const defaultAddr = addresses.find(a => a.isDefault) || addresses[0];
+
+  const stats = [
+    { label: 'Orders', value: counts.orders, href: '/account/orders' },
+    { label: 'Wishlist', value: counts.wishlist, href: '/account/wishlist' },
+    { label: 'Addresses', value: addresses.length, onClick: () => setShowAddresses(true) },
+  ];
 
   return (
-    <main className="bg-gray-50/50 sm:bg-[var(--bg-page)] min-h-screen pb-[90px] sm:pb-20">
+    <main className="bg-page min-h-screen pb-20">
       <Navbar />
 
-      <div className="max-w-4xl mx-auto sm:px-6 py-0 sm:py-10">
-
-        {/* Profile Banner (Native Feel on Mobile) */}
-        <div className="bg-[#0d1117] -mt-2 sm:rounded-3xl p-6 sm:p-8 text-white relative overflow-hidden shadow-md">
-          {/* Decorative background elements */}
-          <div className="absolute top-0 right-0 w-64 h-64 bg-gold-primary/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/3"></div>
-          <div className="absolute bottom-0 left-0 w-40 h-40 bg-sky-500/10 rounded-full blur-2xl translate-y-1/2 -translate-x-1/2"></div>
-          
-          <div className="relative z-10 flex items-center justify-between gap-4">
-            <div className="flex items-center gap-4 sm:gap-6 min-w-0">
-              <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-gradient-to-br from-gold-primary to-amber-600 flex items-center justify-center text-2xl sm:text-3xl border-2 border-white/20 shadow-lg flex-shrink-0">
-                👤
-              </div>
-              <div className="min-w-0">
-                <h2 className="text-xl sm:text-2xl font-bold text-white truncate tracking-wide">{user.name || 'User'}</h2>
-                <p className="text-white/60 text-sm mt-0.5 truncate">{user.email}</p>
-                <span className="mt-2.5 text-[10px] sm:text-xs font-bold tracking-widest bg-white/10 text-gold-primary px-3 py-1 rounded-full uppercase inline-block border border-gold-primary/30 backdrop-blur-md">
-                  {user.role}
-                </span>
-              </div>
+      {/* Profile header — continues the dark navbar */}
+      <section className="bg-nav-bg text-white rounded-b-[28px] px-4 sm:px-6 pt-3 pb-5 sm:pt-6 sm:pb-7 -mt-px">
+        <div className="max-w-2xl mx-auto animate-in fade-in slide-in-from-bottom-1 duration-500">
+          <div className="flex items-center gap-4">
+            <div className="w-16 h-16 rounded-full bg-gold-primary text-ink grid place-items-center text-[26px] font-semibold shrink-0 ring-4 ring-white/[0.06]">
+              {initial}
+            </div>
+            <div className="min-w-0 flex-1">
+              <h1 className="text-[20px] sm:text-[22px] font-semibold truncate">{user.name || 'Your account'}</h1>
+              <p className="text-[13.5px] text-white/60 truncate">{displayContact(user.email)}</p>
+              <span className="inline-block mt-1.5 text-[11px] font-medium text-gold-primary bg-gold-primary/10 border border-gold-primary/20 rounded-full px-2 py-0.5">
+                {roleLabel}
+              </span>
             </div>
             <button
               onClick={handleOpenEdit}
-              className="flex items-center justify-center w-10 h-10 sm:w-auto sm:px-4 sm:py-2.5 bg-white/10 hover:bg-white/20 active:scale-95 rounded-full sm:rounded-xl border border-white/10 transition-all cursor-pointer flex-shrink-0 backdrop-blur-sm"
+              aria-label="Edit profile"
+              className="pressable shrink-0 h-9 px-3.5 rounded-full bg-white/[0.08] border border-white/10 text-white text-[13px] font-medium flex items-center gap-1.5 hover:bg-white/[0.12]"
             >
-              <Edit3 className="w-4 h-4 sm:mr-2 text-white" /> 
-              <span className="hidden sm:inline text-sm font-semibold text-white">Edit Profile</span>
+              <Edit3 className="w-3.5 h-3.5" /> Edit
             </button>
+          </div>
+
+          {/* Stats */}
+          <div className="grid grid-cols-3 mt-5 rounded-2xl bg-white/[0.05] border border-white/[0.08] divide-x divide-white/[0.08]">
+            {stats.map(s => {
+              const inner = (
+                <>
+                  <span className="text-[20px] font-semibold tabular-nums leading-none">
+                    {s.value === null ? <span className="inline-block w-5 h-4 rounded bg-white/10 animate-pulse align-middle" /> : s.value}
+                  </span>
+                  <span className="text-[12px] text-white/60 mt-1.5">{s.label}</span>
+                </>
+              );
+              const cls = 'pressable flex flex-col items-center py-3.5 border-none bg-transparent text-white';
+              return s.href
+                ? <Link key={s.label} href={s.href} className={cls}>{inner}</Link>
+                : <button key={s.label} type="button" onClick={s.onClick} className={cls}>{inner}</button>;
+            })}
+          </div>
+        </div>
+      </section>
+
+      <div className="max-w-2xl mx-auto px-4 sm:px-6 py-5 sm:py-8 flex flex-col gap-5">
+
+        {/* No address prompt */}
+        {user.role === 'buyer' && !fetchError && addresses.length === 0 && (
+          <button
+            onClick={() => setShowAddForm(true)}
+            className="pressable w-full flex items-center gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-left animate-in fade-in duration-300"
+          >
+            <MapPin className="w-5 h-5 text-amber-700 shrink-0" />
+            <span className="flex-1">
+              <span className="block text-[14px] font-semibold text-amber-950">Add a delivery address</span>
+              <span className="block text-[12.5px] text-amber-900/75">Needed before you can check out</span>
+            </span>
+            <Plus className="w-5 h-5 text-amber-800" />
+          </button>
+        )}
+
+        {/* Activity */}
+        <div>
+          <h2 className="text-[13px] font-medium text-text-muted mb-2 px-1">Your activity</h2>
+          <div className="bg-white rounded-2xl border border-line divide-y divide-line overflow-hidden">
+            <Row icon={Package} title="Orders" subtitle="Track, return or buy again" href="/account/orders" />
+            <Row icon={Heart} title="Wishlist" subtitle="Items you've saved" href="/account/wishlist" />
+            <Row
+              icon={MapPin}
+              title="Saved addresses"
+              subtitle={defaultAddr ? `${defaultAddr.fullName} · ${defaultAddr.city} ${defaultAddr.pincode}` : 'Add where we should deliver'}
+              onClick={() => setShowAddresses(true)}
+            />
           </div>
         </div>
 
-        {/* Warning Banner if No Address */}
-        {!authLoading && !loading && user?.role === 'buyer' && addresses.length === 0 && (
-          <div className="mx-4 sm:mx-0 mt-6 bg-amber-50 border border-amber-200 text-amber-900 px-4.5 py-4.5 rounded-2xl shadow-sm flex items-start gap-3.5 animate-in slide-in-from-top-1 duration-200">
-            <span className="text-xl shrink-0">⚠️</span>
-            <div>
-              <p className="font-bold text-sm text-amber-950">Add a Shipping Address</p>
-              <p className="text-xs text-amber-800 mt-1 leading-normal">
-                Please add at least one shipping address to your account to complete your profile setup and enable checkout services.
-              </p>
-            </div>
-          </div>
-        )}
-
-        <div className="px-4 sm:px-0 mt-6 sm:mt-8">
-          {/* Quick Links (Settings Style) */}
-          <div className="mb-8">
-            <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-3 px-1">Settings & Support</h3>
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden divide-y divide-gray-50">
-              <Link href="/account/orders" className="flex items-center p-4 active:bg-gray-50 hover:bg-gray-50/50 transition-colors group">
-                <div className="w-9 h-9 rounded-xl bg-blue-50 flex items-center justify-center mr-3.5">
-                  <Package className="w-4.5 h-4.5 text-blue-600" />
-                </div>
-                <div className="flex-1">
-                  <div className="font-bold text-gray-900 text-sm">My Orders</div>
-                  <div className="text-xs text-gray-400">Track shipments & view invoices</div>
-                </div>
-                <ChevronRight className="w-5 h-5 text-gray-300 group-hover:text-gray-500 transition-colors" />
-              </Link>
-              
-              <Link href="/account/wishlist" className="flex items-center p-4 active:bg-gray-50 hover:bg-gray-50/50 transition-colors group">
-                <div className="w-9 h-9 rounded-xl bg-red-50 flex items-center justify-center mr-3.5">
-                  <Heart className="w-4.5 h-4.5 text-red-500" />
-                </div>
-                <div className="flex-1">
-                  <div className="font-bold text-gray-900 text-sm">My Wishlist</div>
-                  <div className="text-xs text-gray-400">Saved products for later</div>
-                </div>
-                <ChevronRight className="w-5 h-5 text-gray-300 group-hover:text-gray-500 transition-colors" />
-              </Link>
-
-              {/* Help & FAQ Guides */}
-              <button
-                type="button"
-                onClick={() => window.dispatchEvent(new Event('open-help-modal'))}
-                className="w-full flex items-center p-4 active:bg-gray-50 hover:bg-gray-50/50 transition-colors group text-left bg-transparent border-none cursor-pointer"
-              >
-                <div className="w-9 h-9 rounded-xl bg-amber-50 flex items-center justify-center mr-3.5">
-                  <HelpCircle className="w-4.5 h-4.5 text-amber-600" />
-                </div>
-                <div className="flex-1">
-                  <div className="font-bold text-gray-900 text-sm">Help & FAQ Guides</div>
-                  <div className="text-xs text-gray-400">Search answers, GST & WhatsApp support</div>
-                </div>
-                <ChevronRight className="w-5 h-5 text-gray-300 group-hover:text-gray-500 transition-colors" />
-              </button>
-
-              {/* How to Use App Walkthrough */}
-              <button
-                type="button"
-                onClick={() => window.dispatchEvent(new Event('open-walkthrough'))}
-                className="w-full flex items-center p-4 active:bg-gray-50 hover:bg-gray-50/50 transition-colors group text-left bg-transparent border-none cursor-pointer"
-              >
-                <div className="w-9 h-9 rounded-xl bg-emerald-50 flex items-center justify-center mr-3.5">
-                  <Compass className="w-4.5 h-4.5 text-emerald-600" />
-                </div>
-                <div className="flex-1">
-                  <div className="font-bold text-gray-900 text-sm">How to Use Medox App</div>
-                  <div className="text-xs text-gray-400">Interactive walkthrough & features tour</div>
-                </div>
-                <ChevronRight className="w-5 h-5 text-gray-300 group-hover:text-gray-500 transition-colors" />
-              </button>
-
-              {/* In-App Exit Confirmation Toggle */}
-              <div className="flex items-center justify-between p-4 bg-gray-50/30">
-                <div className="flex items-center mr-3.5">
-                  <div className="w-9 h-9 rounded-xl bg-purple-50 flex items-center justify-center mr-3.5 shrink-0">
-                    <Shield className="w-4.5 h-4.5 text-purple-600" />
-                  </div>
-                  <div>
-                    <div className="font-bold text-gray-900 text-sm">Confirm Before Exiting App</div>
-                    <div className="text-xs text-gray-400">Shows confirmation dialog when pressing back on home</div>
-                  </div>
-                </div>
+        {/* Support & settings */}
+        <div>
+          <h2 className="text-[13px] font-medium text-text-muted mb-2 px-1">Support &amp; settings</h2>
+          <div className="bg-white rounded-2xl border border-line divide-y divide-line overflow-hidden">
+            <Row icon={HelpCircle} title="Help & guides" subtitle="FAQs, GST, returns, contact us" onClick={() => window.dispatchEvent(new Event('open-help-modal'))} />
+            <Row
+              icon={Shield}
+              title="Confirm before exiting"
+              subtitle="Ask before closing the app from home"
+              trailing={
                 <button
                   type="button"
+                  role="switch"
+                  aria-checked={exitConfirmEnabled}
+                  aria-label="Confirm before exiting"
                   onClick={() => {
                     const nextVal = !exitConfirmEnabled;
                     setExitConfirmEnabled(nextVal);
                     localStorage.setItem('medox_exit_confirm', String(nextVal));
-                    toast.success(nextVal ? 'Exit confirmation enabled' : 'Exit confirmation disabled');
                   }}
-                  className={`w-12 h-6.5 rounded-full transition-colors relative cursor-pointer border-none shrink-0 p-0.5 ${
-                    exitConfirmEnabled ? 'bg-amber-500' : 'bg-gray-200'
-                  }`}
-                  aria-label="Toggle exit confirmation popup"
+                  className={`relative shrink-0 w-[46px] h-7 rounded-full border-none p-0 transition-colors duration-300 ${exitConfirmEnabled ? 'bg-emerald-500' : 'bg-gray-200'}`}
                 >
-                  <div
-                    className={`w-5.5 h-5.5 rounded-full bg-white shadow-sm transition-transform ${
-                      exitConfirmEnabled ? 'translate-x-5.5' : 'translate-x-0'
-                    }`}
-                  />
+                  <span className={`absolute top-0.5 left-0.5 w-6 h-6 rounded-full bg-white shadow-[0_2px_4px_rgba(0,0,0,0.2)] transition-transform duration-300 ease-[var(--ease-out-expo)] ${exitConfirmEnabled ? 'translate-x-[18px]' : 'translate-x-0'}`} />
                 </button>
-              </div>
-            </div>
+              }
+            />
           </div>
+        </div>
 
-          {/* Address Book Section */}
-          <div className="mb-8">
-            <div className="flex justify-between items-end mb-3 px-1">
-              <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wider">Address Book</h3>
-              {addresses.length >= 5 ? (
-                <span className="text-[10px] text-red-600 font-bold bg-red-50 px-2 py-1 rounded-md border border-red-100">
-                  Limit: 5/5
-                </span>
-              ) : (
-                <button
-                  onClick={() => setShowAddForm(true)}
-                  className="flex items-center gap-1 text-gold-primary hover:text-gold-hover active:scale-95 font-bold text-sm transition-transform cursor-pointer"
-                >
-                  <Plus className="w-4 h-4 stroke-2" /> Add New
-                </button>
-              )}
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
-              {fetchError ? (
-                <div className="col-span-full"><ErrorState message="Failed to load addresses." /></div>
-              ) : addresses.length === 0 ? (
-                <div className="col-span-full bg-white rounded-2xl border border-gray-100 shadow-sm py-8">
-                  <EmptyState message="No addresses saved yet." />
-                </div>
-              ) : (
-                addresses.map((addr, index) => (
-                  <div key={addr.id} className={`bg-white rounded-2xl border shadow-sm overflow-hidden flex flex-col relative ${addr.isDefault ? 'border-gold-primary/50 ring-1 ring-gold-primary/20' : 'border-gray-100'}`}>
-                    <div className="p-4 sm:p-5 flex-1">
-                      <div className="flex justify-between items-start mb-2.5">
-                        <div className="flex items-center gap-2">
-                          <MapPin className="w-4 h-4 text-gold-primary" />
-                          <h3 className="font-extrabold text-gray-900 text-sm truncate">{addr.fullName}</h3>
-                        </div>
-                        {addr.isDefault ? (
-                          <span className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-gold-hover bg-gold-light px-2 py-0.5 rounded-full">
-                            <CheckCircle2 className="w-3 h-3" /> Default
-                          </span>
-                        ) : (
-                          <span className="text-[10px] font-bold uppercase tracking-wider text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">
-                            #{index + 1}
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-[13px] text-gray-600 leading-relaxed mb-3">
-                        {addr.address}<br />
-                        {addr.city}, {addr.state} <span className="font-bold text-gray-900">{addr.pincode}</span>
-                      </p>
-                      <div className="flex items-center gap-2 text-[12px] text-gray-500 font-medium">
-                        <Phone className="w-3.5 h-3.5 text-gray-400" />
-                        <span>{addr.phone}</span>
-                      </div>
-                    </div>
-                    <div className="border-t border-gray-50 bg-gray-50/50 flex divide-x divide-gray-100">
-                      {!addr.isDefault && (
-                        <button
-                          onClick={() => handleSetDefaultAddress(addr.id)}
-                          className="flex-1 py-2.5 flex items-center justify-center gap-1.5 text-xs font-bold text-gold-hover hover:text-gold-primary active:bg-gold-light transition-colors cursor-pointer"
-                        >
-                          <CheckCircle2 className="w-3.5 h-3.5" /> Set as Default
-                        </button>
-                      )}
-                      <button
-                        onClick={() => handleDeleteAddress(addr.id)}
-                        className="flex-1 py-2.5 flex items-center justify-center gap-1.5 text-xs font-bold text-red-500 hover:text-red-600 active:bg-red-50 transition-colors cursor-pointer"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" /> Remove
-                      </button>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
+        <div className="bg-white rounded-2xl border border-line overflow-hidden">
+          <Row icon={LogOut} title="Sign out" onClick={handleLogout} tone="danger" />
         </div>
       </div>
 
-      {/* Add Address Modal (Bottom Sheet on Mobile) */}
-      {showAddForm && (
-        <div className="fixed inset-0 z-[2000] flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm sm:p-4">
-          <div className="bg-white rounded-t-[2rem] sm:rounded-2xl shadow-2xl w-full sm:max-w-xl max-h-[92vh] sm:max-h-[90vh] flex flex-col overflow-hidden animate-in slide-in-from-bottom-full sm:slide-in-from-bottom-0 sm:zoom-in duration-300 pb-safe">
-            <div className="w-full flex justify-center pt-3 pb-1 bg-white sm:hidden flex-shrink-0 rounded-t-[2rem]">
-              <div className="w-12 h-1.5 bg-gray-200 rounded-full" />
-            </div>
-            <div className="px-5 py-4 border-b border-gray-100 bg-white flex items-center justify-between flex-shrink-0">
-              <h3 className="text-base font-extrabold text-gray-900">Add New Address</h3>
-              <button onClick={() => setShowAddForm(false)} className="p-1.5 text-gray-400 hover:text-gray-650 hover:bg-gray-100 active:scale-90 rounded-lg transition-all cursor-pointer bg-gray-50">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            <form onSubmit={handleSaveAddress} className="p-5 overflow-y-auto flex-1 space-y-4">
-              <div>
-                <button
-                  type="button"
-                  onClick={autoFillAddressLocation}
-                  disabled={detectingAddrLoc}
-                  className="flex items-center justify-center gap-2 w-full py-3 bg-blue-50/50 hover:bg-blue-50 active:bg-blue-100 border border-blue-100 text-blue-700 font-bold rounded-xl text-xs transition-all cursor-pointer disabled:opacity-50"
-                >
-                  <MapPin className="w-4 h-4" />
-                  {detectingAddrLoc ? 'Detecting Location...' : 'Use Current Location'}
-                </button>
-              </div>
-              <div className="space-y-3">
-                <input required placeholder="Full Name" value={newAddress.fullName} onChange={e => setNewAddress({ ...newAddress, fullName: e.target.value })} className={inputCls} />
-                <input required placeholder="Phone Number (10 digits)" type="tel" maxLength={10} value={newAddress.phone} onChange={e => setNewAddress({ ...newAddress, phone: e.target.value.replace(/\D/g, '') })} className={inputCls} />
-                <textarea required placeholder="House/Flat No., Street, Landmark" value={newAddress.address} onChange={e => setNewAddress({ ...newAddress, address: e.target.value })} className={`${inputCls} resize-none`} rows={3} />
-                <input required placeholder="City" value={newAddress.city} onChange={e => setNewAddress({ ...newAddress, city: e.target.value })} className={inputCls} />
-                <div className="flex gap-3">
-                  <input required placeholder="State" value={newAddress.state} readOnly={pincodeLoading} onChange={e => setNewAddress({ ...newAddress, state: e.target.value })} className={`${inputCls} w-1/2`} />
-                  <input required placeholder="Pincode (6 digits)" maxLength={6} pattern="\d{6}" title="6-digit Pincode" value={newAddress.pincode} onChange={e => setNewAddress({ ...newAddress, pincode: e.target.value.replace(/\D/g, '') })} className={`${inputCls} w-1/2`} />
+      {/* Address book */}
+      <Sheet
+        open={showAddresses}
+        onClose={() => setShowAddresses(false)}
+        side="bottom"
+        label="Saved addresses"
+        className="sm:max-w-lg sm:mx-auto sm:bottom-6 sm:rounded-[20px]"
+      >
+        <div data-sheet-handle className="px-5 pt-1 pb-3 flex items-center justify-between touch-none">
+          <h3 className="text-[17px] font-semibold text-ink">Saved addresses <span className="text-text-muted font-normal text-[14px]">{addresses.length}/5</span></h3>
+          <button onClick={() => setShowAddresses(false)} aria-label="Close" className="pressable -mr-2 w-10 h-10 grid place-items-center rounded-full text-gray-500 hover:bg-gray-100 border-none bg-transparent">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+        <div className="px-5 pb-5 overflow-y-auto overscroll-contain flex flex-col gap-3">
+          {fetchError ? (
+            <ErrorState message="Failed to load addresses." />
+          ) : addresses.length === 0 ? (
+            <p className="text-center text-[14px] text-text-muted py-6">No saved addresses yet</p>
+          ) : (
+            addresses.map(addr => (
+              <div key={addr.id} className={`rounded-2xl border p-4 ${addr.isDefault ? 'border-ink' : 'border-line'}`}>
+                <div className="flex items-start justify-between gap-2 mb-1">
+                  <h4 className="text-[14.5px] font-semibold text-ink truncate">{addr.fullName}</h4>
+                  {addr.isDefault && (
+                    <span className="shrink-0 flex items-center gap-1 text-[11px] font-medium text-white bg-ink px-2 py-0.5 rounded-full">
+                      <CheckCircle2 className="w-3 h-3" /> Default
+                    </span>
+                  )}
+                </div>
+                <p className="text-[13.5px] text-gray-600 leading-relaxed">
+                  {addr.address}, {addr.city}, {addr.state} {addr.pincode}
+                </p>
+                <p className="flex items-center gap-1.5 text-[13px] text-text-muted mt-1">
+                  <Phone className="w-3.5 h-3.5" /> {addr.phone}
+                </p>
+                <div className="flex items-center gap-2 mt-3">
+                  {!addr.isDefault && (
+                    <button onClick={() => handleSetDefaultAddress(addr.id)} className="pressable h-8 px-3 rounded-full border border-line text-[12.5px] font-medium text-ink hover:bg-gray-50">
+                      Set as default
+                    </button>
+                  )}
+                  <button onClick={() => handleDeleteAddress(addr.id)} className="pressable h-8 px-3 rounded-full text-[12.5px] font-medium text-red-600 hover:bg-red-50 flex items-center gap-1">
+                    <Trash2 className="w-3.5 h-3.5" /> Remove
+                  </button>
                 </div>
               </div>
-              <div className="pt-2">
-                <button type="submit" disabled={savingAddress} className="w-full py-3.5 bg-gold-primary hover:bg-gold-hover active:scale-[0.98] text-text-main text-sm font-extrabold rounded-xl transition-transform cursor-pointer disabled:opacity-50 shadow-sm hover:shadow-md">
-                  {savingAddress ? 'Saving Address...' : 'Save Address'}
-                </button>
-              </div>
-            </form>
-          </div>
+            ))
+          )}
+          {addresses.length < 5 && (
+            <button
+              onClick={() => { setShowAddresses(false); setTimeout(() => setShowAddForm(true), 250); }}
+              className="pressable w-full h-12 rounded-full bg-ink text-white text-[15px] font-semibold flex items-center justify-center gap-2 border-none"
+            >
+              <Plus className="w-4 h-4" /> Add new address
+            </button>
+          )}
         </div>
-      )}
+      </Sheet>
 
-      {/* Edit Profile Modal (Bottom Sheet on Mobile) */}
-      {showEditModal && (
-        <div className="fixed inset-0 z-[2000] flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm sm:p-4">
-          <div className="bg-white rounded-t-[2rem] sm:rounded-2xl shadow-2xl w-full sm:max-w-md max-h-[92vh] sm:max-h-[90vh] flex flex-col overflow-hidden animate-in slide-in-from-bottom-full sm:slide-in-from-bottom-0 sm:zoom-in duration-300 pb-safe">
-            <div className="w-full flex justify-center pt-3 pb-1 bg-white sm:hidden flex-shrink-0 rounded-t-[2rem]">
-              <div className="w-12 h-1.5 bg-gray-200 rounded-full" />
+      {/* Add address */}
+      <Sheet
+        open={showAddForm}
+        onClose={() => setShowAddForm(false)}
+        side="bottom"
+        label="Add address"
+        className="sm:max-w-lg sm:mx-auto sm:bottom-6 sm:rounded-[20px]"
+      >
+        <div data-sheet-handle className="px-5 pt-1 pb-3 flex items-center justify-between touch-none">
+          <h3 className="text-[17px] font-semibold text-ink">Add address</h3>
+          <button onClick={() => setShowAddForm(false)} aria-label="Close" className="pressable -mr-2 w-10 h-10 grid place-items-center rounded-full text-gray-500 hover:bg-gray-100 border-none bg-transparent">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+        <form onSubmit={handleSaveAddress} className="px-5 pb-5 overflow-y-auto overscroll-contain flex flex-col gap-3.5">
+          <button
+            type="button"
+            onClick={autoFillAddressLocation}
+            disabled={detectingAddrLoc}
+            className="pressable flex items-center justify-center gap-2 w-full h-11 rounded-xl border border-line bg-gray-50 text-ink text-[14px] font-medium hover:bg-gray-100 disabled:opacity-50"
+          >
+            <MapPin className="w-4 h-4" />
+            {detectingAddrLoc ? 'Detecting location…' : 'Use current location'}
+          </button>
+          <div>
+            <label className={labelCls}>Full name</label>
+            <input required autoComplete="name" value={newAddress.fullName} onChange={e => setNewAddress({ ...newAddress, fullName: e.target.value })} className={fieldCls} />
+          </div>
+          <div>
+            <label className={labelCls}>Phone number</label>
+            <input required type="tel" inputMode="numeric" autoComplete="tel-national" maxLength={10} placeholder="10 digits" value={newAddress.phone} onChange={e => setNewAddress({ ...newAddress, phone: e.target.value.replace(/\D/g, '') })} className={fieldCls} />
+          </div>
+          <div>
+            <label className={labelCls}>Address</label>
+            <textarea required autoComplete="street-address" placeholder="House / flat no., street, landmark" value={newAddress.address} onChange={e => setNewAddress({ ...newAddress, address: e.target.value })} className={`${fieldCls} h-auto py-3 resize-none`} rows={2} />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className={labelCls}>Pincode</label>
+              <input required inputMode="numeric" autoComplete="postal-code" maxLength={6} pattern="\d{6}" title="6-digit pincode" value={newAddress.pincode} onChange={e => setNewAddress({ ...newAddress, pincode: e.target.value.replace(/\D/g, '') })} className={fieldCls} />
             </div>
-            <div className="px-6 py-4 border-b border-gray-100 bg-white flex items-center justify-between flex-shrink-0">
-              <h3 className="text-base font-extrabold text-gray-900">Edit Profile</h3>
-              <button onClick={() => setShowEditModal(false)} className="p-1.5 text-gray-400 hover:text-gray-650 hover:bg-gray-100 active:scale-90 rounded-lg transition-all cursor-pointer bg-gray-50">
-                <X className="w-5 h-5" />
-              </button>
+            <div>
+              <label className={labelCls}>City</label>
+              <input required autoComplete="address-level2" value={newAddress.city} onChange={e => setNewAddress({ ...newAddress, city: e.target.value })} className={fieldCls} />
             </div>
-            <form onSubmit={handleSaveProfile} className="p-6 space-y-4 overflow-y-auto flex-1">
-              {editLoading ? (
-                <div className="flex flex-col items-center py-10 justify-center">
-                  <Loader2 className="w-8 h-8 text-gold-primary animate-spin" />
-                  <p className="text-xs text-gray-500 mt-2 font-medium">Loading details...</p>
+          </div>
+          <div>
+            <label className={labelCls}>State</label>
+            <input required autoComplete="address-level1" value={newAddress.state} readOnly={pincodeLoading} onChange={e => setNewAddress({ ...newAddress, state: e.target.value })} className={fieldCls} />
+          </div>
+          <button type="submit" disabled={savingAddress} className="pressable mt-1 w-full h-12 rounded-full bg-gold-primary hover:bg-gold-hover text-ink text-[15px] font-semibold border-none disabled:opacity-50 flex items-center justify-center gap-2">
+            {savingAddress && <Loader2 className="w-4 h-4 animate-spin" />}
+            {savingAddress ? 'Saving…' : 'Save address'}
+          </button>
+        </form>
+      </Sheet>
+
+      {/* Edit profile */}
+      <Sheet
+        open={showEditModal}
+        onClose={() => setShowEditModal(false)}
+        side="bottom"
+        label="Edit profile"
+        className="sm:max-w-md sm:mx-auto sm:bottom-6 sm:rounded-[20px]"
+      >
+        <div data-sheet-handle className="px-5 pt-1 pb-3 flex items-center justify-between touch-none">
+          <h3 className="text-[17px] font-semibold text-ink">Edit profile</h3>
+          <button onClick={() => setShowEditModal(false)} aria-label="Close" className="pressable -mr-2 w-10 h-10 grid place-items-center rounded-full text-gray-500 hover:bg-gray-100 border-none bg-transparent">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+        <form onSubmit={handleSaveProfile} className="px-5 pb-5 overflow-y-auto overscroll-contain flex flex-col gap-3.5">
+          {editLoading ? (
+            <div className="flex flex-col gap-3 py-2">
+              <Skeleton className="h-4 w-24 rounded" />
+              <Skeleton className="h-12 rounded-xl" />
+              <Skeleton className="h-4 w-24 rounded" />
+              <Skeleton className="h-12 rounded-xl" />
+            </div>
+          ) : (
+            <>
+              {user?.role !== 'vendor' ? (
+                <div>
+                  <label className={labelCls}>Name</label>
+                  <input type="text" required autoComplete="name" value={profileForm.name} onChange={e => setProfileForm({ ...profileForm, name: e.target.value })} className={fieldCls} />
                 </div>
               ) : (
                 <>
-                  {user?.role !== 'vendor' ? (
-                    <div>
-                      <label className="block text-[11px] font-bold text-gray-500 mb-1.5 uppercase tracking-wider">Display Name</label>
-                      <input type="text" required value={profileForm.name} onChange={e => setProfileForm({ ...profileForm, name: e.target.value })} className={inputCls} placeholder="Your Name" />
-                    </div>
-                  ) : (
-                    <>
-                      <div>
-                        <label className="block text-[11px] font-bold text-gray-500 mb-1.5 uppercase tracking-wider">Store Name</label>
-                        <input type="text" required value={profileForm.storeName} onChange={e => setProfileForm({ ...profileForm, storeName: e.target.value })} className={inputCls} placeholder="Store Name" />
-                      </div>
-                      <div>
-                        <label className="block text-[11px] font-bold text-gray-400 mb-1.5 uppercase tracking-wider">Phone Number</label>
-                        <input type="tel" disabled value={profileForm.phone} className="w-full px-4 py-3 bg-gray-50/50 border border-gray-100 text-gray-400 rounded-xl text-sm outline-none cursor-not-allowed font-medium" />
-                      </div>
-                      <div>
-                        <label className="block text-[11px] font-bold text-gray-500 mb-1.5 uppercase tracking-wider">GSTIN (Optional)</label>
-                        <input type="text" value={profileForm.gstNumber} onChange={e => setProfileForm({ ...profileForm, gstNumber: e.target.value })} className={inputCls} placeholder="GST Number" />
-                      </div>
-                      <div>
-                        <label className="block text-[11px] font-bold text-gray-500 mb-1.5 uppercase tracking-wider">Business Address</label>
-                        <textarea required rows={2} value={profileForm.address} onChange={e => setProfileForm({ ...profileForm, address: e.target.value })} className={inputCls} placeholder="Full Address" />
-                      </div>
-                    </>
-                  )}
-                  <div className="pt-4">
-                    <button type="submit" disabled={savingAddress} className="w-full py-3.5 bg-gold-primary hover:bg-gold-hover active:scale-[0.98] text-text-main font-extrabold rounded-xl transition-transform cursor-pointer disabled:opacity-50 shadow-sm hover:shadow-md">
-                      {savingAddress ? 'Saving...' : 'Save Changes'}
-                    </button>
+                  <div>
+                    <label className={labelCls}>Store name</label>
+                    <input type="text" required value={profileForm.storeName} onChange={e => setProfileForm({ ...profileForm, storeName: e.target.value })} className={fieldCls} />
+                  </div>
+                  <div>
+                    <label className={labelCls}>Phone number</label>
+                    <input type="tel" disabled value={profileForm.phone} className={fieldCls} />
+                  </div>
+                  <div>
+                    <label className={labelCls}>GSTIN <span className="text-text-muted font-normal">(optional)</span></label>
+                    <input type="text" value={profileForm.gstNumber} onChange={e => setProfileForm({ ...profileForm, gstNumber: e.target.value })} className={fieldCls} />
+                  </div>
+                  <div>
+                    <label className={labelCls}>Business address</label>
+                    <textarea required rows={2} value={profileForm.address} onChange={e => setProfileForm({ ...profileForm, address: e.target.value })} className={`${fieldCls} h-auto py-3 resize-none`} />
                   </div>
                 </>
               )}
-            </form>
-          </div>
-        </div>
-      )}
+              <button type="submit" disabled={savingAddress} className="pressable mt-1 w-full h-12 rounded-full bg-gold-primary hover:bg-gold-hover text-ink text-[15px] font-semibold border-none disabled:opacity-50 flex items-center justify-center gap-2">
+                {savingAddress && <Loader2 className="w-4 h-4 animate-spin" />}
+                {savingAddress ? 'Saving…' : 'Save changes'}
+              </button>
+            </>
+          )}
+        </form>
+      </Sheet>
     </main>
   );
 }

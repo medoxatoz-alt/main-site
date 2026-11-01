@@ -82,7 +82,7 @@ export default function ExitConfirmationModal() {
             <ShoppingBag className="w-8 h-8 stroke-[2]" />
           </div>
 
-          <h3 className="text-xl font-black tracking-tight text-gray-900 mb-1.5">
+          <h3 className="text-xl font-bold tracking-tight text-gray-900 mb-1.5">
             Exit Medox?
           </h3>
           <p className="text-xs sm:text-sm text-gray-600 leading-relaxed mb-6 max-w-xs">
@@ -93,7 +93,7 @@ export default function ExitConfirmationModal() {
           <div className="flex flex-col gap-2.5 w-full">
             <button
               onClick={handleKeepShopping}
-              className="w-full py-3.5 bg-amber-500 hover:bg-amber-600 text-white font-black rounded-2xl transition-all duration-200 active:scale-[0.98] cursor-pointer shadow-md shadow-amber-500/20 text-xs sm:text-sm border-none"
+              className="w-full py-3.5 bg-gold-primary hover:bg-gold-hover text-ink font-bold rounded-2xl transition-all duration-200 active:scale-[0.98] cursor-pointer shadow-md text-xs sm:text-sm border-none"
             >
               Keep Shopping
             </button>

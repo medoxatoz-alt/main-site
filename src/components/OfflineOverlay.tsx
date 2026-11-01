@@ -47,11 +47,11 @@ export default function OfflineOverlay() {
   };
 
   return (
-    <div className="fixed inset-0 z-[9999] bg-[#f4f5f7] flex flex-col items-center justify-center px-9 text-center">
+    <div className="fixed inset-0 z-[9999] bg-page flex flex-col items-center justify-center px-9 text-center">
       <div className="w-20 h-20 rounded-full bg-white border border-gray-200 flex items-center justify-center mb-6">
         <WifiOff className="w-9 h-9 text-gold-primary" />
       </div>
-      <h1 className="text-xl font-extrabold text-gray-900 mb-2">No Internet Connection</h1>
+      <h1 className="text-xl font-semibold text-gray-900 mb-2">No Internet Connection</h1>
       <p className="text-sm text-gray-500 leading-relaxed max-w-xs mb-7">
         Please check your Wi-Fi or mobile data and try again.
       </p>

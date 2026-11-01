@@ -198,17 +198,17 @@ function SignInContent() {
   };
 
   return (
-    <div className="flex min-h-screen bg-white sm:bg-[var(--bg-page)] overflow-y-auto">
+    <div className="flex min-h-screen bg-white sm:bg-page overflow-y-auto">
       {/* Left side: Hero Banner on desktop */}
-      <div className="hidden lg:flex flex-1 bg-[#1e2226] text-white flex-col justify-center px-16 relative overflow-hidden">
+      <div className="hidden lg:flex flex-1 bg-nav-bg text-white flex-col justify-center px-16 relative overflow-hidden">
         <div className="absolute top-0 left-0 w-full h-full opacity-10 pointer-events-none">
           <div className="absolute top-[-10%] right-[-5%] w-[300px] h-[300px] rounded-full bg-gold-primary blur-3xl"></div>
-          <div className="absolute bottom-[-10%] left-[-10%] w-[400px] h-[400px] rounded-full bg-[#007185] blur-3xl"></div>
+          <div className="absolute bottom-[-10%] left-[-10%] w-[400px] h-[400px] rounded-full bg-ink blur-3xl"></div>
         </div>
 
         <div className="relative z-10 max-w-xl">
           <img src="/logo.webp" alt="MedoxAtoZ Logo" className="h-24 w-auto object-contain mb-8 filter" />
-          <h1 className="text-4xl md:text-5xl font-extrabold mb-6 leading-tight">
+          <h1 className="text-4xl md:text-5xl font-semibold mb-6 leading-tight">
             Your Trusted Health Partner
           </h1>
           <p className="text-lg md:text-xl text-gray-300 mb-8 leading-relaxed">
@@ -235,7 +235,7 @@ function SignInContent() {
       <div className="flex-1 flex flex-col justify-center items-center py-6 px-4 mt-4 sm:py-12 sm:px-6 lg:px-8 relative">
         <a
           href="/"
-          className="absolute top-4 right-4 sm:top-8 sm:right-8 text-sm font-semibold text-gray-500 hover:text-gold-primary transition-colors flex items-center gap-1.5"
+          className="absolute top-4 right-4 sm:top-8 sm:right-8 text-sm font-semibold text-gray-500 hover:text-ink transition-colors flex items-center gap-1.5"
         >
           Sign in Later
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -247,9 +247,9 @@ function SignInContent() {
         <div className="w-full flex flex-col px-2 pt-0 pb-6 sm:max-w-[440px] mt-8 sm:mt-0">
           <div className="text-center mb-5 sm:mb-8 flex flex-col items-center">
             <a href="/" className="cursor-pointer inline-block mb-3 lg:hidden">
-              <img src="/logo.webp" alt="MedoxAtoZ Logo" className="h-14 w-auto object-contain" />
+              <span className="inline-flex items-center justify-center rounded-2xl bg-nav-bg px-4 py-2.5 shadow-[0_8px_24px_-8px_rgba(0,0,0,0.35)]"><img src="/logo.webp" alt="MedoxAtoZ Logo" className="h-11 w-auto object-contain" /></span>
             </a>
-            <h2 className="text-2xl sm:text-3xl font-extrabold text-gray-900 tracking-tight">Welcome back</h2>
+            <h2 className="text-2xl sm:text-3xl font-semibold text-gray-900 tracking-tight">Welcome back</h2>
             <p className="text-sm text-gray-500 mt-1 sm:mt-2 font-medium">Sign in to your account to continue</p>
           </div>
 
@@ -327,7 +327,7 @@ function SignInContent() {
                   <button
                     type="submit"
                     disabled={loading}
-                    className="w-full py-3.5 bg-[#0d1117] hover:bg-black text-white font-bold rounded-full transition-all mt-1 active:scale-[0.98] disabled:opacity-50 text-[15px] cursor-pointer flex items-center justify-center gap-2"
+                    className="w-full py-3.5 bg-nav-bg hover:bg-black text-white font-bold rounded-full transition-all mt-1 active:scale-[0.98] disabled:opacity-50 text-[15px] cursor-pointer flex items-center justify-center gap-2"
                   >
                     {loading && <Loader2 className="w-4 h-4 animate-spin" />}
                     <span>{loading ? 'Signing in...' : 'Continue'}</span>
@@ -338,7 +338,7 @@ function SignInContent() {
                       type="button"
                       onClick={handleResendVerification}
                       disabled={loading}
-                      className="text-sm font-semibold text-[#007185] hover:text-[#c7511f] disabled:opacity-50 cursor-pointer"
+                      className="text-sm font-semibold text-gold-ink hover:text-ink disabled:opacity-50 cursor-pointer"
                     >
                       Resend verification email
                     </button>
@@ -372,7 +372,7 @@ function SignInContent() {
                   <button
                     type="submit"
                     disabled={loading}
-                    className="w-full py-3.5 bg-[#0d1117] hover:bg-black text-white font-bold rounded-full transition-all mt-1 active:scale-[0.98] disabled:opacity-50 text-[15px] cursor-pointer flex items-center justify-center gap-2"
+                    className="w-full py-3.5 bg-nav-bg hover:bg-black text-white font-bold rounded-full transition-all mt-1 active:scale-[0.98] disabled:opacity-50 text-[15px] cursor-pointer flex items-center justify-center gap-2"
                   >
                     {loading && <Loader2 className="w-4 h-4 animate-spin" />}
                     <span>{loading ? 'Sending...' : 'Send OTP'}</span>
@@ -400,7 +400,7 @@ function SignInContent() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full py-3.5 bg-[#0d1117] hover:bg-black text-white font-bold rounded-full transition-all active:scale-[0.98] disabled:opacity-50 text-[15px] cursor-pointer flex items-center justify-center gap-2"
+                className="w-full py-3.5 bg-nav-bg hover:bg-black text-white font-bold rounded-full transition-all active:scale-[0.98] disabled:opacity-50 text-[15px] cursor-pointer flex items-center justify-center gap-2"
               >
                 {loading && <Loader2 className="w-4 h-4 animate-spin" />}
                 <span>{loading ? 'Verifying...' : 'Verify OTP & Login'}</span>
@@ -420,18 +420,18 @@ function SignInContent() {
 
           <div className="mt-4 sm:mt-5 text-sm text-center text-gray-500">
             New customer?{' '}
-            <Link href="/signup" className="text-[#007185] hover:text-[#c7511f] hover:underline font-bold">
+            <Link href="/signup" className="text-gold-ink hover:text-ink hover:underline font-bold">
               Start here.
             </Link>
           </div>
 
           <div className="mt-5 text-xs text-center text-gray-400 leading-normal">
             By continuing, you agree to MedoxAtoZ's{' '}
-            <Link href="/terms" className="text-gold-primary hover:underline">
+            <Link href="/terms" className="text-ink font-medium underline underline-offset-2 decoration-gray-300 hover:decoration-ink">
               Conditions of Use
             </Link>{' '}
             and{' '}
-            <Link href="/privacy-policy" className="text-gold-primary hover:underline">
+            <Link href="/privacy-policy" className="text-ink font-medium underline underline-offset-2 decoration-gray-300 hover:decoration-ink">
               Privacy Notice
             </Link>
             .
@@ -444,7 +444,7 @@ function SignInContent() {
 
 export default function SignIn() {
   return (
-    <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Loading...</div>}>
+    <Suspense fallback={<div className="min-h-screen bg-white" />}>
       <SignInContent />
     </Suspense>
   );

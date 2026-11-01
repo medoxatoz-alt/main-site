@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -10,6 +10,7 @@ import { Loader2, Minus, Plus, Trash2, X, ShoppingBag, Tag } from 'lucide-react'
 import api from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
 import CheckoutModal from '@/components/CheckoutModal';
+import Sheet from '@/components/ui/Sheet';
 
 // --- Types ---
 interface CartItem {
@@ -62,15 +63,6 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
   const [buyNowItem, setBuyNowItem] = useState<{ productId: string, quantity: number, variantId?: string } | null>(null);
 
-  // Close drawer if pressed escape
-  useEffect(() => {
-    const handleEsc = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && isOpen) onClose();
-    };
-    window.addEventListener('keydown', handleEsc);
-    return () => window.removeEventListener('keydown', handleEsc);
-  }, [isOpen, onClose]);
-
   useEffect(() => {
     const handleOpenCheckout = (e: any) => {
       if (e.detail?.buyNowItem) {
@@ -83,16 +75,6 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
     window.addEventListener('open-checkout', handleOpenCheckout);
     return () => window.removeEventListener('open-checkout', handleOpenCheckout);
   }, []);
-
-  // Prevent background scrolling when open
-  useEffect(() => {
-    if (isOpen) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = '';
-    }
-    return () => { document.body.style.overflow = ''; };
-  }, [isOpen]);
 
   const fetchCartAndProducts = async () => {
     setLoading(true);
@@ -209,13 +191,8 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
     setBuyNowItem(null);
   };
 
-  if (!isOpen) {
-    return (
-      <CheckoutModal isOpen={isCheckoutOpen} onClose={closeCheckout} buyNowItem={buyNowItem} />
-    );
-  }
-
   const totalAmount = calculateTotal();
+  const itemCount = cartItems.reduce((n, i) => n + i.quantity, 0);
   const hasInventoryIssues = cartItems.some(item => {
     const p = productDetails[item.productId];
     if (!p) return false;
@@ -223,86 +200,83 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
   });
 
   return (
-    <div className="fixed inset-0 z-[2000] flex">
-      {/* Backdrop */}
-      <div 
-        className="absolute inset-0 bg-black/50 backdrop-blur-sm transition-opacity"
-        onClick={onClose}
-      />
-      
-      {/* Drawer */}
-      <div className="absolute pt-4 right-0 top-0 bottom-0 w-full sm:w-[450px] max-w-[100vw] bg-white shadow-2xl flex flex-col animate-in slide-in-from-right duration-300">
-        
+    <>
+      <Sheet
+        open={isOpen}
+        onClose={onClose}
+        side="right"
+        label="Shopping cart"
+        className="w-full sm:w-[420px] max-w-[100vw] bg-white"
+      >
         {/* Header */}
-        <div className="text-[#0d1117]  px-5 py-4 flex items-center justify-between shrink-0  ">
-          <div className="flex items-center gap-3">
-            <div className="relative">
-              <ShoppingBag className="w-6 h-6 text-[#0d1117] stroke-2" />
-              <span className="bg-gold-primary  text-[#0d1117] font-extrabold text-[10px] h-[16px] min-w-[16px] rounded-full inline-flex items-center justify-center px-1 border-2 border-[#0d1117] absolute -top-1.5 -right-1.5 z-[2]">
-                {cartItems.length}
-              </span>
+        <div className="pt-safe shrink-0 border-b border-line">
+          <div className="h-14 px-4 sm:px-5 flex items-center justify-between">
+            <div className="flex items-baseline gap-2">
+              <h2 className="text-[17px] font-semibold text-ink">Cart</h2>
+              {user && itemCount > 0 && (
+                <span className="text-[13px] text-text-muted">{itemCount} {itemCount === 1 ? 'item' : 'items'}</span>
+              )}
             </div>
-            <h2 className="text-xl font-extrabold tracking-tight">Your Cart</h2>
+            <button
+              onClick={onClose}
+              aria-label="Close cart"
+              className="pressable -mr-2 w-10 h-10 grid place-items-center rounded-full text-gray-500 hover:bg-gray-100 hover:text-ink border-none bg-transparent"
+            >
+              <X className="w-5 h-5" />
+            </button>
           </div>
-          <button 
-            onClick={onClose}
-            className="p-1.5 text-gray-300 hover:text-[#0d1117]  text-[#0d1117]/10 rounded-full transition-colors cursor-pointer outline-none border-none bg-transparent"
-          >
-            <X className="w-6 h-6" />
-          </button>
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto p-5 custom-scrollbar bg-gray-50/50">
+        <div className="flex-1 overflow-y-auto overscroll-contain custom-scrollbar">
           {!user ? (
-            <div className="h-full flex flex-col items-center justify-center text-center">
-              <ShoppingBag className="w-16 h-16 text-gray-300 mb-4" />
-              <h3 className="text-xl font-bold text-gray-900 mb-2">Sign in to view cart</h3>
-              <p className="text-gray-500 mb-6 text-sm">You need to be logged in to manage your shopping cart.</p>
-              <button 
+            <div className="h-full flex flex-col items-center justify-center text-center px-8 animate-in fade-in duration-300">
+              <div className="w-14 h-14 rounded-full bg-gray-100 grid place-items-center mb-4">
+                <ShoppingBag className="w-6 h-6 text-gray-400" />
+              </div>
+              <h3 className="text-base font-semibold text-ink mb-1">Sign in to view your cart</h3>
+              <p className="text-text-muted mb-6 text-sm">Your saved items will appear here.</p>
+              <button
                 onClick={() => { onClose(); router.push('/signin'); }}
-                className="px-8 py-3 bg-gold-primary text-text-main font-bold rounded-lg shadow-sm hover:shadow-md transition-all cursor-pointer border-none"
+                className="pressable h-11 px-8 bg-ink text-white text-sm font-semibold rounded-full border-none hover:bg-black"
               >
-                Sign In
+                Sign in
               </button>
             </div>
           ) : authLoading || loading ? (
-            <div className="flex flex-col gap-4">
+            <div className="divide-y divide-line">
               {[0, 1, 2].map(i => (
-                <div key={i} className="bg-white border border-gray-100 p-3 rounded-xl shadow-sm flex gap-4">
-                  <div className="shrink-0 w-20 h-20 bg-gray-100 rounded-lg animate-pulse" />
+                <div key={i} className="p-4 sm:px-5 flex gap-4">
+                  <div className="shrink-0 w-20 h-20 bg-gray-100 rounded-xl animate-pulse" />
                   <div className="flex flex-col flex-1 gap-2 py-1">
                     <div className="h-3.5 bg-gray-100 rounded animate-pulse w-4/5" />
                     <div className="h-3.5 bg-gray-100 rounded animate-pulse w-2/5" />
-                    <div className="mt-auto flex items-center justify-between">
-                      <div className="h-7 w-20 bg-gray-100 rounded-lg animate-pulse" />
-                      <div className="h-6 w-6 bg-gray-100 rounded-full animate-pulse" />
-                    </div>
+                    <div className="mt-auto h-8 w-24 bg-gray-100 rounded-full animate-pulse" />
                   </div>
                 </div>
               ))}
             </div>
           ) : cartItems.length === 0 ? (
-            <div className="h-full flex flex-col items-center justify-center text-center">
-              <div className="w-48 h-48 mb-4">
+            <div className="h-full flex flex-col items-center justify-center text-center px-8 animate-in fade-in duration-300">
+              <div className="w-40 h-40 mb-2">
                 <DotLottieReact
                   src="https://lottie.host/c79bec0a-7f01-4537-bf9b-69f8ef77b8f3/8hIlnWm3PQ.lottie"
                   loop
                   autoplay
                 />
               </div>
-              <h3 className="text-lg font-bold text-gray-900 mb-2">Your cart is empty</h3>
-              <p className="text-sm text-gray-500 mb-6">Explore our premium selection to find what you need.</p>
-              <button 
+              <h3 className="text-base font-semibold text-ink mb-1">Your cart is empty</h3>
+              <p className="text-sm text-text-muted mb-6">Browse the catalogue to add supplies.</p>
+              <button
                 onClick={onClose}
-                className="px-6 py-2.5 border-2 border-gold-primary text-gold-700 hover:bg-gold-primary hover:text-text-main font-bold rounded-full transition-all cursor-pointer"
+                className="pressable h-11 px-6 border border-line bg-white text-ink text-sm font-semibold rounded-full hover:bg-gray-50"
               >
-                Continue Shopping
+                Continue shopping
               </button>
             </div>
           ) : (
-            <div className="flex flex-col gap-4">
-              {cartItems.map((item) => {
+            <ul className="divide-y divide-line">
+              {cartItems.map((item, idx) => {
                 const p = productDetails[item.productId];
                 if (!p) return null;
 
@@ -312,42 +286,45 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
                 const isItemRemoving = isRemoving === key;
 
                 return (
-                  <div
+                  <li
                     key={key}
-                    className={`bg-white border border-gray-100 p-3 rounded-xl shadow-sm flex gap-4 transition-opacity ${isItemUpdating ? 'opacity-50 pointer-events-none' : 'opacity-100'}`}
+                    style={{ animationDelay: `${Math.min(idx, 6) * 30}ms` }}
+                    className={`p-4 sm:px-5 flex gap-4 animate-in fade-in slide-in-from-bottom-2 duration-300 fill-mode-both transition-opacity ${isItemUpdating ? 'opacity-50 pointer-events-none' : 'opacity-100'}`}
                   >
-                    <Link href={`/product/${item.productId}`} onClick={onClose} className="shrink-0 w-20 h-20 bg-gray-50 rounded-lg p-1.5 flex items-center justify-center cursor-pointer">
+                    <Link href={`/product/${item.productId}`} onClick={onClose} className="shrink-0 w-20 h-20 bg-gray-50 border border-line rounded-xl p-2 flex items-center justify-center">
                       <img src={img} alt={p.title} className="max-w-full max-h-full object-contain mix-blend-multiply" />
                     </Link>
 
-                    <div className="flex flex-col flex-1">
-                      <Link href={`/product/${item.productId}`} onClick={onClose} className="text-sm font-bold text-gray-900 line-clamp-2 hover:text-gold-primary transition-colors mb-1">
+                    <div className="flex flex-col flex-1 min-w-0">
+                      <Link href={`/product/${item.productId}`} onClick={onClose} className="text-[14px] leading-snug font-medium text-ink line-clamp-2 hover:underline underline-offset-2">
                         {p.title}
                       </Link>
                       {label && (
-                        <div className="text-[11px] font-semibold text-gray-500 mb-1">{label}</div>
+                        <div className="text-[12px] text-text-muted mt-0.5">{label}</div>
                       )}
 
-                      <div className="text-gold-600 font-bold text-sm mb-2">
+                      <div className="text-[15px] font-semibold text-ink mt-1 tabular-nums">
                         ₹{price.toLocaleString('en-IN')}
                       </div>
 
-                      <div className="mt-auto flex items-center justify-between">
-                        {/* Quantity */}
-                        <div className="flex items-center bg-gray-50 border border-gray-200 rounded-lg overflow-hidden">
+                      <div className="mt-auto pt-2 flex items-center justify-between">
+                        {/* Quantity stepper */}
+                        <div className="flex items-center h-9 border border-line rounded-full overflow-hidden bg-white">
                           <button
                             onClick={() => handleUpdateQty(item.productId, item.quantity - 1, item.variantId)}
-                            className="px-2 py-1.5 text-gray-600 hover:bg-gray-200 transition-colors cursor-pointer border-none bg-transparent"
+                            aria-label="Decrease quantity"
+                            className="pressable w-9 h-full grid place-items-center text-gray-600 hover:bg-gray-50 border-none bg-transparent"
                           >
                             <Minus className="w-3.5 h-3.5" />
                           </button>
-                          <span className="w-8 text-center text-xs font-bold text-gray-800">
+                          <span className="w-7 text-center text-[13px] font-semibold text-ink tabular-nums">
                             {item.quantity}
                           </span>
                           <button
                             onClick={() => handleUpdateQty(item.productId, item.quantity + 1, item.variantId)}
                             disabled={item.quantity >= stock}
-                            className="px-2 py-1.5 text-gray-600 hover:bg-gray-200 transition-colors disabled:opacity-50 cursor-pointer border-none bg-transparent"
+                            aria-label="Increase quantity"
+                            className="pressable w-9 h-full grid place-items-center text-gray-600 hover:bg-gray-50 disabled:opacity-40 border-none bg-transparent"
                           >
                             <Plus className="w-3.5 h-3.5" />
                           </button>
@@ -355,38 +332,35 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
 
                         <button
                           onClick={() => handleRemove(item.productId, item.variantId)}
-                          className="text-red-500 hover:text-red-700 p-1.5 rounded-full hover:bg-red-50 transition-colors cursor-pointer border-none bg-transparent"
+                          className="pressable w-9 h-9 grid place-items-center text-gray-400 hover:text-red-600 rounded-full hover:bg-red-50 border-none bg-transparent"
                           aria-label="Remove item"
                         >
-                          {isItemRemoving ? <Loader2 className="w-4 h-4 animate-spin text-red-500" /> : <Trash2 className="w-4 h-4" />}
+                          {isItemRemoving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
                         </button>
                       </div>
                     </div>
-                  </div>
+                  </li>
                 );
               })}
-            </div>
+            </ul>
           )}
         </div>
 
         {/* Footer */}
         {user && cartItems.length > 0 && !loading && (
-          <div className="bg-white border-t border-gray-100 p-5 shrink-0 shadow-[0_-4px_15px_rgba(0,0,0,0.03)] z-10">
-            <div className="bg-teal-50 border border-teal-100 rounded-xl px-3.5 py-2 mb-3.5 flex items-center justify-between text-xs">
-              <span className="text-teal-800 font-semibold flex items-center gap-1.5">
-                <Tag className="w-3.5 h-3.5 text-teal-600" />
-                <span>Have a coupon code?</span>
-              </span>
-              <span className="text-teal-600 font-bold">Apply at checkout →</span>
+          <div className="border-t border-line px-4 sm:px-5 pt-4 pb-[max(16px,env(safe-area-inset-bottom))] shrink-0 bg-white animate-in fade-in slide-in-from-bottom-4 duration-300">
+            <div className="flex items-center gap-1.5 text-[12px] text-text-muted mb-3">
+              <Tag className="w-3.5 h-3.5" />
+              <span>Coupon codes can be applied at checkout</span>
             </div>
 
-            <div className="flex justify-between items-center mb-4">
-              <span className="text-gray-600 font-medium">Subtotal</span>
-              <span className="text-xl font-extrabold text-gray-900">₹{totalAmount.toLocaleString('en-IN')}</span>
+            <div className="flex justify-between items-baseline mb-4">
+              <span className="text-sm text-text-muted">Subtotal</span>
+              <span className="text-xl font-semibold text-ink tabular-nums">₹{totalAmount.toLocaleString('en-IN')}</span>
             </div>
-            
+
             {hasInventoryIssues && (
-              <p className="text-[11px] text-red-600 font-semibold mb-3">
+              <p className="text-[12px] text-red-600 font-medium mb-3">
                 Some items exceed available stock. Please reduce quantities.
               </p>
             )}
@@ -394,19 +368,20 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
             <button
               onClick={() => { setBuyNowItem(null); setIsCheckoutOpen(true); }}
               disabled={hasInventoryIssues}
-              className={`w-full py-3.5 font-bold rounded-xl transition-all flex items-center justify-center gap-2 border-none ${
+              className={`pressable w-full h-12 text-[15px] font-semibold rounded-full flex items-center justify-center gap-2 border-none ${
                 hasInventoryIssues
-                  ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                  : 'bg-gold-primary hover:bg-gold-hover text-text-main shadow-md hover:shadow-lg active:scale-[0.98] cursor-pointer'
+                  ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                  : 'bg-gold-primary hover:bg-gold-hover text-ink'
               }`}
             >
-              Proceed to Checkout
+              Checkout
             </button>
           </div>
         )}
-      </div>
+      </Sheet>
 
       <CheckoutModal isOpen={isCheckoutOpen} onClose={closeCheckout} buyNowItem={buyNowItem} />
-    </div>
+    </>
   );
 }
+

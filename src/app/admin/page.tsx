@@ -1,6 +1,7 @@
 'use client';
 
 import { Suspense, useEffect, useState } from 'react';
+import { displayContact } from '@/lib/format';
 import { useAuth } from '@/context/AuthContext';
 import { useRouter, useSearchParams } from 'next/navigation';
 import api from '@/lib/api';
@@ -143,7 +144,7 @@ function AdminDashboardContent() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#0f172a] flex items-center justify-center">
+      <div className="min-h-screen bg-nav-bg flex items-center justify-center">
         <div className="text-center">
           <Loader2 className="w-10 h-10 text-amber-400 animate-spin mx-auto" />
           <p className="mt-3 text-slate-400 text-sm font-medium">Loading Admin Panel…</p>
@@ -163,7 +164,7 @@ function AdminDashboardContent() {
           <div className="w-16 h-16 rounded-2xl bg-amber-500/10 flex items-center justify-center mb-6 border border-amber-500/20">
             <Store className="w-8 h-8 text-amber-400" />
           </div>
-          <h1 className="text-xl font-extrabold tracking-tight mb-2 text-white">Desktop Optimization Required</h1>
+          <h1 className="text-xl font-semibold tracking-tight mb-2 text-white">Desktop Optimization Required</h1>
           <p className="text-sm text-slate-400 max-w-sm leading-relaxed mb-6">
             The Admin Panel contains administrative grids and management options designed for desktop devices. Please log in from a PC to access these sections.
           </p>
@@ -176,9 +177,9 @@ function AdminDashboardContent() {
         </div>
       )}
 
-      <div className={`min-h-screen flex bg-[#f1f5f9] ${activeTab !== 'analytics' ? 'hidden lg:flex' : 'flex w-full'}`}>
+      <div className={`min-h-screen flex bg-page ${activeTab !== 'analytics' ? 'hidden lg:flex' : 'flex w-full'}`}>
         {/* ── Sidebar ─────────────────────────────────────────────── */}
-        <aside className={`${activeTab === 'analytics' ? 'hidden lg:flex' : 'flex'} w-60 flex-shrink-0 bg-[#0f172a] flex flex-col shadow-2xl`}>
+        <aside className={`${activeTab === 'analytics' ? 'hidden lg:flex' : 'flex'} w-60 flex-shrink-0 bg-nav-bg flex flex-col shadow-2xl`}>
           {/* Brand */}
           <div className="px-5 py-5 border-b border-white/5">
             <div className="flex items-center gap-2.5">
@@ -186,7 +187,7 @@ function AdminDashboardContent() {
                 <Store className="w-4 h-4 text-amber-900" />
               </div>
               <div>
-                <div className="text-white font-extrabold text-sm leading-tight">MedoxAtoZ</div>
+                <div className="text-white font-semibold text-sm leading-tight">MedoxAtoZ</div>
                 <div className="text-amber-400/60 text-[10px] font-semibold tracking-widest uppercase">Admin</div>
               </div>
             </div>
@@ -220,7 +221,7 @@ function AdminDashboardContent() {
                 {user.email?.[0]?.toUpperCase()}
               </div>
               <div className="min-w-0">
-                <div className="text-white text-xs font-semibold truncate">{user.email}</div>
+                <div className="text-white text-xs font-semibold truncate">{displayContact(user.email)}</div>
                 <div className="text-slate-500 text-[10px]">Administrator</div>
               </div>
             </div>
@@ -332,7 +333,7 @@ function AdminDashboardContent() {
 export default function AdminDashboard() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen bg-[#0f172a] flex items-center justify-center">
+      <div className="min-h-screen bg-nav-bg flex items-center justify-center">
         <Loader2 className="w-10 h-10 text-amber-400 animate-spin" />
       </div>
     }>

@@ -96,7 +96,7 @@ export default function AnalyticsTab({ orders, isFetching }: AnalyticsTabProps) 
               <div className={`w-10 h-10 rounded-xl ${iconBg} flex items-center justify-center mb-3`}>
                 <span className={iconColor}>{icon}</span>
               </div>
-              <div className={`text-2xl font-extrabold ${valueColor} leading-none mb-1`}>{value}</div>
+              <div className={`text-2xl font-semibold ${valueColor} leading-none mb-1`}>{value}</div>
               <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider">{label}</div>
             </div>
           ))
@@ -163,7 +163,7 @@ export default function AnalyticsTab({ orders, isFetching }: AnalyticsTabProps) 
                       <div className="w-2 h-2 rounded-full bg-emerald-500 flex-shrink-0" />
                       <span className="text-sm font-semibold text-gray-700 truncate max-w-[160px]">{method}</span>
                     </div>
-                    <span className="font-extrabold text-emerald-600 text-sm flex-shrink-0">
+                    <span className="font-semibold text-emerald-600 text-sm flex-shrink-0">
                       ₹{(total as number).toLocaleString('en-IN')}
                     </span>
                   </div>
