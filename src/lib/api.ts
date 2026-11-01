@@ -90,6 +90,8 @@ export default api;
 let categoriesCache: any | null = null;
 let categoriesPromise: Promise<any> | null = null;
 
+export const peekCategories = (): any | null => categoriesCache;
+
 export function getCategoriesCached(): Promise<any> {
   if (categoriesCache) return Promise.resolve(categoriesCache);
   if (!categoriesPromise) {
@@ -105,3 +107,45 @@ export function getCategoriesCached(): Promise<any> {
   }
   return categoriesPromise;
 }
+
+// ── Product list cache (stale-while-revalidate) ──────────────────────────────
+// Pages read the last-known list synchronously (peekProducts) so navigation
+// renders instantly, then call getProductsCached() to refresh in the
+// background. Concurrent callers share one in-flight request.
+
+let productsCache: any[] | null = null;
+let productsPromise: Promise<any[]> | null = null;
+let productsFetchedAt = 0;
+const PRODUCTS_FRESH_MS = 30_000; // within this window, reuse without refetching
+
+export function peekProducts(): any[] | null {
+  return productsCache;
+}
+
+export function peekProduct(id: string): any | null {
+  return productsCache?.find((p) => p.id === id) ?? null;
+}
+
+export function getProductsCached(): Promise<any[]> {
+  const fresh = productsCache && Date.now() - productsFetchedAt < PRODUCTS_FRESH_MS;
+  if (fresh) return Promise.resolve(productsCache as any[]);
+  if (!productsPromise) {
+    productsPromise = api.get('/products')
+      .then((res) => {
+        productsCache = res.data || [];
+        productsFetchedAt = Date.now();
+        return productsCache as any[];
+      })
+      .finally(() => {
+        productsPromise = null;
+      });
+  }
+  return productsPromise;
+}
+
+// ── Cart count cache ─────────────────────────────────────────────────────────
+// The navbar remounts on every page; remembering the last count avoids the
+// badge flashing to 0 while it refetches.
+let cartCountCache = 0;
+export const peekCartCount = () => cartCountCache;
+export const rememberCartCount = (n: number) => { cartCountCache = n; };

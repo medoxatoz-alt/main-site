@@ -1,9 +1,9 @@
-'use client';
+﻿'use client';
 
 import { useEffect, useState, use, useRef } from 'react';
 import Link from 'next/link';
 import Navbar from '@/components/Navbar';
-import api from '@/lib/api';
+import api, { peekProduct, getProductsCached } from '@/lib/api';
 import toast from 'react-hot-toast';
 import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
@@ -101,15 +101,16 @@ const POLICIES = [
 
 export default function ProductDetail({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
-  const [product, setProduct] = useState<any>(null);
+  // Seed from the cached list (tapped from a card) so the page paints instantly.
+  const [product, setProduct] = useState<any>(() => (typeof window !== 'undefined' ? peekProduct(id) : null));
   const scrollRef = useRef<HTMLDivElement>(null);
   const [showThumbArrows, setShowThumbArrows] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(() => !(typeof window !== 'undefined' && peekProduct(id)));
   const [addingToCart, setAddingToCart] = useState(false);
   const [activeImgIdx, setActiveImgIdx] = useState(0);
   const [quantity, setQuantity] = useState(1);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const [selectedVariantId, setSelectedVariantId] = useState<string | undefined>(undefined);
+  const [selectedVariantId, setSelectedVariantId] = useState<string | undefined>(() => (typeof window !== 'undefined' ? peekProduct(id)?.variants?.[0]?.id : undefined));
   const [isZooming, setIsZooming] = useState(false);
   const [zoomOrigin, setZoomOrigin] = useState({ x: 50, y: 50 });
 
@@ -228,7 +229,8 @@ export default function ProductDetail({ params }: { params: Promise<{ id: string
         const res = await api.get(`/products/${id}`);
         setProduct(res.data);
         const firstVariant = res.data.variants?.[0];
-        setSelectedVariantId(firstVariant?.id);
+        // Keep a variant the shopper already picked while details were refreshing.
+        setSelectedVariantId(prev => (prev && res.data.variants?.some((v: any) => v.id === prev)) ? prev : firstVariant?.id);
         const initialStock = Number(firstVariant ? firstVariant.stock : res.data.stock) || 0;
         if (initialStock <= 0) {
           setQuantity(0);
@@ -249,9 +251,9 @@ export default function ProductDetail({ params }: { params: Promise<{ id: string
   const [similarLoaded, setSimilarLoaded] = useState(false);
   useEffect(() => {
     if (!product) return;
-    api.get('/products')
-      .then((res) => {
-        const all: any[] = (res.data || []).filter((p: any) => p.id !== id);
+    getProductsCached()
+      .then((list) => {
+        const all: any[] = (list || []).filter((p: any) => p.id !== id);
         const same = all.filter((p) => product.mainCategoryId && p.mainCategoryId === product.mainCategoryId);
         const rest = all.filter((p) => !same.includes(p));
         setSimilar([...same, ...rest].slice(0, 12));

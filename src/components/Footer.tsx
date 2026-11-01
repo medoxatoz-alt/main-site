@@ -80,11 +80,7 @@ export default function Footer() {
             ))}
           </ul>
 
-          {/* Developer Credit */}
-          <div className="mt-8 flex flex-col items-start gap-1 text-xs pt-10 text-white/55">
-            <span className="uppercase tracking-widest text-[10px] font-bold opacity-80">Developed By</span>
-          
-          </div>
+       
         </div>
 
       </div>

@@ -3,7 +3,7 @@
 import { useEffect, useState, use, useMemo, useRef } from 'react';
 import Navbar from '@/components/Navbar';
 import ProductCard from '@/components/ProductCard';
-import api, { getCategoriesCached } from '@/lib/api';
+import api, { getCategoriesCached, getProductsCached, peekProducts, peekCategories } from '@/lib/api';
 import toast from 'react-hot-toast';
 import { useAuth } from '@/context/AuthContext';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -22,14 +22,17 @@ export default function CategoryPage({ params }: { params: Promise<{ category: s
   const searchParams = useSearchParams();
   const subCategoryQuery = searchParams.get('subCategory');
   
-  const [allProducts, setAllProducts] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  // Start from cached data on client-side navigation so the page paints instantly.
+  const [allProducts, setAllProducts] = useState<any[]>(() => (typeof window !== 'undefined' && peekProducts()) || []);
+  const [loading, setLoading] = useState(() => !(typeof window !== 'undefined' && peekProducts() && peekCategories()));
   const [fetchError, setFetchError] = useState(false);
   const [visibleCount, setVisibleCount] = useState(20);
   const [sortBy, setSortBy] = useState<'relevance' | 'price-asc' | 'price-desc' | 'discount' | 'newest'>('relevance');
   const sentinelRef = useRef<HTMLDivElement | null>(null);
   
-  const [categoriesConfig, setCategoriesConfig] = useState<{mainCategories: {id: string, name: string}[], subcategories: Record<string, {id: string, name: string}[]>}>({ mainCategories: [], subcategories: {} });
+  const [categoriesConfig, setCategoriesConfig] = useState<{mainCategories: {id: string, name: string}[], subcategories: Record<string, {id: string, name: string}[]>}>(
+    () => (typeof window !== 'undefined' && peekCategories()) || { mainCategories: [], subcategories: {} }
+  );
 
   const [filters, setFilters] = useState<{
     subcategories: string[];
@@ -51,15 +54,15 @@ export default function CategoryPage({ params }: { params: Promise<{ category: s
   useEffect(() => {
     const fetchProductsAndCategories = async () => {
       try {
-        const [prodRes, catData] = await Promise.all([
-          api.get('/products'),
+        const [list, catData] = await Promise.all([
+          getProductsCached(),
           getCategoriesCached()
         ]);
-        setAllProducts(prodRes.data || []);
+        setAllProducts(list || []);
         setCategoriesConfig(catData);
       } catch (err) {
         console.error('Failed to fetch data', err);
-        setFetchError(true);
+        if (!peekProducts()) setFetchError(true);
       } finally {
         setLoading(false);
       }
@@ -147,11 +150,14 @@ export default function CategoryPage({ params }: { params: Promise<{ category: s
     };
   }, [baseProducts, categoriesConfig, categoryStr]);
 
-  // Adjust price filter max if it was Infinity
+  // Keep the price cap in step with the data (there's no price slider on this
+  // page, so it should never hide products — e.g. after a background refresh
+  // brings in a pricier item).
   useEffect(() => {
-    if (filters.priceRange[1] === Number.MAX_SAFE_INTEGER && maxPrice > 0) {
+    if (maxPrice > 0 && filters.priceRange[1] !== maxPrice) {
       setFilters(prev => ({ ...prev, priceRange: [0, maxPrice] }));
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [maxPrice]);
 
   const filteredProducts = useMemo(() => {

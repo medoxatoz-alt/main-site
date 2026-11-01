@@ -1,6 +1,6 @@
 ﻿'use client';
 
-import { useEffect, useState, useRef, useMemo } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import Link from 'next/link';
 import { getCategoriesCached } from '@/lib/api';
 import { usePathname } from 'next/navigation';
@@ -21,27 +21,9 @@ import {
   ChevronDown,
   X,
   Search,
-  MoreHorizontal
 } from 'lucide-react';
 
-// Maps category IDs or keywords to custom icons matching the image style
-// 3D category artwork in /public/categories/<id>.webp. Categories not listed
-// here (e.g. ones added later in admin) fall back to the line icon.
-const CATEGORY_IMAGES = new Set([
-  'for-you',
-  'all',
-  'skin-hair-care',
-  'dermatology-equipment',
-  'makeup-beauty',
-  'medical-products',
-  'surgical-products',
-  'diagnostic-products',
-  'health-wellness',
-  'home-lifestyle',
-  'puja-items',
-]);
-export const categoryImage = (id: string) =>
-  CATEGORY_IMAGES.has(id) ? `/categories/${id}.webp` : undefined;
+// Maps category IDs or keywords to line icons
 
 export const getCategoryIcon = (id: string, name: string) => {
   const lowerId = (id || '').toLowerCase();
@@ -182,12 +164,12 @@ export default function MegaMenu() {
 
   if (loading) {
     return (
-      <div className="bg-white border-b border-line">
+      <div className="bg-nav-bg">
         <div className="max-w-[1500px] mx-auto px-4 py-3 flex items-center gap-4 overflow-hidden">
           {Array.from({ length: 9 }).map((_, i) => (
             <div key={i} className="flex flex-col items-center gap-2 shrink-0 min-w-[64px]">
-              <div className="w-14 h-14 rounded-2xl bg-gray-100 animate-pulse" />
-              <div className="w-12 h-2.5 bg-gray-100 rounded animate-pulse" />
+              <div className="w-10 h-10 rounded-full bg-white/[0.06] animate-pulse" />
+              <div className="w-12 h-2.5 bg-white/[0.06] rounded animate-pulse" />
             </div>
           ))}
         </div>
@@ -199,7 +181,6 @@ export default function MegaMenu() {
     href,
     onClick,
     icon: Icon,
-    image,
     label,
     title,
     active,
@@ -208,7 +189,6 @@ export default function MegaMenu() {
     href?: string;
     onClick?: () => void;
     icon: React.ElementType;
-    image?: string;
     label: string;
     title?: string;
     active: boolean;
@@ -217,27 +197,17 @@ export default function MegaMenu() {
     const on = active || highlighted;
     const inner = (
       <>
-        {image ? (
-          <span
-            className={`w-14 h-14 grid place-items-center transition-transform duration-300 ease-[var(--ease-out-expo)] ${
-              active ? 'scale-110' : on ? 'scale-105' : 'group-hover/item:scale-105'
-            }`}
-          >
-            <img src={image} alt="" width={56} height={56} loading="lazy" decoding="async" className="w-full h-full object-contain" />
-          </span>
-        ) : (
-          <span
-            className={`w-14 h-14 rounded-full grid place-items-center transition-colors duration-200 ${
-              active ? 'bg-gold-light text-gold-ink' : on ? 'bg-gray-200 text-ink' : 'bg-gray-100 text-gray-600 group-hover/item:bg-gray-200 group-hover/item:text-ink'
-            }`}
-          >
-            <Icon className="w-5 h-5 stroke-[1.9]" />
-          </span>
-        )}
+        <span
+          className={`w-10 h-10 rounded-full grid place-items-center transition-colors duration-200 ${
+            active ? 'bg-gold-primary text-ink' : on ? 'bg-white/[0.14] text-white' : 'bg-white/[0.06] text-white/70 group-hover/item:bg-white/[0.12] group-hover/item:text-white'
+          }`}
+        >
+          <Icon className="w-[18px] h-[18px] stroke-[1.9]" />
+        </span>
         <span
           title={title}
-          className={`mt-1 text-[11.5px] leading-tight whitespace-nowrap truncate max-w-[92px] lg:max-w-full transition-colors ${
-            on ? 'text-ink font-semibold' : 'text-gray-500 font-medium group-hover/item:text-ink'
+          className={`mt-1.5 text-[11.5px] leading-tight whitespace-nowrap truncate max-w-[92px] lg:max-w-full transition-colors ${
+            on ? 'text-white font-semibold' : 'text-white/60 font-medium group-hover/item:text-white'
           }`}
         >
           {label}
@@ -264,7 +234,7 @@ export default function MegaMenu() {
     <>
       {/* Category strip */}
       <div
-        className="bg-white border-b border-line relative z-30 select-none"
+        className="bg-nav-bg border-b border-white/[0.06] relative z-30 select-none"
         onMouseLeave={handleMouseLeaveMenu}
       >
         <div className="w-full max-w-[1500px] mx-auto relative px-1 md:px-4">
@@ -272,7 +242,7 @@ export default function MegaMenu() {
             <button
               onClick={() => scrollByAmount(-280)}
               aria-label="Scroll left"
-              className="hidden md:flex lg:hidden absolute left-0 top-0 bottom-0 z-20 w-10 items-center justify-start pl-1 bg-gradient-to-r from-white via-white to-transparent text-gray-500 hover:text-ink border-none"
+              className="hidden md:flex lg:hidden absolute left-0 top-0 bottom-0 z-20 w-10 items-center justify-start pl-1 bg-gradient-to-r from-nav-bg via-nav-bg to-transparent text-white/60 hover:text-white border-none"
             >
               <ChevronLeft className="w-5 h-5" />
             </button>
@@ -281,11 +251,11 @@ export default function MegaMenu() {
           <ul
             ref={scrollContainerRef}
             onScroll={checkScroll}
-            className="flex items-stretch gap-1 overflow-x-auto no-scrollbar scroll-smooth snap-x pt-2 pb-2.5 px-2 lg:overflow-visible lg:justify-between lg:px-0"
+            className="flex items-stretch gap-1 overflow-x-auto no-scrollbar scroll-smooth snap-x py-2.5 px-2 lg:overflow-visible lg:justify-between lg:px-0"
             style={{ WebkitOverflowScrolling: 'touch' }}
           >
-            <li ref={isForYouActive ? activeItemRef : null} className="shrink-0 snap-start lg:flex-1 lg:min-w-0 flex justify-center">
-              {renderItem({ href: "/", icon: LayoutGrid, image: categoryImage('for-you'), label: "For you", active: isForYouActive })}
+            <li className="shrink-0 snap-start lg:flex-1 lg:min-w-0 flex justify-center" onMouseEnter={() => setHoveredDesktopCat(null)}>
+              {renderItem({ onClick: () => setIsMobileMenuOpen(true), icon: LayoutGrid, label: "All", active: false })}
             </li>
 
             {mainCategories.map((mainCat) => {
@@ -301,7 +271,6 @@ export default function MegaMenu() {
                   {renderItem({
                     href: getCatUrl(mainCat),
                     icon: IconComponent,
-                    image: categoryImage(mainCat.id),
                     label: shortName(mainCat.name),
                     title: mainCat.name,
                     active: isCurrentPage,
@@ -310,17 +279,13 @@ export default function MegaMenu() {
                 </li>
               );
             })}
-
-            <li className="shrink-0 snap-start lg:flex-1 lg:min-w-0 flex justify-center" onMouseEnter={() => setHoveredDesktopCat(null)}>
-              {renderItem({ onClick: () => setIsMobileMenuOpen(true), icon: MoreHorizontal, image: categoryImage('all'), label: "All", active: false })}
-            </li>
           </ul>
 
           {showRightScroll && (
             <button
               onClick={() => scrollByAmount(280)}
               aria-label="Scroll right"
-              className="hidden md:flex lg:hidden absolute right-0 top-0 bottom-0 z-20 w-10 items-center justify-end pr-1 bg-gradient-to-l from-white via-white to-transparent text-gray-500 hover:text-ink border-none"
+              className="hidden md:flex lg:hidden absolute right-0 top-0 bottom-0 z-20 w-10 items-center justify-end pr-1 bg-gradient-to-l from-nav-bg via-nav-bg to-transparent text-white/60 hover:text-white border-none"
             >
               <ChevronRight className="w-5 h-5" />
             </button>
@@ -336,13 +301,13 @@ export default function MegaMenu() {
           onMouseLeave={handleMouseLeaveMenu}
         >
           {hoveredCat && (
-            <div className="bg-white border-b border-line shadow-[0_24px_48px_-12px_rgba(16,24,40,0.18)]">
+            <div className="bg-nav-bg border-t border-white/[0.06] shadow-[0_24px_48px_-12px_rgba(0,0,0,0.5)] rounded-b-2xl">
               <div className="max-w-[1500px] mx-auto px-6 lg:px-8 py-6">
-                <div className="flex items-center justify-between pb-4 mb-4 border-b border-line">
-                  <h3 className="text-ink text-[15px] font-semibold">{hoveredCat.name}</h3>
+                <div className="flex items-center justify-between pb-4 mb-4 border-b border-white/[0.08]">
+                  <h3 className="text-white text-[15px] font-semibold">{hoveredCat.name}</h3>
                   <Link
                     href={getCatUrl(hoveredCat)}
-                    className="inline-flex items-center gap-1 text-[13px] font-medium text-gray-600 hover:text-ink transition-colors"
+                    className="inline-flex items-center gap-1 text-[13px] font-medium text-gold-primary hover:text-white transition-colors"
                   >
                     View all <ChevronRight className="w-4 h-4" />
                   </Link>
@@ -354,16 +319,16 @@ export default function MegaMenu() {
                       <Link
                         key={subCat.id}
                         href={getCatUrl(hoveredCat, subCat.id)}
-                        className="block truncate text-[14px] text-gray-600 hover:text-ink hover:bg-gray-50 rounded-md px-2 py-2 transition-colors"
+                        className="block truncate text-[14px] text-white/60 hover:text-white hover:bg-white/[0.06] rounded-md px-2 py-2 transition-colors"
                       >
                         {subCat.name}
                       </Link>
                     ))}
                   </div>
                 ) : (
-                  <p className="text-[14px] text-text-muted py-2">
+                  <p className="text-[14px] text-white/50 py-2">
                     Browse every product in this category.{' '}
-                    <Link href={getCatUrl(hoveredCat)} className="text-ink font-medium underline underline-offset-2">Explore</Link>
+                    <Link href={getCatUrl(hoveredCat)} className="text-gold-primary font-medium underline underline-offset-2">Explore</Link>
                   </p>
                 )}
               </div>
@@ -419,7 +384,7 @@ export default function MegaMenu() {
               isForYouActive ? 'bg-gray-100 text-ink font-semibold' : 'text-ink hover:bg-gray-50'
             }`}
           >
-            <img src="/categories/for-you.webp" alt="" width={32} height={32} className="w-8 h-8 rounded-lg object-contain shrink-0" />
+            <LayoutGrid className="w-[18px] h-[18px] text-gray-500" />
             <span className="flex-1 text-[15px]">All products</span>
           </Link>
 
@@ -443,13 +408,13 @@ export default function MegaMenu() {
                       className={row}
                       aria-expanded={isExpanded}
                     >
-                      {categoryImage(mainCat.id) ? <img src={categoryImage(mainCat.id)} alt="" width={32} height={32} loading="lazy" className="w-8 h-8 rounded-lg object-contain shrink-0" /> : <Icon className="w-[18px] h-[18px] text-gray-500 shrink-0" />}
+                      <Icon className="w-[18px] h-[18px] text-gray-500 shrink-0" />
                       <span className="flex-1 text-[15px] text-ink truncate">{mainCat.name}</span>
                       <ChevronDown className={`w-4 h-4 text-gray-400 shrink-0 transition-transform duration-300 ease-[var(--ease-out-expo)] ${isExpanded ? 'rotate-180' : ''}`} />
                     </button>
                   ) : (
                     <Link href={getCatUrl(mainCat)} onClick={() => setIsMobileMenuOpen(false)} className={row}>
-                      {categoryImage(mainCat.id) ? <img src={categoryImage(mainCat.id)} alt="" width={32} height={32} loading="lazy" className="w-8 h-8 rounded-lg object-contain shrink-0" /> : <Icon className="w-[18px] h-[18px] text-gray-500 shrink-0" />}
+                      <Icon className="w-[18px] h-[18px] text-gray-500 shrink-0" />
                       <span className="flex-1 text-[15px] text-ink truncate">{mainCat.name}</span>
                       <ChevronRight className="w-4 h-4 text-gray-300 shrink-0" />
                     </Link>

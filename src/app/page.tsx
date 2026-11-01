@@ -14,7 +14,7 @@ import {
 import Navbar from '@/components/Navbar';
 import ProductCard from '@/components/ProductCard';
 
-import api, { getCategoriesCached } from '@/lib/api';
+import api, { getCategoriesCached, getProductsCached, peekProducts, peekCategories } from '@/lib/api';
 import { useSearchParams, useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
 import { useAuth } from '@/context/AuthContext';
@@ -131,10 +131,18 @@ function RailSkeleton() {
 /* Page                                                              */
 /* ---------------------------------------------------------------- */
 
+// On client-side navigation back to home, start from the cached data so the
+// page paints fully on the first frame (no skeleton flash).
+const initialHomeProducts = () => {
+  if (typeof window === 'undefined') return null;
+  if (new URLSearchParams(window.location.search).get('search')) return null;
+  return peekProducts();
+};
+
 function HomeContent() {
-  const [products, setProducts] = useState<any[]>([]);
-  const [categories, setCategories] = useState<{ id: string; name: string }[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [products, setProducts] = useState<any[]>(() => initialHomeProducts() || []);
+  const [categories, setCategories] = useState<{ id: string; name: string }[]>(() => peekCategories()?.mainCategories || []);
+  const [loading, setLoading] = useState(() => !initialHomeProducts());
   const [fetchError, setFetchError] = useState(false);
   const [visibleCount, setVisibleCount] = useState(20);
   const searchParams = useSearchParams();
@@ -156,21 +164,37 @@ function HomeContent() {
   }, []);
 
   useEffect(() => {
-    const fetchProducts = async () => {
-      setLoading(true);
-      setFetchError(false);
-      try {
-        const endpoint = searchQuery ? `/products?search=${encodeURIComponent(searchQuery)}` : '/products';
-        const res = await api.get(endpoint);
-        setProducts(res.data);
-      } catch (err) {
-        console.error('Failed to fetch products', err);
-        setFetchError(true);
-      } finally {
+    let cancelled = false;
+    setFetchError(false);
+
+    if (!searchQuery) {
+      // Home: show the cached list instantly, refresh quietly in the background.
+      const cached = peekProducts();
+      if (cached) {
+        setProducts(cached);
         setLoading(false);
+      } else {
+        setLoading(true);
       }
-    };
-    fetchProducts();
+      getProductsCached()
+        .then((list) => { if (!cancelled) setProducts(list); })
+        .catch((err) => {
+          console.error('Failed to fetch products', err);
+          if (!cancelled && !cached) setFetchError(true);
+        })
+        .finally(() => { if (!cancelled) setLoading(false); });
+      return () => { cancelled = true; };
+    }
+
+    setLoading(true);
+    api.get(`/products?search=${encodeURIComponent(searchQuery)}`)
+      .then((res) => { if (!cancelled) setProducts(res.data); })
+      .catch((err) => {
+        console.error('Failed to fetch products', err);
+        if (!cancelled) setFetchError(true);
+      })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
   }, [searchQuery]);
 
   // Infinite scroll — search results only.
