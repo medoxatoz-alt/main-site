@@ -1,0 +1,17 @@
+[
+  {
+    "relation": [
+      "delegate_permission/common.handle_all_urls",
+      "delegate_permission/common.get_login_creds"
+    ],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.medox.atoz",
+      "sha256_cert_fingerprints": [
+        "53:39:F5:B4:9B:E0:DD:B1:90:82:0D:ED:9B:CF:85:9B:01:19:40:B9:F3:2D:F2:B4:FB:3C:AD:1E:D4:EB:41:E1",
+        "81:18:F9:42:9B:32:60:3F:A3:97:DB:52:0C:56:AB:B2:15:46:AC:E7:1D:A2:20:52:A8:9C:CA:77:8C:5A:28:7B",
+        "83:3C:D3:33:E3:D6:13:28:5B:9B:BB:31:D8:7B:DC:A1:46:C4:B9:78:38:8C:0A:5D:31:86:EE:FE:58:43:42:20"
+      ]
+    }
+  }
+]
